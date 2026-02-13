@@ -2,9 +2,10 @@
 
 ## 一键入口
 
-直接打开这个 Notebook：
-
-- https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb
+- 标准版（中英混合）：
+  https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb
+- 纯中文逐 Cell 说明版：
+  https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb
 
 ---
 
