@@ -1,7 +1,7 @@
 # eyetrack
 
-Python toolkit for Building & Environment eye-tracking analysis.  
-面向 Building and Environment 方向的眼动数据分析工具（Python）。
+Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the target journal *Building and Environment*.  
+面向室内乒乓球空间场景的眼动分析工具（Python），并按目标期刊 *Building and Environment* 的投稿规范对齐。
 
 ---
 
@@ -26,9 +26,9 @@ Python toolkit for Building & Environment eye-tracking analysis.
 
 ## 1. Overview / 项目概览
 
-**EN**: This repository helps beginners go from exported eye-tracking CSV data to clean metrics and publication-ready visualizations, without depending on vendor post-processing software.
+**EN**: This repository helps beginners go from exported eye-tracking CSV data to clean metrics and publication-ready visualizations for **indoor pingpong-space studies**, without depending on vendor post-processing software. The writing/output style is aligned to **Building and Environment** as the target journal.
 
-**中文**：本仓库帮助你从导出的眼动 CSV 数据出发，完成清洗、可视化和 AOI 指标统计，全流程不依赖厂商后处理软件。
+**中文**：本仓库帮助你从导出的眼动 CSV 数据出发，完成面向**室内乒乓球空间研究**的清洗、可视化和 AOI 指标统计，全流程不依赖厂商后处理软件；方法与输出风格按 **Building and Environment** 目标期刊对齐。
 
 ---
 

@@ -1,7 +1,11 @@
 # eyetrack（纯中文说明）
 
-这是一个面向 **Building and Environment** 方向的眼动分析项目。  
-目标是：让你从 aseeStudio 导出的 CSV 出发，用 Python 完成数据清洗、可视化、AOI 标注与指标统计。
+这是一个面向**室内乒乓球空间场景**的眼动分析项目。  
+目标是：让你从 aseeStudio 导出的 CSV 出发，用 Python 完成数据清洗、可视化、AOI 标注与指标统计；并按 **Building and Environment（目标期刊）** 的论文规范组织结果。
+
+
+
+> 说明：这里的 **Building and Environment** 指你的目标投稿期刊名称，不是场景类型。
 
 ---
 
