@@ -73,8 +73,8 @@ eyetrack/
 ├─ src/
 │  ├─ pipeline.py
 │  └─ aoi_metrics.py
-└─ webapp/
-   └─ index.html          # AOI labeler (v3)
+└─ (AOI web app moved to separate repo)
+   └─ https://github.com/wannaqueen66-create/eyetrack-aoi
 ```
 
 ---
@@ -92,10 +92,15 @@ python scripts/run_pipeline.py \
   --outdir outputs
 ```
 
-Then start AOI web tool / 然后启动 AOI 网页工具：
+Then use the standalone AOI web app (integrated from `eyetrack-aoi`) / 然后使用独立 AOI 网页工具（已对接 `eyetrack-aoi`）：
+
+- Repo / 仓库: `https://github.com/wannaqueen66-create/eyetrack-aoi`
+- Recommended / 推荐: deploy by Cloudflare Pages and open the `*.pages.dev` URL
+- Optional local run / 可选本地运行:
 
 ```bash
-cd webapp
+git clone https://github.com/wannaqueen66-create/eyetrack-aoi.git
+cd eyetrack-aoi/public
 python3 -m http.server 8080
 # open / 打开: http://<VPS-IP>:8080
 ```
@@ -131,16 +136,16 @@ Generated files / 生成文件：
 
 ### Step C. Draw AOIs in Browser / 网页框选AOI
 
-```bash
-cd /home/wannaqueen66/.openclaw/workspace/eyetrack/webapp
-python3 -m http.server 8080
-```
+AOI web labeling is now maintained in a standalone repo: `eyetrack-aoi`.
+AOI 网页标注已迁移到独立仓库：`eyetrack-aoi`。
 
-Open / 打开：`http://<VPS-IP>:8080`
+- GitHub: `https://github.com/wannaqueen66-create/eyetrack-aoi`
+- Preferred: open your deployed Cloudflare Pages/Workers URL
+- Or run locally from `eyetrack-aoi/public`
 
 Workflow / 操作流程：
 
-1. Upload mapping image / 上传映射图片
+1. Upload **background scene image** (required) / 上传**场景底图**（必选）
 2. (Optional) Upload gaze CSV overlay / 可选上传 gaze CSV 叠加点
 3. Input AOI class name / 输入 AOI 类名（如 `pingpong_table`）
 4. Draw one or more polygons for that class / 为该类绘制一个或多个多边形
@@ -171,6 +176,9 @@ Output files / 输出文件：
 ---
 
 ## 6. AOI Web Tool v3 Guide / AOI网页工具v3说明
+
+> Source repo / 源仓库: `https://github.com/wannaqueen66-create/eyetrack-aoi`
+
 
 **EN**
 

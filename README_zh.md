@@ -50,8 +50,8 @@ eyetrack/
 ├─ src/
 │  ├─ pipeline.py
 │  └─ aoi_metrics.py
-└─ webapp/
-   └─ index.html          AOI网页工具（v3）
+└─ AOI网页工具（已拆分）
+   └─ https://github.com/wannaqueen66-create/eyetrack-aoi
 ```
 
 ---
@@ -140,6 +140,9 @@ python scripts/run_aoi_metrics.py \
 ---
 
 ## 5. AOI网页工具v3说明
+
+> 工具仓库：`https://github.com/wannaqueen66-create/eyetrack-aoi`
+
 
 目前支持：
 
