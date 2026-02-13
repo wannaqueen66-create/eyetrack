@@ -107,6 +107,13 @@ python3 -m http.server 8080
 
 ---
 
+
+## Colab Deployment / Colab 部署
+
+- Open in Colab:
+  `https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb`
+- Chinese guide: `docs/COLAB_ZH.md`
+
 ## 5. End-to-End Workflow / 全流程操作
 
 ### Step A. Setup Environment / 环境准备

@@ -85,6 +85,13 @@ python3 -m http.server 8080
 
 ---
 
+
+## Colab 部署（推荐给快速试跑）
+
+- 直接打开：
+  `https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb`
+- 详细中文说明：`docs/COLAB_ZH.md`
+
 ## 4. 小白全流程
 
 ### 步骤 A：环境准备
