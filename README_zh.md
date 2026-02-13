@@ -69,10 +69,15 @@ python scripts/run_pipeline.py \
   --outdir outputs
 ```
 
-启动 AOI 网页工具：
+启动独立 AOI 网页工具（已对接 eyetrack-aoi）：
+
+- 仓库：`https://github.com/wannaqueen66-create/eyetrack-aoi`
+- 推荐：Cloudflare Pages 一键部署后直接访问线上 URL
+- 本地可选：
 
 ```bash
-cd webapp
+git clone https://github.com/wannaqueen66-create/eyetrack-aoi.git
+cd eyetrack-aoi/public
 python3 -m http.server 8080
 ```
 
@@ -108,7 +113,11 @@ python scripts/run_pipeline.py \
 
 ### 步骤 C：在网页里标注 AOI
 
-1. 上传映射图片
+AOI 标注网页已迁移到独立仓库：`eyetrack-aoi`
+- GitHub：`https://github.com/wannaqueen66-create/eyetrack-aoi`
+- 推荐使用 Cloudflare 部署后的线上地址
+
+1. 上传**场景底图**（必选，且与 gaze 坐标对应）
 2. 可选上传 CSV（叠加 gaze 点辅助定位）
 3. 输入 AOI 类名（如 `pingpong_table`）
 4. 画一个或多个多边形
