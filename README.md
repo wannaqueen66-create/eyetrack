@@ -141,7 +141,7 @@ AOI 网页标注已迁移到独立仓库：`eyetrack-aoi`。
 
 - GitHub: `https://github.com/wannaqueen66-create/eyetrack-aoi`
 - Preferred: open your deployed Cloudflare Pages/Workers URL
-- Or run locally from `eyetrack-aoi/public`
+- Or run locally from `eyetrack-aoi/public` (simple static server)
 
 Workflow / 操作流程：
 
@@ -240,9 +240,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### Q2. Cannot open web page on VPS / VPS网页打不开
-- Ensure `python3 -m http.server 8080` is running under `webapp/`
-- Check firewall/security group allows port 8080
+### Q2. Cannot open AOI web page / AOI网页打不开
+- Recommended: use deployed Cloudflare URL from `eyetrack-aoi` (Pages/Workers)
+- If running locally, serve from `eyetrack-aoi/public`:
+  - `python3 -m http.server 8080`
+- Check firewall/security group allows port 8080 when accessing via VPS IP
 
 ### Q3. AOI result seems wrong / AOI结果不对
 - Check image resolution matches CSV coordinate system
