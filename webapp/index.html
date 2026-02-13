@@ -3,78 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AOI Polygon Labeler v2</title>
+  <title>AOI Labeler v3</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 0; background: #0b1020; color: #e6eaf2; }
-    .wrap { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
+    .wrap { display: grid; grid-template-columns: 380px 1fr; height: 100vh; }
     .panel { padding: 14px; border-right: 1px solid #24304d; overflow: auto; }
-    .panel h2 { margin: 4px 0 10px; font-size: 18px; }
-    .row { margin-bottom: 10px; }
-    input, button { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #314268; background:#121a2f; color:#e6eaf2; }
-    button { cursor: pointer; margin-top: 6px; }
-    .canvas-wrap { position: relative; overflow: auto; }
-    canvas { background: #111; display: block; margin: 0 auto; }
-    .hint { font-size: 12px; opacity: .85; line-height: 1.4; margin-top: 10px; }
-    .item { background:#121a2f; border:1px solid #2c3d64; border-radius:8px; padding:8px; margin-bottom:8px; font-size: 13px; }
-    .ok { color: #7dffb3; font-size: 12px; }
+    input, button { width: 100%; padding: 8px; margin-top: 6px; border-radius: 8px; border: 1px solid #314268; background:#121a2f; color:#e6eaf2; }
+    button { cursor: pointer; }
+    .canvas-wrap { overflow: auto; background: #090d1a; }
+    canvas { display:block; margin: 0 auto; background:#111; }
+    .hint { font-size:12px; opacity:.88; line-height:1.45; margin-top:10px; }
+    .item { background:#121a2f; border:1px solid #2c3d64; border-radius:8px; padding:8px; margin:6px 0; font-size:13px; }
   </style>
 </head>
 <body>
 <div class="wrap">
   <div class="panel">
-    <h2>AOI Labeler v2</h2>
+    <h2>AOI Labeler v3</h2>
+    <input id="imgInput" type="file" accept="image/*" />
+    <input id="csvInput" type="file" accept=".csv,text/csv" />
+    <div id="csvStatus" style="font-size:12px;color:#7dffb3"></div>
 
-    <div class="row">
-      <label>1) 上传映射图片</label>
-      <input id="imgInput" type="file" accept="image/*" />
-    </div>
-
-    <div class="row">
-      <label>2) 可选：上传 gaze CSV（用于叠加预览）</label>
-      <input id="csvInput" type="file" accept=".csv,text/csv" />
-      <div id="csvStatus" class="ok"></div>
-    </div>
-
-    <div class="row">
-      <label>3) AOI 类名</label>
-      <input id="className" type="text" placeholder="例如 pingpong_table" />
-    </div>
-
-    <button id="startPolyBtn">开始当前类多边形</button>
-    <button id="closePolyBtn">闭合并保存多边形</button>
-    <button id="undoPointBtn">撤销上一个点</button>
-    <button id="deleteSelectedBtn">删除选中 polygon</button>
+    <input id="className" placeholder="AOI类名，如 pingpong_table" />
+    <button id="startPolyBtn">开始绘制</button>
+    <button id="closePolyBtn">闭合并保存（或点击首点自动闭合）</button>
+    <button id="undoPointBtn">撤销当前点</button>
+    <button id="clearCurrentBtn">清空当前绘制</button>
 
     <hr/>
-    <div class="row">
-      <label>类重命名（旧 -> 新）</label>
-      <input id="renameOld" placeholder="旧类名" />
-      <input id="renameNew" placeholder="新类名" />
-      <button id="renameBtn">重命名类</button>
-    </div>
+    <button id="deleteSelectedBtn">删除选中 polygon</button>
+    <button id="insertVertexBtn">在最近边插入顶点</button>
+    <button id="deleteVertexBtn">删除最近顶点</button>
 
-    <div class="row">
-      <label>导入/导出 AOI JSON</label>
-      <input id="aoiImport" type="file" accept="application/json,.json" />
-      <button id="exportBtn">导出 aoi.json</button>
-    </div>
+    <input id="renameOld" placeholder="旧类名" />
+    <input id="renameNew" placeholder="新类名" />
+    <button id="renameBtn">重命名类</button>
 
-    <div class="row">
-      <button id="toggleGazeBtn">切换 gaze 点显示</button>
-      <button id="clearCurrentBtn">清空当前正在绘制的点</button>
-    </div>
+    <input id="aoiImport" type="file" accept="application/json,.json" />
+    <button id="exportBtn">导出 aoi.json</button>
+    <button id="toggleGazeBtn">开关 gaze 点</button>
 
     <div class="hint">
-      交互说明：<br/>
-      - 左键点击：添加多边形点（绘制模式）<br/>
-      - 闭合后可编辑：拖动顶点调整形状<br/>
-      - 点击 polygon 内部可选中该 polygon，再删除<br/>
-      - 同一类可有多个分离区域，导出结构 class -> polygons
+      交互（v3）：<br/>
+      - 滚轮缩放，空白处拖动画布平移<br/>
+      - 点击 polygon 选中；拖顶点可编辑<br/>
+      - 按住 Shift 拖动选中 polygon 可整体移动<br/>
+      - 绘制时点击首点附近自动闭合
     </div>
-
     <div id="summary"></div>
   </div>
-
   <div class="canvas-wrap"><canvas id="canvas"></canvas></div>
 </div>
 
@@ -84,222 +61,252 @@ const ctx = canvas.getContext('2d');
 const summary = document.getElementById('summary');
 const csvStatus = document.getElementById('csvStatus');
 
-let image = new Image();
-let imageLoaded = false;
-let drawing = false;
-let currentClass = '';
-let currentPoly = [];
-let aois = {}; // class -> [ {points:[[x,y],...]} ]
-let gazePoints = [];
-let showGaze = true;
+let image = new Image(), imageLoaded=false;
+let drawing=false, currentClass='', currentPoly=[];
+let aois={}; // class -> [{points:[[x,y],...]}]
+let gazePoints=[], showGaze=true;
+let selected=null; // {className, polyIndex}
+let dragVertex=null; // {className, polyIndex, vertexIndex}
+let dragPoly=null; // {className, polyIndex, lastX,lastY}
+let panMode=false, panStart=null;
+let hoverCanvasPoint=null;
 
-let selected = null; // {className, polyIndex}
-let dragVertex = null; // {className, polyIndex, vertexIndex}
+const view = { scale:1, tx:0, ty:0 };
 
-function colorForClass(name){
-  let h=0; for (let i=0;i<name.length;i++) h=(h*31 + name.charCodeAt(i))%360;
-  return `hsl(${h}, 80%, 60%)`;
-}
-
-function centroid(poly){ let x=0,y=0; for(const p of poly){x+=p[0];y+=p[1];} return [x/poly.length,y/poly.length]; }
+function colorForClass(name){ let h=0; for(let i=0;i<name.length;i++) h=(h*31+name.charCodeAt(i))%360; return `hsl(${h},80%,60%)`; }
+function centroid(poly){ let x=0,y=0; poly.forEach(p=>{x+=p[0];y+=p[1]}); return [x/poly.length,y/poly.length]; }
+function worldToScreen(x,y){ return [x*view.scale+view.tx, y*view.scale+view.ty]; }
+function screenToWorld(x,y){ return [(x-view.tx)/view.scale, (y-view.ty)/view.scale]; }
 
 function pointInPoly(px, py, poly){
-  let inside = false;
+  let inside=false;
   for(let i=0,j=poly.length-1;i<poly.length;j=i++){
     const xi=poly[i][0], yi=poly[i][1], xj=poly[j][0], yj=poly[j][1];
-    const intersect = ((yi>py)!==(yj>py)) && (px < (xj-xi)*(py-yi)/((yj-yi)||1e-9)+xi);
-    if(intersect) inside = !inside;
+    const intersect=((yi>py)!==(yj>py)) && (px < (xj-xi)*(py-yi)/((yj-yi)||1e-9)+xi);
+    if(intersect) inside=!inside;
   }
   return inside;
 }
 
-function nearestVertex(x,y,th=8){
+function nearestVertex(wx,wy,thPx=10){
+  const th = thPx/view.scale;
   let best=null;
   for(const [cls, polys] of Object.entries(aois)){
-    polys.forEach((pObj, pi)=>{
-      pObj.points.forEach((pt, vi)=>{
-        const d = Math.hypot(pt[0]-x, pt[1]-y);
-        if(d<=th && (!best || d<best.d)) best={className:cls, polyIndex:pi, vertexIndex:vi, d};
-      });
-    });
+    polys.forEach((pObj,pi)=>pObj.points.forEach((pt,vi)=>{
+      const d=Math.hypot(pt[0]-wx, pt[1]-wy);
+      if(d<=th && (!best || d<best.d)) best={className:cls, polyIndex:pi, vertexIndex:vi, d};
+    }));
   }
   return best;
 }
 
-function selectPolygonAt(x,y){
-  for(const [cls, polys] of Object.entries(aois)){
-    for(let i=0;i<polys.length;i++){
-      if(pointInPoly(x,y,polys[i].points)) return {className:cls, polyIndex:i};
-    }
-  }
+function selectPolygonAt(wx,wy){
+  for(const [cls, polys] of Object.entries(aois)) for(let i=0;i<polys.length;i++) if(pointInPoly(wx,wy,polys[i].points)) return {className:cls, polyIndex:i};
   return null;
+}
+
+function distPointToSeg(px,py,x1,y1,x2,y2){
+  const A=px-x1, B=py-y1, C=x2-x1, D=y2-y1;
+  const dot=A*C+B*D, len=C*C+D*D;
+  let t = len ? dot/len : 0; t=Math.max(0,Math.min(1,t));
+  const x=x1+t*C, y=y1+t*D;
+  return {d:Math.hypot(px-x,py-y), x,y,t};
+}
+
+function nearestEdge(poly, wx, wy){
+  let best=null;
+  for(let i=0;i<poly.length;i++){
+    const a=poly[i], b=poly[(i+1)%poly.length];
+    const r=distPointToSeg(wx,wy,a[0],a[1],b[0],b[1]);
+    if(!best || r.d<best.d) best={edgeStart:i, ...r};
+  }
+  return best;
 }
 
 function redraw(){
   if(!imageLoaded) return;
+  ctx.setTransform(1,0,0,1,0,0);
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.setTransform(view.scale,0,0,view.scale,view.tx,view.ty);
   ctx.drawImage(image,0,0);
 
   if(showGaze && gazePoints.length){
     ctx.fillStyle='rgba(255,255,255,0.35)';
-    for(const p of gazePoints){ ctx.fillRect(p[0], p[1], 1, 1); }
+    for(const p of gazePoints) ctx.fillRect(p[0],p[1],1,1);
   }
 
   for(const [cls, polys] of Object.entries(aois)){
-    const color = colorForClass(cls);
-    polys.forEach((pObj, idx)=>{
-      const poly = pObj.points;
-      if(poly.length < 2) return;
-      const isSel = selected && selected.className===cls && selected.polyIndex===idx;
-      ctx.strokeStyle = isSel ? '#ffd166' : color;
-      ctx.fillStyle = isSel ? '#ffd166' : color;
-      ctx.lineWidth = isSel ? 3 : 2;
-      ctx.beginPath();
-      ctx.moveTo(poly[0][0], poly[0][1]);
-      for(let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0], poly[i][1]);
-      ctx.closePath();
-      ctx.globalAlpha = 0.2; ctx.fill(); ctx.globalAlpha = 1; ctx.stroke();
-
-      for(const pt of poly){
-        ctx.beginPath(); ctx.arc(pt[0], pt[1], 3, 0, Math.PI*2); ctx.fill();
-      }
-
-      const c = centroid(poly);
-      ctx.fillStyle = '#fff'; ctx.font = '12px Arial';
-      ctx.fillText(`${cls}#${idx+1}`, c[0], c[1]);
+    const color=colorForClass(cls);
+    polys.forEach((pObj,idx)=>{
+      const poly=pObj.points; if(poly.length<2) return;
+      const isSel=selected && selected.className===cls && selected.polyIndex===idx;
+      ctx.strokeStyle=isSel?'#ffd166':color;
+      ctx.fillStyle=isSel?'#ffd166':color;
+      ctx.lineWidth=(isSel?3:2)/view.scale;
+      ctx.beginPath(); ctx.moveTo(poly[0][0],poly[0][1]); for(let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0],poly[i][1]); ctx.closePath();
+      ctx.globalAlpha=.2; ctx.fill(); ctx.globalAlpha=1; ctx.stroke();
+      for(const p of poly){ ctx.beginPath(); ctx.arc(p[0],p[1],3/view.scale,0,Math.PI*2); ctx.fill(); }
+      const c=centroid(poly); ctx.fillStyle='#fff'; ctx.font=`${12/view.scale}px Arial`; ctx.fillText(`${cls}#${idx+1}`,c[0],c[1]);
     });
   }
 
   if(currentPoly.length){
-    ctx.strokeStyle = '#00e5ff'; ctx.fillStyle = '#00e5ff'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(currentPoly[0][0], currentPoly[0][1]);
-    for(let i=1;i<currentPoly.length;i++) ctx.lineTo(currentPoly[i][0], currentPoly[i][1]);
+    ctx.strokeStyle='#00e5ff'; ctx.fillStyle='#00e5ff'; ctx.lineWidth=2/view.scale;
+    ctx.beginPath(); ctx.moveTo(currentPoly[0][0],currentPoly[0][1]); for(let i=1;i<currentPoly.length;i++) ctx.lineTo(currentPoly[i][0],currentPoly[i][1]);
+    if(hoverCanvasPoint){ ctx.lineTo(hoverCanvasPoint[0],hoverCanvasPoint[1]); }
     ctx.stroke();
-    currentPoly.forEach(p=>{ctx.beginPath(); ctx.arc(p[0],p[1],3,0,Math.PI*2); ctx.fill();});
+    currentPoly.forEach(p=>{ctx.beginPath(); ctx.arc(p[0],p[1],3/view.scale,0,Math.PI*2); ctx.fill();});
   }
 }
 
 function refreshSummary(){
-  let html = '<h3>AOI 概览</h3>';
-  const classes = Object.keys(aois);
-  if(!classes.length) html += '<div class="item">暂无 AOI</div>';
-  for(const cls of classes){
-    html += `<div class="item"><b>${cls}</b> · ${aois[cls].length} polygons</div>`;
-  }
-  summary.innerHTML = html;
+  let html='<h3>AOI 概览</h3>';
+  const names=Object.keys(aois); if(!names.length) html+='<div class="item">暂无 AOI</div>';
+  for(const n of names) html+=`<div class="item"><b>${n}</b> · ${aois[n].length} polygons</div>`;
+  summary.innerHTML=html;
 }
 
-function canvasXY(e){
-  const r = canvas.getBoundingClientRect();
-  return [Math.round((e.clientX-r.left)*(canvas.width/r.width)), Math.round((e.clientY-r.top)*(canvas.height/r.height))];
-}
+function canvasPos(e){ const r=canvas.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; }
 
-document.getElementById('imgInput').addEventListener('change',(e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  const url = URL.createObjectURL(file);
-  image = new Image();
-  image.onload = ()=>{ imageLoaded=true; canvas.width=image.width; canvas.height=image.height; redraw(); };
-  image.src = url;
+document.getElementById('imgInput').addEventListener('change', e=>{
+  const f=e.target.files[0]; if(!f) return;
+  image=new Image(); image.onload=()=>{ imageLoaded=true; canvas.width=Math.max(1200,image.width); canvas.height=Math.max(800,image.height); view.scale=1; view.tx=0; view.ty=0; redraw(); };
+  image.src=URL.createObjectURL(f);
 });
 
-document.getElementById('csvInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  const text = await file.text();
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if(lines.length < 2) return;
-  const headers = lines[0].split(',').map(s=>s.trim());
-  const xi = headers.indexOf('Gaze Point X[px]');
-  const yi = headers.indexOf('Gaze Point Y[px]');
-  if(xi<0 || yi<0){ csvStatus.textContent='CSV 未找到 Gaze Point X/Y 字段'; return; }
-  gazePoints = [];
-  for(let i=1;i<lines.length;i++){
-    const cols = lines[i].split(',');
-    const x = Number((cols[xi]||'').trim());
-    const y = Number((cols[yi]||'').trim());
-    if(Number.isFinite(x)&&Number.isFinite(y)&&x>=0&&y>=0) gazePoints.push([x,y]);
-  }
-  csvStatus.textContent = `已加载 gaze 点：${gazePoints.length}`;
-  redraw();
+document.getElementById('csvInput').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const txt=await f.text(); const lines=txt.split(/\r?\n/).filter(Boolean); if(lines.length<2) return;
+  const h=lines[0].split(',').map(s=>s.trim()); const xi=h.indexOf('Gaze Point X[px]'), yi=h.indexOf('Gaze Point Y[px]');
+  if(xi<0||yi<0){csvStatus.textContent='CSV 缺少 Gaze Point X/Y'; return;}
+  gazePoints=[]; for(let i=1;i<lines.length;i++){ const c=lines[i].split(','); const x=Number((c[xi]||'').trim()), y=Number((c[yi]||'').trim()); if(Number.isFinite(x)&&Number.isFinite(y)) gazePoints.push([x,y]); }
+  csvStatus.textContent=`已加载 gaze 点：${gazePoints.length}`; redraw();
 });
 
-canvas.addEventListener('mousedown',(e)=>{
+canvas.addEventListener('wheel', e=>{
   if(!imageLoaded) return;
-  const [x,y] = canvasXY(e);
+  e.preventDefault();
+  const [sx,sy]=canvasPos(e); const [wx,wy]=screenToWorld(sx,sy);
+  const factor = e.deltaY<0 ? 1.1 : 0.9;
+  view.scale=Math.max(0.2, Math.min(8, view.scale*factor));
+  const [nsx,nsy]=worldToScreen(wx,wy);
+  view.tx += sx-nsx; view.ty += sy-nsy;
+  redraw();
+},{passive:false});
 
-  const nv = nearestVertex(x,y,8);
-  if(nv){ dragVertex = nv; return; }
+canvas.addEventListener('mousedown', e=>{
+  if(!imageLoaded) return;
+  const [sx,sy]=canvasPos(e); const [wx,wy]=screenToWorld(sx,sy);
 
-  if(drawing){ currentPoly.push([x,y]); redraw(); return; }
+  // pan on middle button or alt+drag
+  if(e.button===1 || e.altKey){ panMode=true; panStart={x:sx,y:sy}; return; }
 
-  selected = selectPolygonAt(x,y);
+  const nv=nearestVertex(wx,wy,10);
+  if(nv){ dragVertex=nv; selected={className:nv.className, polyIndex:nv.polyIndex}; redraw(); return; }
+
+  if(drawing){
+    if(currentPoly.length>=3){
+      const first=currentPoly[0];
+      if(Math.hypot(first[0]-wx, first[1]-wy) <= 10/view.scale){
+        if(!aois[currentClass]) aois[currentClass]=[];
+        aois[currentClass].push({points: currentPoly.slice()});
+        currentPoly=[]; redraw(); refreshSummary(); return;
+      }
+    }
+    currentPoly.push([wx,wy]); redraw(); return;
+  }
+
+  const sel=selectPolygonAt(wx,wy);
+  selected=sel;
+  if(sel && e.shiftKey){ dragPoly={...sel,lastX:wx,lastY:wy}; }
   redraw();
 });
 
-canvas.addEventListener('mousemove',(e)=>{
-  if(!dragVertex) return;
-  const [x,y] = canvasXY(e);
-  aois[dragVertex.className][dragVertex.polyIndex].points[dragVertex.vertexIndex] = [x,y];
-  redraw();
+canvas.addEventListener('mousemove', e=>{
+  if(!imageLoaded) return;
+  const [sx,sy]=canvasPos(e); const [wx,wy]=screenToWorld(sx,sy);
+  hoverCanvasPoint = drawing ? [wx,wy] : null;
+
+  if(panMode && panStart){ view.tx += sx-panStart.x; view.ty += sy-panStart.y; panStart={x:sx,y:sy}; redraw(); return; }
+
+  if(dragVertex){
+    aois[dragVertex.className][dragVertex.polyIndex].points[dragVertex.vertexIndex]=[wx,wy];
+    redraw(); return;
+  }
+
+  if(dragPoly){
+    const poly=aois[dragPoly.className][dragPoly.polyIndex].points;
+    const dx=wx-dragPoly.lastX, dy=wy-dragPoly.lastY;
+    for(let i=0;i<poly.length;i++) poly[i]=[poly[i][0]+dx, poly[i][1]+dy];
+    dragPoly.lastX=wx; dragPoly.lastY=wy; redraw(); return;
+  }
+
+  if(drawing) redraw();
 });
 
-window.addEventListener('mouseup',()=>{ dragVertex=null; });
+window.addEventListener('mouseup', ()=>{ dragVertex=null; dragPoly=null; panMode=false; panStart=null; });
 
-document.getElementById('startPolyBtn').addEventListener('click',()=>{
-  const cls = document.getElementById('className').value.trim();
-  if(!cls) return alert('请先输入 AOI 类名');
-  currentClass = cls; drawing=true; currentPoly=[];
-});
+document.getElementById('startPolyBtn').addEventListener('click', ()=>{ const c=document.getElementById('className').value.trim(); if(!c) return alert('先填类名'); currentClass=c; drawing=true; currentPoly=[]; });
+document.getElementById('closePolyBtn').addEventListener('click', ()=>{ if(!drawing||currentPoly.length<3) return alert('至少3点'); if(!aois[currentClass]) aois[currentClass]=[]; aois[currentClass].push({points: currentPoly.slice()}); currentPoly=[]; redraw(); refreshSummary(); });
+document.getElementById('undoPointBtn').addEventListener('click', ()=>{ currentPoly.pop(); redraw(); });
+document.getElementById('clearCurrentBtn').addEventListener('click', ()=>{ currentPoly=[]; redraw(); });
 
-document.getElementById('closePolyBtn').addEventListener('click',()=>{
-  if(!drawing || currentPoly.length<3) return alert('至少3个点');
-  if(!aois[currentClass]) aois[currentClass]=[];
-  aois[currentClass].push({points: currentPoly.slice()});
-  currentPoly=[]; redraw(); refreshSummary();
-});
-
-document.getElementById('undoPointBtn').addEventListener('click',()=>{ currentPoly.pop(); redraw(); });
-document.getElementById('clearCurrentBtn').addEventListener('click',()=>{ currentPoly=[]; redraw(); });
-
-document.getElementById('deleteSelectedBtn').addEventListener('click',()=>{
-  if(!selected) return alert('请先点击选中一个 polygon');
-  const {className, polyIndex} = selected;
-  aois[className].splice(polyIndex,1);
-  if(!aois[className].length) delete aois[className];
+document.getElementById('deleteSelectedBtn').addEventListener('click', ()=>{
+  if(!selected) return alert('先选中一个 polygon');
+  aois[selected.className].splice(selected.polyIndex,1);
+  if(!aois[selected.className].length) delete aois[selected.className];
   selected=null; redraw(); refreshSummary();
 });
 
-document.getElementById('renameBtn').addEventListener('click',()=>{
-  const oldName = document.getElementById('renameOld').value.trim();
-  const newName = document.getElementById('renameNew').value.trim();
-  if(!oldName || !newName) return alert('请填写旧类名和新类名');
-  if(!aois[oldName]) return alert('旧类名不存在');
-  if(!aois[newName]) aois[newName]=[];
-  aois[newName] = aois[newName].concat(aois[oldName]);
-  delete aois[oldName];
-  redraw(); refreshSummary();
+document.getElementById('insertVertexBtn').addEventListener('click', ()=>{
+  if(!selected) return alert('先选中 polygon');
+  if(!hoverCanvasPoint) return alert('把鼠标移到目标边附近');
+  const poly=aois[selected.className][selected.polyIndex].points;
+  const ne=nearestEdge(poly, hoverCanvasPoint[0], hoverCanvasPoint[1]);
+  poly.splice(ne.edgeStart+1,0,[ne.x,ne.y]);
+  redraw();
 });
 
-document.getElementById('aoiImport').addEventListener('change', async (e)=>{
-  const file = e.target.files[0]; if(!file) return;
-  const d = JSON.parse(await file.text());
-  aois = d.aoi_classes || {};
-  for(const k of Object.keys(aois)){
-    aois[k] = (aois[k]||[]).map(p => ({points: p.points || p}));
+document.getElementById('deleteVertexBtn').addEventListener('click', ()=>{
+  if(!selected) return alert('先选中 polygon');
+  if(!hoverCanvasPoint) return alert('把鼠标移到要删的顶点附近');
+  const poly=aois[selected.className][selected.polyIndex].points;
+  if(poly.length<=3) return alert('polygon 至少保留3个点');
+  let bi=-1, bd=1e9;
+  for(let i=0;i<poly.length;i++){
+    const d=Math.hypot(poly[i][0]-hoverCanvasPoint[0], poly[i][1]-hoverCanvasPoint[1]);
+    if(d<bd){bd=d; bi=i;}
   }
-  redraw(); refreshSummary();
+  if(bd>12/view.scale) return alert('离顶点太远');
+  poly.splice(bi,1);
+  redraw();
 });
 
-document.getElementById('exportBtn').addEventListener('click',()=>{
-  if(!imageLoaded) return alert('请先上传图片');
-  const payload = { image:{width:canvas.width,height:canvas.height}, aoi_classes: aois };
-  const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'aoi.json';
-  a.click();
+document.getElementById('renameBtn').addEventListener('click', ()=>{
+  const oldN=document.getElementById('renameOld').value.trim(), newN=document.getElementById('renameNew').value.trim();
+  if(!oldN||!newN) return alert('填写旧/新类名');
+  if(!aois[oldN]) return alert('旧类不存在');
+  if(!aois[newN]) aois[newN]=[];
+  aois[newN]=aois[newN].concat(aois[oldN]);
+  delete aois[oldN]; refreshSummary(); redraw();
 });
 
-document.getElementById('toggleGazeBtn').addEventListener('click',()=>{ showGaze=!showGaze; redraw(); });
+document.getElementById('aoiImport').addEventListener('change', async e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const d=JSON.parse(await f.text());
+  aois=d.aoi_classes||{};
+  for(const k of Object.keys(aois)) aois[k]=(aois[k]||[]).map(p=>({points:(p.points||p)}));
+  refreshSummary(); redraw();
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(!imageLoaded) return alert('先上传图片');
+  const payload={image:{width:image.width,height:image.height}, aoi_classes:aois};
+  const blob=new Blob([JSON.stringify(payload,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='aoi.json'; a.click();
+});
+
+document.getElementById('toggleGazeBtn').addEventListener('click', ()=>{ showGaze=!showGaze; redraw(); });
 
 refreshSummary();
 </script>
