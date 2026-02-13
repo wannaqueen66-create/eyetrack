@@ -208,3 +208,44 @@ pip install -r requirements.txt
 3. 合并环境解释变量（绿视率、开敞度、立面复杂度等）
 4. 构建混合效应模型（被试随机效应）
 5. 生成投稿图表模板
+
+---
+
+## 9. 室内乒乓球场景：已补齐的进阶模块
+
+你本次项目是室内乒乓球空间，已新增以下脚本（就是之前 roadmap 里没做完的部分）：
+
+1. **多被试批处理 AOI 指标**：`scripts/batch_aoi_metrics.py`
+2. **场景变量合并**：`scripts/merge_scene_features.py`
+3. **混合效应模型（被试随机效应）**：`scripts/mixed_effects_indoor_pingpong.py`
+4. **论文图表导出**：`scripts/paper_figures_indoor_pingpong.py`
+
+新增模板：
+- `templates/batch_manifest_template.csv`
+- `templates/indoor_pingpong_scene_features_template.csv`
+- `configs/indoor_pingpong_aoi_classes.json`
+
+### 最短可执行路径
+
+```bash
+# 1) 批量 AOI 指标（先把 manifest 填好）
+python scripts/batch_aoi_metrics.py \
+  --manifest templates/batch_manifest_template.csv \
+  --outdir outputs_batch
+
+# 2) 合并场景变量（先把 scene features 模板填好）
+python scripts/merge_scene_features.py \
+  --aoi_class_csv outputs_batch/batch_aoi_metrics_by_class.csv \
+  --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
+  --out_csv outputs/analysis_table.csv
+
+# 3) 跑混合效应模型
+python scripts/mixed_effects_indoor_pingpong.py \
+  --analysis_csv outputs/analysis_table.csv \
+  --outdir outputs_model
+
+# 4) 导出论文图表
+python scripts/paper_figures_indoor_pingpong.py \
+  --analysis_csv outputs/analysis_table.csv \
+  --outdir figures_paper
+```

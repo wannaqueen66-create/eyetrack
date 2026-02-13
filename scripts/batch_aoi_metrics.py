@@ -1,0 +1,55 @@
+#!/usr/bin/env python3
+import argparse
+import os
+import pandas as pd
+from src.aoi_metrics import load_aoi_json, compute_metrics
+
+
+def main():
+    ap = argparse.ArgumentParser(description='Batch AOI metrics for multiple participants/scenes')
+    ap.add_argument('--manifest', required=True, help='CSV with columns: participant_id,scene_id,csv_path,aoi_path')
+    ap.add_argument('--outdir', default='outputs_batch')
+    args = ap.parse_args()
+
+    os.makedirs(args.outdir, exist_ok=True)
+    m = pd.read_csv(args.manifest)
+
+    req = {'participant_id', 'scene_id', 'csv_path', 'aoi_path'}
+    miss = req - set(m.columns)
+    if miss:
+      raise ValueError(f'Manifest missing columns: {sorted(miss)}')
+
+    all_poly, all_class = [], []
+
+    for _, r in m.iterrows():
+        df = pd.read_csv(r['csv_path'], encoding='utf-8-sig')
+        for c in df.columns:
+            if df[c].dtype == 'object':
+                df[c] = df[c].astype(str).str.strip()
+
+        aois = load_aoi_json(r['aoi_path'])
+        poly_df, class_df = compute_metrics(df, aois)
+
+        poly_df.insert(0, 'scene_id', r['scene_id'])
+        poly_df.insert(0, 'participant_id', r['participant_id'])
+        class_df.insert(0, 'scene_id', r['scene_id'])
+        class_df.insert(0, 'participant_id', r['participant_id'])
+
+        all_poly.append(poly_df)
+        all_class.append(class_df)
+
+    poly_all = pd.concat(all_poly, ignore_index=True) if all_poly else pd.DataFrame()
+    class_all = pd.concat(all_class, ignore_index=True) if all_class else pd.DataFrame()
+
+    poly_path = os.path.join(args.outdir, 'batch_aoi_metrics_by_polygon.csv')
+    class_path = os.path.join(args.outdir, 'batch_aoi_metrics_by_class.csv')
+    poly_all.to_csv(poly_path, index=False)
+    class_all.to_csv(class_path, index=False)
+
+    print('Saved:')
+    print(' -', poly_path)
+    print(' -', class_path)
+
+
+if __name__ == '__main__':
+    main()

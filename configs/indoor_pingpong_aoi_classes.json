@@ -1,0 +1,15 @@
+{
+  "scene_type": "indoor_pingpong",
+  "recommended_aoi_classes": [
+    "pingpong_table",
+    "net",
+    "floor_open_space",
+    "wall_boundary",
+    "lighting",
+    "player",
+    "spectator_area",
+    "door_exit",
+    "signage"
+  ],
+  "notes": "同一类可由多个分离多边形组成，例如多个球桌都标注为 pingpong_table"
+}

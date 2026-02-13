@@ -1,0 +1,2 @@
+participant_id,scene_id,csv_path,aoi_path
+User1,scene_01,/home/wannaqueen66/raw_User1_260128181841_0208103256.csv,/home/wannaqueen66/aoi_scene_01.json

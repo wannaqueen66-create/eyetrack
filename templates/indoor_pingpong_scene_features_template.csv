@@ -1,0 +1,2 @@
+scene_id,participant_id,condition,table_count,table_density,distance_to_table_center_m,illum_lux,glare_index,occlusion_ratio,open_floor_ratio,wall_color_brightness,crowding_level,noise_db
+scene_01,User1,baseline,3,0.42,2.3,620,0.18,0.12,0.35,0.64,0.30,56
