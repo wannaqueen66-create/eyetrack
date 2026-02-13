@@ -104,7 +104,7 @@ python scripts/run_pipeline.py \
 - `outputs/quality_report.csv`
 - `outputs/heatmap.png`
 - `outputs/scanpath.png`
-- `outputs/aoi_metrics.csv`（示例矩形AOI）
+- `outputs/aoi_metrics.csv`（室内乒乓球示例矩形AOI）
 
 ### 步骤 C：在网页里标注 AOI
 

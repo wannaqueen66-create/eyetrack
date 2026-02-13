@@ -127,7 +127,7 @@ Generated files / 生成文件：
 - `outputs/quality_report.csv`
 - `outputs/heatmap.png`
 - `outputs/scanpath.png`
-- `outputs/aoi_metrics.csv` (demo rectangular AOI / 示例矩形AOI)
+- `outputs/aoi_metrics.csv` (demo indoor-pingpong rectangular AOI / 室内乒乓球示例矩形AOI)
 
 ### Step C. Draw AOIs in Browser / 网页框选AOI
 

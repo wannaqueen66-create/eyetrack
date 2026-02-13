@@ -23,10 +23,11 @@ def main():
     plot_heatmap(clean, os.path.join(args.outdir, "heatmap.png"), args.screen_w, args.screen_h)
     plot_scanpath(clean, os.path.join(args.outdir, "scanpath.png"), args.screen_w, args.screen_h)
 
+    # Demo rectangular AOIs for indoor pingpong scene quick check
     aois = {
-        "Left": (0, 0, args.screen_w // 3, args.screen_h),
-        "Center": (args.screen_w // 3, 0, 2 * args.screen_w // 3, args.screen_h),
-        "Right": (2 * args.screen_w // 3, 0, args.screen_w, args.screen_h),
+        "table_zone": (0, 0, args.screen_w // 3, args.screen_h),
+        "player_zone": (args.screen_w // 3, 0, 2 * args.screen_w // 3, args.screen_h),
+        "background_zone": (2 * args.screen_w // 3, 0, args.screen_w, args.screen_h),
     }
     aoi = compute_aoi_metrics(clean, aois)
     aoi.to_csv(os.path.join(args.outdir, "aoi_metrics.csv"), index=False)
