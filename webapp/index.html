@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AOI Polygon Labeler</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; background: #0b1020; color: #e6eaf2; }
+    .wrap { display: grid; grid-template-columns: 320px 1fr; height: 100vh; }
+    .panel { padding: 14px; border-right: 1px solid #24304d; overflow: auto; }
+    .panel h2 { margin: 4px 0 10px; font-size: 18px; }
+    .row { margin-bottom: 10px; }
+    input, button, select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #314268; background:#121a2f; color:#e6eaf2; }
+    button { cursor: pointer; }
+    .btn { margin-bottom: 8px; }
+    .list { margin-top: 10px; font-size: 13px; }
+    .item { background:#121a2f; border:1px solid #2c3d64; border-radius:8px; padding:8px; margin-bottom:8px; }
+    .canvas-wrap { position: relative; overflow: auto; }
+    canvas { background: #111; display: block; margin: 0 auto; }
+    .hint { font-size: 12px; opacity: .85; line-height: 1.4; }
+    .badge { display:inline-block; padding:2px 6px; border-radius: 10px; background:#22355e; font-size:11px; margin-left:6px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="panel">
+    <h2>AOI Polygon Labeler</h2>
+
+    <div class="row">
+      <label>1) 上传映射图片</label>
+      <input id="imgInput" type="file" accept="image/*" />
+    </div>
+
+    <div class="row">
+      <label>2) AOI 类名</label>
+      <input id="className" type="text" placeholder="例如 pingpong_table" />
+    </div>
+
+    <button class="btn" id="startPolyBtn">开始当前类多边形</button>
+    <button class="btn" id="closePolyBtn">闭合并保存多边形</button>
+    <button class="btn" id="undoPointBtn">撤销上一个点</button>
+    <button class="btn" id="deleteLastPolyBtn">删除最后一个多边形</button>
+
+    <div class="row" style="margin-top:14px;">
+      <button id="exportBtn">导出 aoi.json</button>
+    </div>
+
+    <div class="hint">
+      使用说明：
+      <br/>- 同一类可画多个分离 polygon
+      <br/>- 鼠标点击逐点描边，点击“闭合并保存”完成一个 polygon
+      <br/>- 导出格式：class_name -> [polygon1, polygon2, ...]
+    </div>
+
+    <div class="list" id="summary"></div>
+  </div>
+
+  <div class="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+</div>
+
+<script>
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+const imgInput = document.getElementById('imgInput');
+const classNameInput = document.getElementById('className');
+const summary = document.getElementById('summary');
+
+let image = new Image();
+let imageLoaded = false;
+let drawing = false;
+let currentClass = '';
+let currentPoly = [];
+let aois = {}; // class -> [ [ [x,y], ... ], ... ]
+
+function colorForClass(name){
+  let h=0; for (let i=0;i<name.length;i++) h=(h*31 + name.charCodeAt(i))%360;
+  return `hsl(${h}, 80%, 60%)`;
+}
+
+function redraw(){
+  if(!imageLoaded) return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(image,0,0);
+
+  for (const [cls, polys] of Object.entries(aois)) {
+    const color = colorForClass(cls);
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+    polys.forEach((poly, idx) => {
+      if (poly.length < 2) return;
+      ctx.beginPath();
+      ctx.moveTo(poly[0][0], poly[0][1]);
+      for (let i=1;i<poly.length;i++) ctx.lineTo(poly[i][0], poly[i][1]);
+      ctx.closePath();
+      ctx.globalAlpha = 0.2;
+      ctx.fill();
+      ctx.globalAlpha = 1;
+      ctx.stroke();
+      const c = centroid(poly);
+      ctx.fillStyle = '#fff';
+      ctx.font = '12px Arial';
+      ctx.fillText(`${cls}#${idx+1}`, c[0], c[1]);
+      ctx.fillStyle = color;
+    });
+  }
+
+  if (currentPoly.length > 0) {
+    ctx.strokeStyle = '#00e5ff';
+    ctx.fillStyle = '#00e5ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(currentPoly[0][0], currentPoly[0][1]);
+    for (let i=1;i<currentPoly.length;i++) ctx.lineTo(currentPoly[i][0], currentPoly[i][1]);
+    ctx.stroke();
+    currentPoly.forEach(p => { ctx.beginPath(); ctx.arc(p[0], p[1], 3, 0, Math.PI*2); ctx.fill(); });
+  }
+}
+
+function centroid(poly){
+  let x=0,y=0; poly.forEach(p=>{x+=p[0]; y+=p[1];});
+  return [x/poly.length, y/poly.length];
+}
+
+function refreshSummary(){
+  let html = '<h3>AOI 概览</h3>';
+  for (const [cls, polys] of Object.entries(aois)) {
+    html += `<div class="item"><b>${cls}</b><span class="badge">${polys.length} polygons</span></div>`;
+  }
+  summary.innerHTML = html;
+}
+
+imgInput.addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const url = URL.createObjectURL(file);
+  image = new Image();
+  image.onload = ()=>{
+    imageLoaded = true;
+    canvas.width = image.width;
+    canvas.height = image.height;
+    redraw();
+  };
+  image.src = url;
+});
+
+canvas.addEventListener('click', (e)=>{
+  if(!drawing || !imageLoaded) return;
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.round((e.clientX - rect.left) * (canvas.width / rect.width));
+  const y = Math.round((e.clientY - rect.top) * (canvas.height / rect.height));
+  currentPoly.push([x,y]);
+  redraw();
+});
+
+document.getElementById('startPolyBtn').addEventListener('click', ()=>{
+  const cls = classNameInput.value.trim();
+  if(!cls){ alert('请先输入 AOI 类名'); return; }
+  currentClass = cls;
+  drawing = true;
+  currentPoly = [];
+});
+
+document.getElementById('closePolyBtn').addEventListener('click', ()=>{
+  if(!drawing || currentPoly.length < 3){ alert('至少需要 3 个点'); return; }
+  if(!aois[currentClass]) aois[currentClass] = [];
+  aois[currentClass].push(currentPoly.slice());
+  currentPoly = [];
+  redraw();
+  refreshSummary();
+});
+
+document.getElementById('undoPointBtn').addEventListener('click', ()=>{
+  currentPoly.pop(); redraw();
+});
+
+document.getElementById('deleteLastPolyBtn').addEventListener('click', ()=>{
+  const cls = classNameInput.value.trim();
+  if(!cls || !aois[cls] || aois[cls].length===0) return;
+  aois[cls].pop();
+  if(aois[cls].length===0) delete aois[cls];
+  redraw();
+  refreshSummary();
+});
+
+document.getElementById('exportBtn').addEventListener('click', ()=>{
+  if(!imageLoaded){ alert('请先上传图片'); return; }
+  const payload = {
+    image: { width: canvas.width, height: canvas.height },
+    aoi_classes: Object.fromEntries(Object.entries(aois).map(([k,v])=>[k, v.map(poly=>({points: poly}))]))
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'aoi.json';
+  a.click();
+});
+</script>
+</body>
+</html>
