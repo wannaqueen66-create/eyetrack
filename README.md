@@ -166,7 +166,8 @@ python scripts/run_aoi_metrics.py \
   --csv /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
   --aoi /path/to/aoi.json \
   --outdir outputs \
-  --dwell_mode fixation
+  --dwell_mode fixation \
+  --screen_w 1280 --screen_h 1440 --require_validity
 ```
 
 Output files / 输出文件：

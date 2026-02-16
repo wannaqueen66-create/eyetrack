@@ -107,7 +107,10 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
     x = pd.to_numeric(df['Gaze Point X[px]'], errors='coerce').to_numpy()
     y = pd.to_numeric(df['Gaze Point Y[px]'], errors='coerce').to_numpy()
     t = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').to_numpy()
-    t0 = np.nanmin(t)
+    if not np.isfinite(t).any():
+        t0 = np.nan
+    else:
+        t0 = np.nanmin(t)
 
     per_poly_rows = []
     per_class_rows = []
@@ -123,7 +126,10 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
         sub = df[mask]
         dwell = _dwell_time(sub, mode=dwell_mode)
         fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
-        ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0) if len(sub) else np.nan
+        if len(sub) and pd.notna(t0):
+            ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
+        else:
+            ttff = np.nan
 
         per_poly_rows.append({
             'class_name': a.class_name,
@@ -139,7 +145,10 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
         sub = df[union]
         dwell = _dwell_time(sub, mode=dwell_mode)
         fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
-        ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0) if len(sub) else np.nan
+        if len(sub) and pd.notna(t0):
+            ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
+        else:
+            ttff = np.nan
         per_class_rows.append({
             'class_name': cls,
             'polygon_count': len(masks),

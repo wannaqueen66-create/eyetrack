@@ -12,6 +12,9 @@ def main():
     ap.add_argument('--outdir', default='outputs')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
+    ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
+    ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
+    ap.add_argument('--require_validity', action='store_true', help='If set, enforce Validity Left/Right == 1 (only if those columns exist)')
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -24,6 +27,16 @@ def main():
     from src.columns import load_columns_map, rename_df_columns_inplace
     cmap = load_columns_map(args.columns_map)
     rename_df_columns_inplace(df, cmap)
+
+    # Optional filtering to align with pipeline cleaning
+    if (args.screen_w is not None) and (args.screen_h is not None):
+        df = df[
+            pd.to_numeric(df['Gaze Point X[px]'], errors='coerce').between(0, args.screen_w)
+            & pd.to_numeric(df['Gaze Point Y[px]'], errors='coerce').between(0, args.screen_h)
+        ].copy()
+
+    if args.require_validity and ('Validity Left' in df.columns) and ('Validity Right' in df.columns):
+        df = df[(df['Validity Left'] == 1) & (df['Validity Right'] == 1)].copy()
 
     aois = load_aoi_json(args.aoi)
     poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)
