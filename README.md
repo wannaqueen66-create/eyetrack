@@ -118,6 +118,8 @@ python3 -m http.server 8080
 
 ### One-command runner (optional) / 一键运行（可选）
 
+#### Single file mode / 单文件模式
+
 If you already have `aoi.json` and raw CSV, you can run the full workflow with:
 
 ```bash
@@ -129,6 +131,27 @@ python scripts/run_all.py \
 ```
 
 You can skip stages with flags like `--skip_model` / `--skip_figures`.
+
+#### Batch mode / 批处理模式（manifest）
+
+If you have multiple participants/scenes, prepare a manifest like `templates/batch_manifest_template.csv` and run:
+
+```bash
+python scripts/run_all.py \
+  --manifest templates/batch_manifest_template.csv \
+  --workdir outputs_run_all_batch \
+  --dwell_mode fixation
+```
+
+If you also want to apply screen/validity filtering in batch (optional):
+
+```bash
+python scripts/run_all.py \
+  --manifest templates/batch_manifest_template.csv \
+  --workdir outputs_run_all_batch \
+  --batch_filter \
+  --screen_w 1280 --screen_h 1440
+```
 
 
 ### Step A. Setup Environment / 环境准备

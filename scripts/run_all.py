@@ -34,8 +34,11 @@ def run(cmd, cwd=None):
 def main():
     ap = argparse.ArgumentParser(description='Run eyetrack end-to-end workflow')
 
-    ap.add_argument('--input_csv', required=True, help='Raw eye-tracking CSV')
-    ap.add_argument('--aoi_json', required=True, help='aoi.json exported from eyetrack-aoi')
+    src_group = ap.add_mutually_exclusive_group(required=True)
+    src_group.add_argument('--input_csv', help='Raw eye-tracking CSV (single file mode)')
+    src_group.add_argument('--manifest', help='Batch manifest CSV (columns: participant_id,scene_id,csv_path,aoi_path)')
+
+    ap.add_argument('--aoi_json', default=None, help='aoi.json exported from eyetrack-aoi (single file mode)')
 
     ap.add_argument('--workdir', default='outputs_run_all', help='Base output directory')
     ap.add_argument('--screen_w', type=int, default=1280)
@@ -54,6 +57,10 @@ def main():
     # Optional downstream files
     ap.add_argument('--scene_features_csv', default=None, help='Scene features CSV (for merge/model/figures)')
 
+    # In batch mode, pipeline/merge/model/figures are not run automatically (AOI batch is the focus).
+    ap.add_argument('--batch_only', action='store_true', help='Batch mode helper: only run batch AOI metrics (no extra filtering flags added by run_all)')
+    ap.add_argument('--batch_filter', action='store_true', help='In batch mode, also apply --screen_w/--screen_h and --require_validity in batch_aoi_metrics')
+
     args = ap.parse_args()
 
     base = Path(args.workdir)
@@ -64,6 +71,31 @@ def main():
     out_model = base / 'model'
     out_fig = base / 'figures'
     out_analysis = base / 'analysis_table.csv'
+
+    # ---- Batch mode: manifest ----
+    if args.manifest:
+        # Focus on batch AOI metrics; other stages are scene-specific and not auto-run here.
+        cmd = [
+            sys.executable, str(SCRIPTS / 'batch_aoi_metrics.py'),
+            '--manifest', args.manifest,
+            '--outdir', str(out_aoi),
+            '--dwell_mode', args.dwell_mode,
+        ]
+        if args.columns_map:
+            cmd += ['--columns_map', args.columns_map]
+
+        if args.batch_filter:
+            cmd += ['--screen_w', str(args.screen_w), '--screen_h', str(args.screen_h)]
+            cmd += ['--require_validity']
+        # default: no extra filtering flags (batch inputs may be heterogeneous)
+
+        run(cmd)
+        print('Done (batch). Outputs in:', str(base))
+        return
+
+    # ---- Single file mode ----
+    if not args.input_csv or not args.aoi_json:
+        raise SystemExit('Single file mode requires --input_csv and --aoi_json')
 
     # 1) pipeline
     if not args.skip_pipeline:
@@ -97,8 +129,7 @@ def main():
     # 3) merge scene features (optional)
     if (not args.skip_merge) or (not args.skip_model) or (not args.skip_figures):
         if not args.scene_features_csv:
-            if (not args.skip_merge) or (not args.skip_model) or (not args.skip_figures):
-                raise SystemExit('scene_features_csv is required for merge/model/figures stages')
+            raise SystemExit('scene_features_csv is required for merge/model/figures stages')
 
     if not args.skip_merge:
         cmd = [

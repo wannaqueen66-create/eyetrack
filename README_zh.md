@@ -97,6 +97,8 @@ python3 -m http.server 8080
 
 ### 一键运行（可选）
 
+#### 单文件模式
+
 如果你已经有 `aoi.json` 和原始 CSV，可以用一个命令跑完整流程：
 
 ```bash
@@ -108,6 +110,27 @@ python scripts/run_all.py \
 ```
 
 你也可以通过 `--skip_model` / `--skip_figures` 等参数跳过部分步骤。
+
+#### 批处理模式（manifest）
+
+如果你有多被试/多场景，请先按 `templates/batch_manifest_template.csv` 准备 manifest，然后运行：
+
+```bash
+python scripts/run_all.py \
+  --manifest templates/batch_manifest_template.csv \
+  --workdir outputs_run_all_batch \
+  --dwell_mode fixation
+```
+
+如需在批处理中也启用 screen/validity 过滤（可选）：
+
+```bash
+python scripts/run_all.py \
+  --manifest templates/batch_manifest_template.csv \
+  --workdir outputs_run_all_batch \
+  --batch_filter \
+  --screen_w 1280 --screen_h 1440
+```
 
 
 ### 步骤 A：环境准备
