@@ -9,6 +9,8 @@ def main():
     ap = argparse.ArgumentParser(description='Batch AOI metrics for multiple participants/scenes')
     ap.add_argument('--manifest', required=True, help='CSV with columns: participant_id,scene_id,csv_path,aoi_path')
     ap.add_argument('--outdir', default='outputs_batch')
+    ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
+    ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: configs/columns_default.json)")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -27,8 +29,14 @@ def main():
             if df[c].dtype == 'object':
                 df[c] = df[c].astype(str).str.strip()
 
+        # Optional column mapping
+        if args.columns_map:
+            from src.columns import load_columns_map, rename_df_columns_inplace
+            cmap = load_columns_map(args.columns_map)
+            rename_df_columns_inplace(df, cmap)
+
         aois = load_aoi_json(r['aoi_path'])
-        poly_df, class_df = compute_metrics(df, aois)
+        poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)
 
         poly_df.insert(0, 'scene_id', r['scene_id'])
         poly_df.insert(0, 'participant_id', r['participant_id'])

@@ -137,7 +137,8 @@ AOI 标注网页已迁移到独立仓库：`eyetrack-aoi`
 python scripts/run_aoi_metrics.py \
   --csv /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
   --aoi /path/to/aoi.json \
-  --outdir outputs
+  --outdir outputs \
+  --dwell_mode fixation
 ```
 
 输出：
@@ -149,7 +150,7 @@ python scripts/run_aoi_metrics.py \
 
 重点看 `outputs/aoi_metrics_by_class.csv`：
 
-- `dwell_time_ms`：该类 AOI 总停留时长
+- `dwell_time_ms`：该类 AOI 总停留时长（推荐按 fixation 去重聚合，避免重复累计）
 - `TTFF_ms`：首次注视时间
 - `fixation_count`：注视次数
 - `polygon_count`：该类包含的区域数量

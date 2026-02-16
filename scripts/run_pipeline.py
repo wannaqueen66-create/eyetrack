@@ -11,11 +11,19 @@ def main():
     ap.add_argument("--outdir", default="outputs")
     ap.add_argument("--screen_w", type=int, default=1280)
     ap.add_argument("--screen_h", type=int, default=1440)
+    ap.add_argument("--no_validity", action="store_true", help="Do not require Validity Left/Right == 1 (if those columns exist)")
+    ap.add_argument("--columns_map", default=None, help="Path to JSON mapping of required columns to candidate names (default: configs/columns_default.json)")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
 
-    df, clean = load_and_clean(args.input, args.screen_w, args.screen_h)
+    df, clean = load_and_clean(
+        args.input,
+        args.screen_w,
+        args.screen_h,
+        require_validity=(not args.no_validity),
+        columns_map_path=args.columns_map,
+    )
 
     qr = quality_report(df, clean)
     pd.DataFrame([qr]).to_csv(os.path.join(args.outdir, "quality_report.csv"), index=False)

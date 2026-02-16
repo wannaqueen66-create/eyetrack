@@ -165,7 +165,8 @@ cd /home/wannaqueen66/.openclaw/workspace/eyetrack
 python scripts/run_aoi_metrics.py \
   --csv /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
   --aoi /path/to/aoi.json \
-  --outdir outputs
+  --outdir outputs \
+  --dwell_mode fixation
 ```
 
 Output files / 输出文件：
@@ -175,7 +176,7 @@ Output files / 输出文件：
 
 ### Step E. Read Results / 解读结果
 
-- `dwell_time_ms`: total fixation time in AOI / AOI 总停留时长
+- `dwell_time_ms`: total fixation time in AOI (recommended: aggregate by fixation) / AOI 总停留时长（推荐按 fixation 去重聚合）
 - `TTFF_ms`: time to first fixation / 首次注视时间
 - `fixation_count`: number of fixations / 注视次数
 - `polygon_count`: number of polygons under class / 该类别下子区域数量

@@ -4,32 +4,59 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from .columns import load_columns_map, rename_df_columns_inplace, missing_required
 
-def load_and_clean(csv_path: str, screen_w: int = 1280, screen_h: int = 1440):
+
+def load_and_clean(
+    csv_path: str,
+    screen_w: int = 1280,
+    screen_h: int = 1440,
+    require_validity: bool = True,
+    columns_map_path: str = None,
+):
+    """Load CSV and perform a minimal clean.
+
+    - Renames common alternative column names to the internal standard names.
+    - Optionally enforces Validity Left/Right == 1 if those columns exist.
+    """
     df = pd.read_csv(csv_path, encoding="utf-8-sig")
+
+    # Trim strings
     for c in df.columns:
         if df[c].dtype == "object":
             df[c] = df[c].astype(str).str.strip()
 
+    # Column mapping (makes the pipeline more robust across exporters)
+    cmap = load_columns_map(columns_map_path)
+    rename_df_columns_inplace(df, cmap)
+
+    # Convert numeric columns when present
     num_cols = [
         "Recording Time Stamp[ms]", "Gaze Point X[px]", "Gaze Point Y[px]",
         "Validity Left", "Validity Right",
         "Fixation Index", "Fixation Duration[ms]",
         "Saccade Duration[ms]", "Saccade Amplitude[px]",
         "Saccade Velocity Average[px/ms]", "Saccade Velocity Peak[px/ms]",
-        "Blink Duration[ms]", "Gaze Velocity[px/ms]"
+        "Blink Duration[ms]", "Gaze Velocity[px/ms]",
     ]
     for c in num_cols:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    clean = df[
-        (df["Validity Left"] == 1)
-        & (df["Validity Right"] == 1)
-        & (df["Gaze Point X[px]"].between(0, screen_w))
-        & (df["Gaze Point Y[px]"].between(0, screen_h))
-    ].copy()
+    # Required columns for coordinate filtering
+    miss = missing_required(df.columns, ["Gaze Point X[px]", "Gaze Point Y[px]"])
+    if miss:
+        raise ValueError(f"Missing required gaze columns: {miss}. You can adjust configs/columns_default.json or pass columns_map_path.")
 
+    mask = (
+        df["Gaze Point X[px]"].between(0, screen_w)
+        & df["Gaze Point Y[px]"].between(0, screen_h)
+    )
+
+    if require_validity and ("Validity Left" in df.columns) and ("Validity Right" in df.columns):
+        mask = mask & (df["Validity Left"] == 1) & (df["Validity Right"] == 1)
+
+    clean = df[mask].copy()
     return df, clean
 
 
