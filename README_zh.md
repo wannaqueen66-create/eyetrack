@@ -95,6 +95,21 @@ python3 -m http.server 8080
 
 ## 4. 小白全流程
 
+### 一键运行（可选）
+
+如果你已经有 `aoi.json` 和原始 CSV，可以用一个命令跑完整流程：
+
+```bash
+python scripts/run_all.py \
+  --input_csv your.csv \
+  --aoi_json aoi.json \
+  --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
+  --workdir outputs_run_all
+```
+
+你也可以通过 `--skip_model` / `--skip_figures` 等参数跳过部分步骤。
+
+
 ### 步骤 A：环境准备
 
 ```bash

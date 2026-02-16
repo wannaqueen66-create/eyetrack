@@ -116,6 +116,21 @@ python3 -m http.server 8080
 
 ## 5. End-to-End Workflow / 全流程操作
 
+### One-command runner (optional) / 一键运行（可选）
+
+If you already have `aoi.json` and raw CSV, you can run the full workflow with:
+
+```bash
+python scripts/run_all.py \
+  --input_csv your.csv \
+  --aoi_json aoi.json \
+  --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
+  --workdir outputs_run_all
+```
+
+You can skip stages with flags like `--skip_model` / `--skip_figures`.
+
+
 ### Step A. Setup Environment / 环境准备
 
 ```bash
