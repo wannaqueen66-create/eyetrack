@@ -191,10 +191,30 @@ python scripts/run_aoi_metrics.py \
 - `Validity Left`
 - `Validity Right`
 
-如果你的列名不同，请修改：
+如果你的列名不同，你有两种方式适配：
 
+1）**推荐**：修改列名映射文件：
+- `configs/columns_default.json`
+- 把你导出 CSV 的列名追加到对应字段的候选列表里
+
+2）（旧方式）直接在代码里改字段名：
 - `src/pipeline.py`
 - `src/aoi_metrics.py`
+
+示例：
+
+```json
+{
+  "Gaze Point X[px]": ["Gaze Point X[px]", "x"],
+  "Gaze Point Y[px]": ["Gaze Point Y[px]", "y"]
+}
+```
+
+也支持运行时指定自定义映射文件：
+
+```bash
+python scripts/run_aoi_metrics.py --csv your.csv --aoi aoi.json --columns_map /path/to/columns.json
+```
 
 ---
 

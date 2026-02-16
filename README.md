@@ -229,12 +229,30 @@ Recommended columns / 推荐字段：
 - `Validity Left`
 - `Validity Right`
 
-If your column names are different, update field names in:
+If your column names are different, you have two options:
 
-- `src/pipeline.py`
-- `src/aoi_metrics.py`
+1) **Preferred**: edit the column mapping file:
+   - `configs/columns_default.json`
+   - add your exporter column names to the candidate list
 
-如果你的列名不同，请在上述两个脚本中替换字段名。
+2) (Legacy) directly change field names in:
+   - `src/pipeline.py`
+   - `src/aoi_metrics.py`
+
+Example / 示例：
+
+```json
+{
+  "Gaze Point X[px]": ["Gaze Point X[px]", "x"],
+  "Gaze Point Y[px]": ["Gaze Point Y[px]", "y"]
+}
+```
+
+You can also pass a custom mapping file at runtime:
+
+```bash
+python scripts/run_aoi_metrics.py --csv your.csv --aoi aoi.json --columns_map /path/to/columns.json
+```
 
 ---
 

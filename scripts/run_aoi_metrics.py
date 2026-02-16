@@ -11,7 +11,7 @@ def main():
     ap.add_argument('--aoi', required=True, help='aoi.json path')
     ap.add_argument('--outdir', default='outputs')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
-    ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: configs/columns_default.json)")
+    ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -20,11 +20,10 @@ def main():
         if df[c].dtype == 'object':
             df[c] = df[c].astype(str).str.strip()
 
-    # Optional column mapping
-    if args.columns_map:
-        from src.columns import load_columns_map, rename_df_columns_inplace
-        cmap = load_columns_map(args.columns_map)
-        rename_df_columns_inplace(df, cmap)
+    # Column mapping (default map unless overridden)
+    from src.columns import load_columns_map, rename_df_columns_inplace
+    cmap = load_columns_map(args.columns_map)
+    rename_df_columns_inplace(df, cmap)
 
     aois = load_aoi_json(args.aoi)
     poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)
