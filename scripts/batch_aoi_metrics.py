@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import sys
+
+# Ensure repo root is on sys.path so `import src.*` works when running from scripts/
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 import pandas as pd
 from src.aoi_metrics import load_aoi_json, compute_metrics
 from src.filters import filter_by_screen_and_validity

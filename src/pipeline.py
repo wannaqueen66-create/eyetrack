@@ -79,7 +79,7 @@ def plot_heatmap(clean: pd.DataFrame, out_png: str, screen_w: int, screen_h: int
         x=clean["Gaze Point X[px]"],
         y=clean["Gaze Point Y[px]"],
         fill=True,
-        cmap="jet",
+        cmap="viridis",
         bw_adjust=0.7,
         thresh=0.02,
     )

@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import os
+import sys
+
+# Ensure repo root is on sys.path so `import src.*` works when running from scripts/
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from src.pipeline import load_and_clean, quality_report, plot_heatmap, plot_scanpath, compute_aoi_metrics
 import pandas as pd
 
