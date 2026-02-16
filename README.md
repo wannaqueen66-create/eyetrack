@@ -168,6 +168,14 @@ python scripts/run_aoi_metrics.py \
   --outdir outputs \
   --dwell_mode fixation \
   --screen_w 1280 --screen_h 1440 --require_validity
+
+# If your CSV is already cleaned (e.g., produced by your own preprocessing), you can skip filtering:
+python scripts/run_aoi_metrics.py \
+  --csv cleaned.csv \
+  --aoi aoi.json \
+  --outdir outputs \
+  --dwell_mode fixation \
+  --assume_clean
 ```
 
 Output files / 输出文件：

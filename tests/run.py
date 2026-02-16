@@ -21,6 +21,7 @@ def main():
         os.path.join(repo_root, 'tests', 'test_aoi_metrics.py'),
         os.path.join(repo_root, 'tests', 'test_columns.py'),
         os.path.join(repo_root, 'tests', 'test_filters.py'),
+        os.path.join(repo_root, 'tests', 'test_assume_clean_flags.py'),
     ]
 
     ok = True

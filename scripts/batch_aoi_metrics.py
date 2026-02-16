@@ -9,6 +9,7 @@ from src.filters import filter_by_screen_and_validity
 def main():
     ap = argparse.ArgumentParser(description='Batch AOI metrics for multiple participants/scenes')
     ap.add_argument('--manifest', required=True, help='CSV with columns: participant_id,scene_id,csv_path,aoi_path')
+    ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSVs already cleaned)')
     ap.add_argument('--outdir', default='outputs_batch')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
@@ -39,12 +40,13 @@ def main():
         rename_df_columns_inplace(df, cmap)
 
         # Optional filtering to align with pipeline cleaning
-        df = filter_by_screen_and_validity(
-            df,
-            screen_w=args.screen_w,
-            screen_h=args.screen_h,
-            require_validity=args.require_validity,
-        )
+        if not args.assume_clean:
+            df = filter_by_screen_and_validity(
+                df,
+                screen_w=args.screen_w,
+                screen_h=args.screen_h,
+                require_validity=args.require_validity,
+            )
 
         aois = load_aoi_json(r['aoi_path'])
         poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)

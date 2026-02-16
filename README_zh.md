@@ -140,6 +140,14 @@ python scripts/run_aoi_metrics.py \
   --outdir outputs \
   --dwell_mode fixation \
   --screen_w 1280 --screen_h 1440 --require_validity
+
+# 如果你的 CSV 已经是清洗后的（例如你自己预处理导出的 clean 数据），可以跳过过滤：
+python scripts/run_aoi_metrics.py \
+  --csv cleaned.csv \
+  --aoi aoi.json \
+  --outdir outputs \
+  --dwell_mode fixation \
+  --assume_clean
 ```
 
 输出：

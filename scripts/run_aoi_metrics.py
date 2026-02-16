@@ -8,7 +8,8 @@ from src.filters import filter_by_screen_and_validity
 
 def main():
     ap = argparse.ArgumentParser(description='Compute AOI metrics by polygon and class')
-    ap.add_argument('--csv', required=True, help='Eye-tracking CSV path')
+    ap.add_argument('--csv', required=True, help='Eye-tracking CSV path (raw or already cleaned)')
+    ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSV already cleaned)')
     ap.add_argument('--aoi', required=True, help='aoi.json path')
     ap.add_argument('--outdir', default='outputs')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
@@ -30,12 +31,13 @@ def main():
     rename_df_columns_inplace(df, cmap)
 
     # Optional filtering to align with pipeline cleaning
-    df = filter_by_screen_and_validity(
-        df,
-        screen_w=args.screen_w,
-        screen_h=args.screen_h,
-        require_validity=args.require_validity,
-    )
+    if not args.assume_clean:
+        df = filter_by_screen_and_validity(
+            df,
+            screen_w=args.screen_w,
+            screen_h=args.screen_h,
+            require_validity=args.require_validity,
+        )
 
     aois = load_aoi_json(args.aoi)
     poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)
