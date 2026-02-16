@@ -255,6 +255,15 @@ You can also pass a custom mapping file at runtime:
 python scripts/run_aoi_metrics.py --csv your.csv --aoi aoi.json --columns_map /path/to/columns.json
 ```
 
+### When to use screen/validity filtering? / 什么时候需要 screen/validity 过滤？
+
+- If your CSV contains many out-of-range gaze coordinates, set:
+  - `--screen_w` / `--screen_h`
+- If your exporter provides validity flags and you want strict cleaning, set:
+  - `--require_validity`
+
+If you already cleaned data via `scripts/run_pipeline.py`, you can skip these filters for AOI metrics.
+
 ---
 
 ## 8. FAQ / 常见问题

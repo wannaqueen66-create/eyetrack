@@ -3,6 +3,7 @@ import argparse
 import os
 import pandas as pd
 from src.aoi_metrics import load_aoi_json, compute_metrics
+from src.filters import filter_by_screen_and_validity
 
 
 def main():
@@ -29,14 +30,12 @@ def main():
     rename_df_columns_inplace(df, cmap)
 
     # Optional filtering to align with pipeline cleaning
-    if (args.screen_w is not None) and (args.screen_h is not None):
-        df = df[
-            pd.to_numeric(df['Gaze Point X[px]'], errors='coerce').between(0, args.screen_w)
-            & pd.to_numeric(df['Gaze Point Y[px]'], errors='coerce').between(0, args.screen_h)
-        ].copy()
-
-    if args.require_validity and ('Validity Left' in df.columns) and ('Validity Right' in df.columns):
-        df = df[(df['Validity Left'] == 1) & (df['Validity Right'] == 1)].copy()
+    df = filter_by_screen_and_validity(
+        df,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        require_validity=args.require_validity,
+    )
 
     aois = load_aoi_json(args.aoi)
     poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)

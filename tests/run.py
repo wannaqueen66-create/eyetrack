@@ -20,6 +20,7 @@ def main():
     files = [
         os.path.join(repo_root, 'tests', 'test_aoi_metrics.py'),
         os.path.join(repo_root, 'tests', 'test_columns.py'),
+        os.path.join(repo_root, 'tests', 'test_filters.py'),
     ]
 
     ok = True

@@ -217,6 +217,15 @@ python scripts/run_aoi_metrics.py \
 python scripts/run_aoi_metrics.py --csv your.csv --aoi aoi.json --columns_map /path/to/columns.json
 ```
 
+### 什么时候需要 screen/validity 过滤？
+
+- 如果你的 CSV 有很多超出屏幕范围的 gaze 坐标，建议加：
+  - `--screen_w` / `--screen_h`
+- 如果你的数据有 validity 标记并且你想严格过滤，建议加：
+  - `--require_validity`
+
+如果你已经用 `scripts/run_pipeline.py` 做过清洗，那么 AOI 指标统计这一步通常可以不再重复过滤。
+
 ---
 
 ## 7. 常见问题
