@@ -138,12 +138,13 @@ files.download('outputs_batch_heatmap.zip')
 输出会额外多一批：`heatmap_overlay.png`
 
 输出结构（重点）：
-- `outputs_batch_groups/individual/<participant_id>/heatmap.png`
+- `outputs_batch_groups/individual/<name>/heatmap.png`（如果传了 `--background_img`，这是叠底图）
+- `outputs_batch_groups/individual/<name>/heatmap_density.png`
 - `outputs_batch_groups/groups/SportFreq-High/heatmap_density.png`
-- `outputs_batch_groups/groups/SportFreq-Low/heatmap_density.png`
-- `outputs_batch_groups/compare/SportFreq_diff.png`（High vs Low 差异图）
+- `outputs_batch_groups/groups/SportFreq-High/heatmap.png`（传 `--background_img` 时为叠底图）
+- `outputs_batch_groups/compare/SportFreq_diff.png`（High vs Low 差异图；传 `--background_img` 时也会叠底）
 - `outputs_batch_groups/compare/Experience_diff.png`
-- `outputs_batch_groups/compare/4way_grid.png`（四类共享色标的 2x2 汇总图）
+- `outputs_batch_groups/compare/4way_grid.png`（四类共享色标的 2x2 汇总图；传 `--background_img` 时也会叠底）
 
 ### Step 3. 打包下载
 

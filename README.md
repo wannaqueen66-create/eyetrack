@@ -224,7 +224,9 @@ Key outputs / 主要输出：
 ```
 
 Extra outputs / 额外输出：
+- `outputs_batch_groups/groups/**/heatmap.png` (overlay when background is provided)
 - `outputs_batch_groups/groups/**/heatmap_overlay.png`
+- Compare plots also overlay background when `--background_img` is provided.
 
 ### 5) Download results / 下载结果
 

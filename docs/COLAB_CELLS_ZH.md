@@ -112,10 +112,11 @@ Image.open('scene.jpg').size
 ```
 
 你重点看：
-- `outputs_batch_groups/compare/SportFreq_diff.png`
-- `outputs_batch_groups/compare/Experience_diff.png`
-- `outputs_batch_groups/compare/4way_grid.png`
-- `outputs_batch_groups/groups/**/heatmap_overlay.png`
+- `outputs_batch_groups/compare/SportFreq_diff.png`（叠底）
+- `outputs_batch_groups/compare/Experience_diff.png`（叠底）
+- `outputs_batch_groups/compare/4way_grid.png`（叠底）
+- `outputs_batch_groups/groups/**/heatmap.png`（叠底）
+- `outputs_batch_groups/individual/<name>/heatmap.png`（叠底）
 
 ---
 
