@@ -7,7 +7,7 @@ This script is designed for "people/group" comparisons:
   - Difference plot for binary splits (High vs Low)
 
 Manifest CSV (recommended columns):
-  - participant_id (string)
+  - name (string) OR participant_id (string)
   - SportFreq (High/Low)  # case-insensitive
   - Experience (High/Low) # case-insensitive
   - csv_path (path, optional if you pass --csv_dir)
@@ -155,7 +155,16 @@ def main():
 
     m = pd.read_csv(args.manifest)
 
-    req = {"participant_id", "SportFreq", "Experience"}
+    # Accept either participant_id or name
+    id_col = None
+    if "participant_id" in m.columns:
+        id_col = "participant_id"
+    elif "name" in m.columns:
+        id_col = "name"
+    else:
+        raise SystemExit("Manifest must contain either 'participant_id' or 'name' column")
+
+    req = {"SportFreq", "Experience"}
     miss = req - set(m.columns)
     if miss:
         raise SystemExit(f"Manifest missing columns: {sorted(miss)}")
@@ -207,7 +216,7 @@ def main():
     rows = []
 
     for _, r in m.iterrows():
-        pid = str(r["participant_id"]).strip()
+        pid = str(r[id_col]).strip()
         sf = norm_level(r["SportFreq"])  # High/Low
         ex = norm_level(r["Experience"])  # High/Low
 

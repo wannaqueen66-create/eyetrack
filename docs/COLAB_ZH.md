@@ -91,7 +91,7 @@ files.download('outputs_batch_heatmap.zip')
 - 模板：`templates/group_manifest_template.csv`
 
 必须列：
-- `participant_id`：被试 ID（也可以理解为 name）
+- `name`（或 `participant_id`）：被试姓名/ID
 - `SportFreq`：High / Low
 - `Experience`：High / Low
 

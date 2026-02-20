@@ -1,9 +1,10 @@
-participant_id,SportFreq,Experience,csv_path
+name,SportFreq,Experience,csv_path
 P01,High,High,/path/to/P01.csv
 P02,Low,High,/path/to/P02.csv
 P03,High,Low,/path/to/P03.csv
 P04,Low,Low,/path/to/P04.csv
 
 # Notes:
-# - csv_path is optional if you pass --csv_dir and your filenames can be matched by participant_id.
+# - The script accepts either column name: "name" or "participant_id".
+# - csv_path is optional if you pass --csv_dir and your filenames can be matched by name/participant_id.
 # - SportFreq/Experience accept High/Low (case-insensitive), and also accepts 1/0, yes/no.
