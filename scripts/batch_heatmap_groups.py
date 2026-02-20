@@ -8,9 +8,9 @@ This script is designed for "people/group" comparisons:
 
 Manifest CSV (recommended columns):
   - participant_id (string)
-  - csv_path (path)
   - SportFreq (High/Low)  # case-insensitive
   - Experience (High/Low) # case-insensitive
+  - csv_path (path, optional if you pass --csv_dir)
 
 Outputs (default outdir=outputs_batch_groups):
   - individual/<participant_id>/heatmap.png
@@ -133,7 +133,8 @@ def save_binary_compare(A: np.ndarray, B: np.ndarray, out_png: Path, title: str,
 
 def main():
     ap = argparse.ArgumentParser(description="Batch heatmaps by participant + group aggregation + difference plots")
-    ap.add_argument("--manifest", required=True, help="CSV with columns: participant_id,csv_path,SportFreq,Experience")
+    ap.add_argument("--manifest", required=True, help="CSV with columns: participant_id,SportFreq,Experience,(optional)csv_path")
+    ap.add_argument("--csv_dir", default=None, help="If csv_path is omitted in manifest, find CSVs under this directory by participant_id")
     ap.add_argument("--outdir", default="outputs_batch_groups")
 
     ap.add_argument("--screen_w", type=int, default=1280)
@@ -153,10 +154,45 @@ def main():
     (outdir / "compare").mkdir(parents=True, exist_ok=True)
 
     m = pd.read_csv(args.manifest)
-    req = {"participant_id", "csv_path", "SportFreq", "Experience"}
+
+    req = {"participant_id", "SportFreq", "Experience"}
     miss = req - set(m.columns)
     if miss:
         raise SystemExit(f"Manifest missing columns: {sorted(miss)}")
+
+    has_csv_path = "csv_path" in m.columns
+    if (not has_csv_path) and (not args.csv_dir):
+        raise SystemExit("Manifest has no csv_path column; please pass --csv_dir so the script can locate each participant's CSV")
+
+    csv_dir = Path(args.csv_dir) if args.csv_dir else None
+    if csv_dir and (not csv_dir.exists()):
+        raise SystemExit(f"csv_dir not found: {csv_dir}")
+
+    def resolve_csv_path(participant_id: str, csv_path_value):
+        # 1) explicit path in manifest
+        if has_csv_path:
+            v = "" if (csv_path_value is None or (isinstance(csv_path_value, float) and np.isnan(csv_path_value))) else str(csv_path_value).strip()
+            if v:
+                return v
+
+        # 2) find under csv_dir
+        pid = participant_id.strip()
+        patterns = [
+            f"**/{pid}.csv",
+            f"**/{pid}_*.csv",
+            f"**/{pid}-*.csv",
+            f"**/{pid}*.csv",
+        ]
+        matches = []
+        for pat in patterns:
+            matches = sorted(csv_dir.glob(pat))
+            if matches:
+                break
+        if not matches:
+            raise FileNotFoundError(f"No CSV matched participant_id={pid!r} under {csv_dir}")
+        if len(matches) > 1:
+            raise FileExistsError(f"Multiple CSVs matched participant_id={pid!r} under {csv_dir}: {[str(p) for p in matches[:10]]}")
+        return str(matches[0])
 
     # Accumulate points for groups
     points_sport = {"High": [], "Low": []}
@@ -172,9 +208,10 @@ def main():
 
     for _, r in m.iterrows():
         pid = str(r["participant_id"]).strip()
-        csv_path = str(r["csv_path"]).strip()
         sf = norm_level(r["SportFreq"])  # High/Low
         ex = norm_level(r["Experience"])  # High/Low
+
+        csv_path = resolve_csv_path(pid, r["csv_path"] if has_csv_path else None)
 
         df, clean = load_and_clean(
             csv_path,

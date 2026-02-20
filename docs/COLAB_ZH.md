@@ -91,11 +91,14 @@ files.download('outputs_batch_heatmap.zip')
 - 模板：`templates/group_manifest_template.csv`
 
 必须列：
-- `participant_id`：被试 ID
-- `csv_path`：该被试 CSV 路径（在 Colab 里就是你上传/解压后的路径）
+- `participant_id`：被试 ID（也可以理解为 name）
 - `SportFreq`：High / Low
 - `Experience`：High / Low
 
+可选列：
+- `csv_path`：该被试 CSV 路径
+
+如果你不想在 manifest 里写 `csv_path`（比如所有 CSV 都在同一个文件夹），可以在运行脚本时传 `--csv_dir batch_csvs`，脚本会用 `participant_id` 去匹配对应 CSV 文件名。
 ### Step 2. 运行分组批处理脚本
 
 ```bash
