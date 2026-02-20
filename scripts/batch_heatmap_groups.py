@@ -216,8 +216,19 @@ def save_binary_compare(
     alpha: float = 0.55,
     thresh_rel: float = 0.02,
     eps: float = 1e-12,
+    layout: int = 4,
+    overlap_mode: str = "min",
+    overlap_cmap = None,
 ):
-    """Save 3-panel: A, B, log-ratio(A/B). If background_img is set, all panels include it."""
+    """Save compare figure.
+
+    layout=3: A, B, log2(A/B)
+    layout=4: A, B, overlap(A,B), log2(A/B)
+
+    overlap_mode:
+      - 'min'     : overlap = min(A,B) (common attention)
+      - 'product' : overlap = sqrt(A*B) (emphasize shared hotspots)
+    """
 
     out_png.parent.mkdir(parents=True, exist_ok=True)
 
@@ -227,11 +238,24 @@ def save_binary_compare(
     lim = float(np.nanmax(np.abs(L))) if np.isfinite(L).any() else 1.0
     lim = max(lim, 1e-6)
 
+    # overlap
+    om = (overlap_mode or "min").strip().lower()
+    if om == "product":
+        O = np.sqrt((A + eps) * (B + eps))
+    else:
+        O = np.minimum(A, B)
+
+    if overlap_cmap is None:
+        overlap_cmap = plt.get_cmap("Greens")
+
     bg = None
     if background_img:
         bg = plt.imread(background_img)
 
-    fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+    if layout not in (3, 4):
+        layout = 4
+
+    fig, axes = plt.subplots(1, layout, figsize=(5 * layout, 6))
     for ax in axes:
         ax.axis("off")
 
@@ -258,13 +282,19 @@ def save_binary_compare(
     draw_panel(axes[0], A, "Group A", cmap, 0, vmax, A_alpha)
     draw_panel(axes[1], B, "Group B", cmap, 0, vmax, B_alpha)
 
+    col = 2
+    if layout == 4:
+        O_alpha = _alpha_map_from_density(O, alpha=alpha, thresh_rel=thresh_rel)
+        draw_panel(axes[col], O, "Overlap", overlap_cmap, 0, max(float(O.max()), eps), O_alpha)
+        col += 1
+
     # For log-ratio panel, alpha based on magnitude
     Ln = np.clip(np.abs(L) / lim, 0, 1)
     L_alpha = (Ln ** 0.7) * float(alpha)
     if thresh_rel is not None and thresh_rel > 0:
         L_alpha = np.where(Ln >= float(thresh_rel), L_alpha, 0.0)
 
-    draw_panel(axes[2], L, "log2(A/B)", plt.get_cmap("RdBu_r"), -lim, lim, L_alpha)
+    draw_panel(axes[col], L, "log2(A/B)", plt.get_cmap("RdBu_r"), -lim, lim, L_alpha)
 
     fig.suptitle(title)
     fig.tight_layout()
@@ -294,6 +324,8 @@ def main():
 
     # Colors
     ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii -> turbo/jet).")
+    ap.add_argument("--compare_layout", type=int, default=4, choices=[3, 4], help="Compare figure layout: 3 panels (A,B,log2) or 4 panels (A,B,overlap,log2). Default 4")
+    ap.add_argument("--overlap_mode", default="min", choices=["min", "product"], help="How to compute overlap heatmap: min(A,B) or sqrt(A*B). Default min")
     ap.add_argument("--font", default="auto", help="Font for titles. Use 'auto' to pick a CJK font if available (default: auto)")
     ap.add_argument("--quiet_glyph_warning", action="store_true", help="Suppress matplotlib 'Glyph missing' warnings (does not fix rendering)")
 
@@ -546,6 +578,8 @@ def main():
         screen_h=args.screen_h,
         alpha=args.alpha,
         thresh_rel=args.thresh,
+        layout=args.compare_layout,
+        overlap_mode=args.overlap_mode,
     )
     save_binary_compare(
         dens_ex["High"],
@@ -558,6 +592,8 @@ def main():
         screen_h=args.screen_h,
         alpha=args.alpha,
         thresh_rel=args.thresh,
+        layout=args.compare_layout,
+        overlap_mode=args.overlap_mode,
     )
 
     # ---- 4-way grid (overlay background if provided) ----
