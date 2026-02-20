@@ -108,11 +108,132 @@ python3 -m http.server 8080
 ---
 
 
-## Colab Deployment / Colab 部署
+## Colab Deployment / Colab 部署（Detailed / 详细流程）
 
-- Open in Colab:
-  `https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb`
-- Chinese guide: `docs/COLAB_ZH.md`
+Colab is the recommended way to **run quickly without setting up Python on your local machine/VPS**.
+Colab 推荐用于**无需本地/VPS 配环境**的快速试跑。
+
+### 0) Open notebook / 打开 Notebook
+
+- Standard (mixed EN/中文):
+  https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb
+- Chinese step-by-step version:
+  https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb
+
+> Full Chinese guide (includes batch + grouped diff + background overlay): `docs/COLAB_ZH.md`
+
+### 1) Install dependencies / 安装依赖
+
+Run the first cells in the notebook to install `requirements.txt`.
+按 Notebook 从上到下运行到安装 `requirements.txt` 的 cell。
+
+### 2) Single CSV (basic heatmap + scanpath) / 单文件快速出图
+
+Upload one eye-tracking CSV, then run pipeline.
+上传一个 CSV 后直接跑基础脚本。
+
+Outputs / 输出：
+- `outputs/quality_report.csv`
+- `outputs/heatmap.png`
+- `outputs/scanpath.png`
+
+### 3) Batch heatmaps (no AOI) / 批处理热图（不做 AOI）
+
+**Recommended**: zip all CSVs and upload once.
+建议把所有 CSV 打包成一个 zip 再上传。
+
+In Colab:
+
+```python
+from google.colab import files
+files.upload()  # upload csvs.zip
+```
+
+```bash
+!rm -rf batch_csvs
+!mkdir -p batch_csvs
+!unzip -q csvs.zip -d batch_csvs
+
+!python scripts/batch_heatmap.py \
+  --input_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --outdir outputs_batch_heatmap
+```
+
+Outputs / 输出：
+- `outputs_batch_heatmap/<file_stem>/heatmap.png`
+- `outputs_batch_heatmap/batch_quality_report.csv`
+
+#### (Optional) Overlay heatmap on background image /（可选）热图叠加到底图
+
+Upload a background image (e.g. `scene.png`) and ensure its pixel size equals `screen_w/screen_h`.
+上传底图（如 `scene.png`），并确保底图像素尺寸与 `screen_w/screen_h` 一致。
+
+```bash
+!python scripts/batch_heatmap.py \
+  --input_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --background_img scene.png \
+  --outdir outputs_batch_heatmap
+```
+
+Extra output / 额外输出：
+- `heatmap_overlay.png`
+
+### 4) Grouped batch + difference plots / 分组批处理 + 差异图（SportFreq / Experience / 4-way）
+
+Prepare a manifest `group_manifest.csv` with 3 columns:
+准备一个三列表格：
+
+```csv
+name,SportFreq,Experience
+Alice,High,Low
+Bob,Low,High
+```
+
+Then run (all CSVs in one folder):
+然后运行（所有 CSV 在同一目录）：
+
+```bash
+!python scripts/batch_heatmap_groups.py \
+  --manifest group_manifest.csv \
+  --csv_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --outdir outputs_batch_groups
+```
+
+Key outputs / 主要输出：
+- Individual / 每人：`outputs_batch_groups/individual/<name>/heatmap.png`
+- Group densities / 分组汇总：`outputs_batch_groups/groups/**/heatmap_density.png`
+- Binary diff / 二分差异图：
+  - `outputs_batch_groups/compare/SportFreq_diff.png`
+  - `outputs_batch_groups/compare/Experience_diff.png`
+- 4-way overview / 四类对比：`outputs_batch_groups/compare/4way_grid.png`
+
+#### (Optional) Overlay group heatmaps on background /（可选）分组汇总图叠加到底图
+
+```bash
+!python scripts/batch_heatmap_groups.py \
+  --manifest group_manifest.csv \
+  --csv_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --background_img scene.png \
+  --outdir outputs_batch_groups
+```
+
+Extra outputs / 额外输出：
+- `outputs_batch_groups/groups/**/heatmap_overlay.png`
+
+### 5) Download results / 下载结果
+
+```bash
+!zip -qr outputs_batch_groups.zip outputs_batch_groups
+```
+
+```python
+from google.colab import files
+files.download('outputs_batch_groups.zip')
+```
 
 ## 5. End-to-End Workflow / 全流程操作
 
