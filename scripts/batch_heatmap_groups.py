@@ -31,6 +31,7 @@ Typical Colab usage:
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -64,6 +65,16 @@ def norm_level(x: str) -> str:
     if s in {"low", "l", "0", "false", "no"}:
         return "Low"
     return str(x).strip()
+
+
+def ascii_safe(s: str) -> str:
+    """Remove non-ASCII characters for publication-friendly titles."""
+    if s is None:
+        return ""
+    s = str(s)
+    s2 = re.sub(r"[^\x00-\x7F]+", "", s)
+    s2 = re.sub(r"\s+", " ", s2).strip()
+    return s2
 
 
 def setup_cjk_font(prefer_names=None):
@@ -156,7 +167,8 @@ def save_density_png(H: np.ndarray, out_png: Path, title: str, cmap, vmin=None, 
     out_png.parent.mkdir(parents=True, exist_ok=True)
     plt.figure(figsize=(6, 8))
     plt.imshow(H.T, origin="upper", cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
-    plt.title(title)
+    if title:
+        plt.title(title)
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(out_png, dpi=300)
@@ -197,7 +209,8 @@ def save_density_overlay(
         alpha=A.T if A is not None else alpha,
         aspect="auto",
     )
-    plt.title(title)
+    if title:
+        plt.title(title)
     plt.axis("off")
     plt.tight_layout()
     plt.savefig(out_png, dpi=300)
@@ -360,7 +373,8 @@ def save_binary_compare(
 
         draw_panel(axes[col], L, "log2(A/B)", plt.get_cmap("RdBu_r"), -lim, lim, L_alpha)
 
-    fig.suptitle(title)
+    if title:
+        fig.suptitle(title)
     fig.tight_layout()
     fig.savefig(out_png, dpi=300)
     plt.close(fig)
@@ -392,6 +406,15 @@ def main():
     ap.add_argument("--overlap_mode", default="min", choices=["min", "product"], help="How to compute overlap heatmap: min(A,B) or sqrt(A*B). Default min")
     ap.add_argument("--compare_composite", action="store_true", help="Use composite diff (log2 color weighted by overlap alpha)")
     ap.add_argument("--compare_reference", default="overlap", choices=["overlap", "mean"], help="Reference panel for composite layout (default overlap)")
+
+    # Titles
+    ap.add_argument(
+        "--title_mode",
+        default="english",
+        choices=["english", "raw", "none"],
+        help="PNG titles: english=ASCII-only (default, avoids font issues); raw=original; none=no titles",
+    )
+
     ap.add_argument("--font", default="auto", help="Font for titles. Use 'auto' to pick a CJK font if available (default: auto)")
     ap.add_argument("--quiet_glyph_warning", action="store_true", help="Suppress matplotlib 'Glyph missing' warnings (does not fix rendering)")
 
@@ -404,12 +427,21 @@ def main():
 
     cmap = get_cmap(args.cmap)
 
-    # Font setup for Chinese names in titles
-    if args.font and str(args.font).lower() != "auto":
-        mpl.rcParams["font.sans-serif"] = [args.font, "DejaVu Sans"]
-        mpl.rcParams["axes.unicode_minus"] = False
-    else:
-        setup_cjk_font()
+    def fmt_title(s: str) -> str:
+        if args.title_mode == "none":
+            return ""
+        if args.title_mode == "english":
+            t = ascii_safe(s)
+            return t if t else "Heatmap"
+        return str(s)
+
+    # Font setup: if we keep raw titles, try to enable CJK font. Otherwise English-only titles usually don't need it.
+    if args.title_mode == "raw":
+        if args.font and str(args.font).lower() != "auto":
+            mpl.rcParams["font.sans-serif"] = [args.font, "DejaVu Sans"]
+            mpl.rcParams["axes.unicode_minus"] = False
+        else:
+            setup_cjk_font()
 
     if args.quiet_glyph_warning:
         warnings.filterwarnings("ignore", message=r"Glyph .* missing from font\(s\) .*", category=UserWarning)
@@ -492,6 +524,9 @@ def main():
         points_path = one_out / "points.npy"
         meta_path = one_out / "meta.json"
 
+        # Avoid putting Chinese names in PNG titles by default (publication-friendly)
+        pid_title = fmt_title(pid)
+
         try:
             if args.resume and points_path.exists():
                 xy = np.load(points_path)
@@ -525,14 +560,14 @@ def main():
 
             # Individual outputs: always produce density + (optional) overlay
             H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
-            save_density_png(H, one_out / "heatmap_density.png", f"{pid} (density)", cmap)
+            save_density_png(H, one_out / "heatmap_density.png", fmt_title(f"Participant density: {pid_title}"), cmap)
 
             if args.background_img:
                 # canonical: heatmap.png is overlay when background is provided
                 save_density_overlay(
                     H,
                     one_out / "heatmap.png",
-                    f"{pid}",
+                    fmt_title(f"Participant: {pid_title}"),
                     args.background_img,
                     args.screen_w,
                     args.screen_h,
@@ -544,7 +579,7 @@ def main():
                 save_density_overlay(
                     H,
                     one_out / "heatmap_overlay.png",
-                    f"{pid} (overlay)",
+                    fmt_title(f"Participant overlay: {pid_title}"),
                     args.background_img,
                     args.screen_w,
                     args.screen_h,
@@ -554,7 +589,7 @@ def main():
                 )
             else:
                 # fallback: no background, heatmap.png is density
-                save_density_png(H, one_out / "heatmap.png", f"{pid} (density)", cmap)
+                save_density_png(H, one_out / "heatmap.png", fmt_title(f"Participant density: {pid_title}"), cmap)
 
             rows.append(
                 {
@@ -597,12 +632,12 @@ def main():
         dens_sf[level] = H
         base = outdir / "groups" / f"SportFreq-{level}"
         base.mkdir(parents=True, exist_ok=True)
-        save_density_png(H, base / "heatmap_density.png", f"SportFreq-{level} (density)", cmap)
+        save_density_png(H, base / "heatmap_density.png", fmt_title(f"SportFreq-{level} (density)"), cmap)
         if args.background_img:
-            save_density_overlay(H, base / "heatmap.png", f"SportFreq-{level}", args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
-            save_density_overlay(H, base / "heatmap_overlay.png", f"SportFreq-{level} (overlay)", args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap.png", fmt_title(f"SportFreq-{level}"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap_overlay.png", fmt_title(f"SportFreq-{level} (overlay)"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
         else:
-            save_density_png(H, base / "heatmap.png", f"SportFreq-{level} (density)", cmap)
+            save_density_png(H, base / "heatmap.png", fmt_title(f"SportFreq-{level} (density)"), cmap)
 
     dens_ex = {}
     for level in ["High", "Low"]:
@@ -611,12 +646,12 @@ def main():
         dens_ex[level] = H
         base = outdir / "groups" / f"Experience-{level}"
         base.mkdir(parents=True, exist_ok=True)
-        save_density_png(H, base / "heatmap_density.png", f"Experience-{level} (density)", cmap)
+        save_density_png(H, base / "heatmap_density.png", fmt_title(f"Experience-{level} (density)"), cmap)
         if args.background_img:
-            save_density_overlay(H, base / "heatmap.png", f"Experience-{level}", args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
-            save_density_overlay(H, base / "heatmap_overlay.png", f"Experience-{level} (overlay)", args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap.png", fmt_title(f"Experience-{level}"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap_overlay.png", fmt_title(f"Experience-{level} (overlay)"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
         else:
-            save_density_png(H, base / "heatmap.png", f"Experience-{level} (density)", cmap)
+            save_density_png(H, base / "heatmap.png", fmt_title(f"Experience-{level} (density)"), cmap)
 
     dens_4 = {}
     for k in points_4.keys():
@@ -625,19 +660,19 @@ def main():
         dens_4[k] = H
         base = outdir / "groups" / "4way" / k
         base.mkdir(parents=True, exist_ok=True)
-        save_density_png(H, base / "heatmap_density.png", f"{k} (density)", cmap)
+        save_density_png(H, base / "heatmap_density.png", fmt_title(f"{k} (density)"), cmap)
         if args.background_img:
-            save_density_overlay(H, base / "heatmap.png", k, args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
-            save_density_overlay(H, base / "heatmap_overlay.png", f"{k} (overlay)", args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap.png", fmt_title(k), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap_overlay.png", fmt_title(f"{k} (overlay)"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
         else:
-            save_density_png(H, base / "heatmap.png", f"{k} (density)", cmap)
+            save_density_png(H, base / "heatmap.png", fmt_title(f"{k} (density)"), cmap)
 
     # ---- Compare plots (include background if provided) ----
     save_binary_compare(
         dens_sf["High"],
         dens_sf["Low"],
         outdir / "compare" / "SportFreq_diff.png",
-        title="SportFreq: High vs Low (density + log2 ratio)",
+        title=fmt_title("SportFreq: High vs Low (density + log2 ratio)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -655,7 +690,7 @@ def main():
         dens_sf["High"],
         dens_sf["Low"],
         outdir / "compare" / "SportFreq_composite_3panel.png",
-        title="SportFreq: High vs Low (A/B + composite diff)",
+        title=fmt_title("SportFreq: High vs Low (A/B + composite diff)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -671,7 +706,7 @@ def main():
         dens_sf["High"],
         dens_sf["Low"],
         outdir / "compare" / "SportFreq_composite_2panel.png",
-        title="SportFreq: High vs Low (composite + reference)",
+        title=fmt_title("SportFreq: High vs Low (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -687,7 +722,7 @@ def main():
         dens_ex["High"],
         dens_ex["Low"],
         outdir / "compare" / "Experience_diff.png",
-        title="Experience: High vs Low (density + log2 ratio)",
+        title=fmt_title("Experience: High vs Low (density + log2 ratio)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -702,7 +737,7 @@ def main():
         dens_ex["High"],
         dens_ex["Low"],
         outdir / "compare" / "Experience_composite_3panel.png",
-        title="Experience: High vs Low (A/B + composite diff)",
+        title=fmt_title("Experience: High vs Low (A/B + composite diff)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -718,7 +753,7 @@ def main():
         dens_ex["High"],
         dens_ex["Low"],
         outdir / "compare" / "Experience_composite_2panel.png",
-        title="Experience: High vs Low (composite + reference)",
+        title=fmt_title("Experience: High vs Low (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -767,7 +802,9 @@ def main():
                 ax.imshow(dens_4[k].T, origin="upper", cmap=cmap, vmin=0, vmax=vmax, aspect="auto")
             ax.set_title(k)
 
-    fig.suptitle("4-way groups (shared scale)")
+    t4 = fmt_title("4-way groups (shared scale)")
+    if t4:
+        fig.suptitle(t4)
     fig.tight_layout()
     fig.savefig(outdir / "compare" / "4way_grid.png", dpi=300)
     plt.close(fig)
@@ -783,7 +820,7 @@ def main():
         EH_H,
         EH_L,
         outdir / "compare" / "4way_SportFreq_within_ExperienceHigh_composite_2panel.png",
-        title="SportFreq diff within Experience=High (composite + reference)",
+        title=fmt_title("SportFreq diff within Experience=High (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -799,7 +836,7 @@ def main():
         EL_H,
         EL_L,
         outdir / "compare" / "4way_SportFreq_within_ExperienceLow_composite_2panel.png",
-        title="SportFreq diff within Experience=Low (composite + reference)",
+        title=fmt_title("SportFreq diff within Experience=Low (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -817,7 +854,7 @@ def main():
         EH_H,
         EL_H,
         outdir / "compare" / "4way_Experience_within_SportFreqHigh_composite_2panel.png",
-        title="Experience diff within SportFreq=High (composite + reference)",
+        title=fmt_title("Experience diff within SportFreq=High (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
@@ -833,7 +870,7 @@ def main():
         EH_L,
         EL_L,
         outdir / "compare" / "4way_Experience_within_SportFreqLow_composite_2panel.png",
-        title="Experience diff within SportFreq=Low (composite + reference)",
+        title=fmt_title("Experience diff within SportFreq=Low (composite + reference)"),
         cmap=cmap,
         background_img=args.background_img,
         screen_w=args.screen_w,
