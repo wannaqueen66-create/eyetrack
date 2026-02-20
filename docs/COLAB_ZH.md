@@ -16,8 +16,11 @@
 
 1. 打开上面的 Colab 链接
 2. 依次运行每个代码块（从上到下）
-3. （推荐）在 Colab 安装中文字体（避免中文标题刷 `Glyph missing` 警告）：
-   - `apt-get install -y fonts-noto-cjk`
+3. 现在脚本默认输出 PNG 标题为英文（ASCII-only），一般不会再触发中文字体缺失警告。
+
+如果你确实需要标题显示中文姓名，可以在 Colab 安装中文字体（避免中文标题刷 `Glyph missing` 警告）：
+- `apt-get install -y fonts-noto-cjk`
+并在脚本参数中使用：`--title_mode raw`
 4. 上传你的眼动 CSV（必须包含项目要求的列）
 4. 自动生成基础输出：
    - `outputs/quality_report.csv`

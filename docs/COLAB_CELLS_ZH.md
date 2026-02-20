@@ -44,9 +44,10 @@
 !pip -q install -r requirements.txt
 ```
 
-### （推荐）Cell 2.1：安装中文字体（避免中文标题报 Glyph missing 警告）
+### （可选）Cell 2.1：安装中文字体（仅当你想在 PNG 标题里显示中文姓名）
 
-> 如果你的输出图里标题要显示中文姓名，Colab 默认字体可能不全，会刷一堆 `Glyph ... missing from font`。
+> 脚本默认 `--title_mode english`（英文标题），一般不会刷 Glyph warning。
+> 只有当你使用 `--title_mode raw` 想让标题显示中文姓名时，才需要装字体。
 
 ```bash
 !apt-get -qq update
