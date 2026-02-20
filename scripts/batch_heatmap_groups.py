@@ -207,10 +207,18 @@ def main():
 
         # 2) find under csv_dir
         pid = participant_id.strip()
+        # Most exporters use patterns like: raw_<name>_*.csv
+        # Try strict patterns first to avoid accidental multiple matches.
         patterns = [
             f"**/{pid}.csv",
             f"**/{pid}_*.csv",
             f"**/{pid}-*.csv",
+            f"**/raw_{pid}.csv",
+            f"**/raw_{pid}_*.csv",
+            f"**/raw-{pid}.csv",
+            f"**/raw-{pid}-*.csv",
+            f"**/*_{pid}_*.csv",
+            f"**/*_{pid}-*.csv",
             f"**/{pid}*.csv",
         ]
         matches = []
