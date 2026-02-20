@@ -1,5 +1,8 @@
 # eyetrack Colab 部署与使用流程（中文）
 
+> 如果你不想打开 Notebook，而是希望把每段代码当作一个 cell 逐个复制粘贴运行：
+> - `docs/COLAB_CELLS_ZH.md`
+
 ## 一键入口
 
 - 标准版（中英混合）：

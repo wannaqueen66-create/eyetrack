@@ -121,6 +121,8 @@ Colab 推荐用于**无需本地/VPS 配环境**的快速试跑。
   https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb
 
 > Full Chinese guide (includes batch + grouped diff + background overlay): `docs/COLAB_ZH.md`
+>
+> Copy-by-cell markdown (no notebook, just paste cell by cell): `docs/COLAB_CELLS_ZH.md`
 
 ### 1) Install dependencies / 安装依赖
 
