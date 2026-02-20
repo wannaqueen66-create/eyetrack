@@ -1,0 +1,5 @@
+participant_id,csv_path,SportFreq,Experience
+P01,/path/to/P01.csv,High,High
+P02,/path/to/P02.csv,Low,High
+P03,/path/to/P03.csv,High,Low
+P04,/path/to/P04.csv,Low,Low

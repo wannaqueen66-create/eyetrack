@@ -27,6 +27,8 @@
 
 适用场景：你有很多个 CSV，想批量导出每个文件的 `heatmap.png`。
 
+如果你还要做**分组对比**（比如 SportFreq 二分、Experience 二分、以及两者交叉得到 4 类人群），看本文档后面的「批处理：按人群分组汇总 + 差异图」。
+
 ### Step 1. 准备并上传 zip
 
 把多个 CSV 放到同一个文件夹，压缩为 `csvs.zip`（内部可包含子文件夹）。
@@ -72,6 +74,54 @@ files.upload()  # 上传 csvs.zip
 ```python
 from google.colab import files
 files.download('outputs_batch_heatmap.zip')
+```
+
+---
+
+## 批处理：按人群分组汇总 + 差异图（SportFreq 二分 / Experience 二分 / 4 类交叉）
+
+适用场景：
+- 你要每个人的单独热图
+- 同时要按人群汇总热图（例如 SportFreq-High vs SportFreq-Low）
+- 还要一张能直接看出组间差异的图（推荐使用**log-ratio 差异图**）
+
+### Step 1. 准备 manifest（分组表）
+
+在本仓库的模板基础上准备你的 manifest：
+- 模板：`templates/group_manifest_template.csv`
+
+必须列：
+- `participant_id`：被试 ID
+- `csv_path`：该被试 CSV 路径（在 Colab 里就是你上传/解压后的路径）
+- `SportFreq`：High / Low
+- `Experience`：High / Low
+
+### Step 2. 运行分组批处理脚本
+
+```bash
+!python scripts/batch_heatmap_groups.py \
+  --manifest group_manifest.csv \
+  --screen_w 1920 --screen_h 1080 \
+  --outdir outputs_batch_groups
+```
+
+输出结构（重点）：
+- `outputs_batch_groups/individual/<participant_id>/heatmap.png`
+- `outputs_batch_groups/groups/SportFreq-High/heatmap_density.png`
+- `outputs_batch_groups/groups/SportFreq-Low/heatmap_density.png`
+- `outputs_batch_groups/compare/SportFreq_diff.png`（High vs Low 差异图）
+- `outputs_batch_groups/compare/Experience_diff.png`
+- `outputs_batch_groups/compare/4way_grid.png`（四类共享色标的 2x2 汇总图）
+
+### Step 3. 打包下载
+
+```bash
+!zip -qr outputs_batch_groups.zip outputs_batch_groups
+```
+
+```python
+from google.colab import files
+files.download('outputs_batch_groups.zip')
 ```
 
 ---
