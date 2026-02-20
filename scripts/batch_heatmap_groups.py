@@ -99,6 +99,23 @@ def save_density_png(H: np.ndarray, out_png: Path, title: str, cmap: str = "viri
     plt.close()
 
 
+def save_density_overlay(H: np.ndarray, out_png: Path, title: str, background_img: str, screen_w: int, screen_h: int, alpha: float = 0.55, cmap: str = "inferno", vmin=None, vmax=None):
+    """Overlay density heatmap on a background image (scene).
+
+    Note: background image is stretched to [0..screen_w]x[0..screen_h].
+    """
+    bg = plt.imread(background_img)
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    plt.figure(figsize=(6, 8))
+    plt.imshow(bg, extent=[0, screen_w, screen_h, 0], aspect="auto")
+    plt.imshow(H.T, origin="upper", extent=[0, screen_w, screen_h, 0], cmap=cmap, alpha=alpha, vmin=vmin, vmax=vmax, aspect="auto")
+    plt.title(title)
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_png, dpi=300)
+    plt.close()
+
+
 def save_binary_compare(A: np.ndarray, B: np.ndarray, out_png: Path, title: str, eps: float = 1e-12):
     """Save 3-panel: A, B, log-ratio(A/B)."""
     out_png.parent.mkdir(parents=True, exist_ok=True)
@@ -145,6 +162,10 @@ def main():
 
     ap.add_argument("--require_validity", action="store_true", help="Require Validity Left/Right == 1 (if columns exist)")
     ap.add_argument("--columns_map", default=None, help="Path to JSON mapping of required columns to candidate names")
+
+    # Background overlay (optional)
+    ap.add_argument("--background_img", default=None, help="Optional background image (png/jpg) to overlay group densities")
+    ap.add_argument("--alpha", type=float, default=0.55, help="Overlay alpha (default 0.55)")
 
     args = ap.parse_args()
 
@@ -266,7 +287,10 @@ def main():
         xy = concat_list(points_sport[level])
         H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
         dens_sf[level] = H
-        save_density_png(H, outdir / "groups" / f"SportFreq-{level}" / "heatmap_density.png", f"SportFreq-{level} (density)")
+        base = outdir / "groups" / f"SportFreq-{level}"
+        save_density_png(H, base / "heatmap_density.png", f"SportFreq-{level} (density)")
+        if args.background_img:
+            save_density_overlay(H, base / "heatmap_overlay.png", f"SportFreq-{level} (overlay)", args.background_img, args.screen_w, args.screen_h, alpha=args.alpha)
 
     # Experience
     dens_ex = {}
@@ -274,7 +298,10 @@ def main():
         xy = concat_list(points_exp[level])
         H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
         dens_ex[level] = H
-        save_density_png(H, outdir / "groups" / f"Experience-{level}" / "heatmap_density.png", f"Experience-{level} (density)")
+        base = outdir / "groups" / f"Experience-{level}"
+        save_density_png(H, base / "heatmap_density.png", f"Experience-{level} (density)")
+        if args.background_img:
+            save_density_overlay(H, base / "heatmap_overlay.png", f"Experience-{level} (overlay)", args.background_img, args.screen_w, args.screen_h, alpha=args.alpha)
 
     # 4-way
     dens_4 = {}
@@ -282,7 +309,10 @@ def main():
         xy = concat_list(points_4[k])
         H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
         dens_4[k] = H
-        save_density_png(H, outdir / "groups" / "4way" / k / "heatmap_density.png", f"{k} (density)")
+        base = outdir / "groups" / "4way" / k
+        save_density_png(H, base / "heatmap_density.png", f"{k} (density)")
+        if args.background_img:
+            save_density_overlay(H, base / "heatmap_overlay.png", f"{k} (overlay)", args.background_img, args.screen_w, args.screen_h, alpha=args.alpha)
 
     # ---- Compare plots (difference) ----
     save_binary_compare(

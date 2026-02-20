@@ -23,6 +23,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.pipeline import load_and_clean, plot_heatmap, quality_report
 
+try:
+    from scipy.ndimage import gaussian_filter
+except Exception:
+    gaussian_filter = None
+
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 def iter_csv_files(input_dir: Path, pattern: str):
     # Use pathlib glob to support ** patterns
@@ -57,6 +65,12 @@ def main():
         help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)",
     )
 
+    # Background overlay (optional)
+    ap.add_argument("--background_img", default=None, help="Optional background image (png/jpg) to overlay the heatmap")
+    ap.add_argument("--alpha", type=float, default=0.55, help="Heatmap overlay alpha on background (default 0.55)")
+    ap.add_argument("--bins", type=int, default=200, help="Grid bins for density overlay (default 200x200)")
+    ap.add_argument("--sigma", type=float, default=2.0, help="Gaussian smoothing sigma for density overlay (default 2.0)")
+
     args = ap.parse_args()
 
     input_dir = Path(args.input_dir)
@@ -71,6 +85,38 @@ def main():
     if not files:
         raise SystemExit(f"No CSV files found under {input_dir} with pattern={args.pattern}")
 
+    def density_from_points(xy: np.ndarray):
+        if xy.size == 0:
+            return np.zeros((args.bins, args.bins), dtype=float)
+        x = np.clip(xy[:, 0], 0, args.screen_w)
+        y = np.clip(xy[:, 1], 0, args.screen_h)
+        H, _, _ = np.histogram2d(
+            x,
+            y,
+            bins=[args.bins, args.bins],
+            range=[[0, args.screen_w], [0, args.screen_h]],
+        )
+        if gaussian_filter is None:
+            raise SystemExit("scipy is required for --background_img overlay mode. Please install requirements.txt")
+        H = gaussian_filter(H, sigma=args.sigma, mode="nearest")
+        s = H.sum()
+        if s > 0:
+            H = H / s
+        return H
+
+    def save_overlay(H: np.ndarray, out_png: Path, title: str):
+        bg = plt.imread(args.background_img)
+        out_png.parent.mkdir(parents=True, exist_ok=True)
+        plt.figure(figsize=(6, 8))
+        # stretch background to screen coordinate extent
+        plt.imshow(bg, extent=[0, args.screen_w, args.screen_h, 0], aspect="auto")
+        plt.imshow(H.T, origin="upper", extent=[0, args.screen_w, args.screen_h, 0], cmap="inferno", alpha=args.alpha, aspect="auto")
+        plt.title(title)
+        plt.axis("off")
+        plt.tight_layout()
+        plt.savefig(out_png, dpi=300)
+        plt.close()
+
     for fp in files:
         name = safe_stem(fp)
         one_out = outdir / name
@@ -84,7 +130,15 @@ def main():
                 require_validity=args.require_validity,
                 columns_map_path=args.columns_map,
             )
+
+            # default heatmap (no background)
             plot_heatmap(clean, str(one_out / "heatmap.png"), args.screen_w, args.screen_h)
+
+            # optional overlay heatmap on background
+            if args.background_img:
+                xy = clean[["Gaze Point X[px]", "Gaze Point Y[px]"]].dropna().to_numpy(dtype=float)
+                H = density_from_points(xy)
+                save_overlay(H, one_out / "heatmap_overlay.png", f"Gaze Heatmap (overlay): {name}")
 
             qr = quality_report(df, clean)
             qr.update({"file": str(fp), "outdir": str(one_out)})

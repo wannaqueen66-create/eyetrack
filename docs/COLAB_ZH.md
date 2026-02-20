@@ -59,6 +59,18 @@ files.upload()  # 上传 csvs.zip
   --outdir outputs_batch_heatmap
 ```
 
+如果你想把热图**叠加到底图**（场景截图/首帧等），加 `--background_img`：
+
+```bash
+!python scripts/batch_heatmap.py \
+  --input_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --background_img scene.png \
+  --outdir outputs_batch_heatmap
+```
+
+输出会额外多一个：`heatmap_overlay.png`
+
 > 说明：批处理默认不强制 validity（更鲁棒）；如果你明确需要 validity 过滤，可以加 `--require_validity`。
 
 输出：
@@ -104,9 +116,23 @@ files.download('outputs_batch_heatmap.zip')
 ```bash
 !python scripts/batch_heatmap_groups.py \
   --manifest group_manifest.csv \
+  --csv_dir batch_csvs \
   --screen_w 1920 --screen_h 1080 \
   --outdir outputs_batch_groups
 ```
+
+如果你想把**各组汇总热图**也叠加到底图上，加 `--background_img`：
+
+```bash
+!python scripts/batch_heatmap_groups.py \
+  --manifest group_manifest.csv \
+  --csv_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --background_img scene.png \
+  --outdir outputs_batch_groups
+```
+
+输出会额外多一批：`heatmap_overlay.png`
 
 输出结构（重点）：
 - `outputs_batch_groups/individual/<participant_id>/heatmap.png`
