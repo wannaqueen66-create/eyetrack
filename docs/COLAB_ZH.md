@@ -16,7 +16,9 @@
 
 1. 打开上面的 Colab 链接
 2. 依次运行每个代码块（从上到下）
-3. 上传你的眼动 CSV（必须包含项目要求的列）
+3. （推荐）在 Colab 安装中文字体（避免中文标题刷 `Glyph missing` 警告）：
+   - `apt-get install -y fonts-noto-cjk`
+4. 上传你的眼动 CSV（必须包含项目要求的列）
 4. 自动生成基础输出：
    - `outputs/quality_report.csv`
    - `outputs/heatmap.png`

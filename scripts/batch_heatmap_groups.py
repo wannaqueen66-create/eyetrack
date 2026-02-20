@@ -37,6 +37,9 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+from matplotlib import font_manager
+import warnings
 
 # Ensure repo root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -61,6 +64,34 @@ def norm_level(x: str) -> str:
     if s in {"low", "l", "0", "false", "no"}:
         return "Low"
     return str(x).strip()
+
+
+def setup_cjk_font(prefer_names=None):
+    """Best-effort configure a CJK-capable font to avoid 'Glyph missing' warnings.
+
+    On Colab/Linux, you can install one via:
+      apt-get install -y fonts-noto-cjk
+
+    If no preferred font is found, we keep defaults (warnings may appear, but plots still save).
+    """
+    if prefer_names is None:
+        prefer_names = [
+            "Noto Sans CJK SC",
+            "Noto Sans CJK",
+            "Source Han Sans SC",
+            "Source Han Sans",
+            "SimHei",
+            "Microsoft YaHei",
+            "PingFang SC",
+        ]
+
+    available = {f.name for f in font_manager.fontManager.ttflist}
+    for name in prefer_names:
+        if name in available:
+            mpl.rcParams["font.sans-serif"] = [name, "DejaVu Sans"]
+            mpl.rcParams["axes.unicode_minus"] = False
+            return name
+    return None
 
 
 def get_cmap(name: str):
@@ -263,6 +294,8 @@ def main():
 
     # Colors
     ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii -> turbo/jet).")
+    ap.add_argument("--font", default="auto", help="Font for titles. Use 'auto' to pick a CJK font if available (default: auto)")
+    ap.add_argument("--quiet_glyph_warning", action="store_true", help="Suppress matplotlib 'Glyph missing' warnings (does not fix rendering)")
 
     # Resume / fault tolerance
     ap.add_argument("--resume", action="store_true", default=True, help="Resume using cached per-participant points.npy if present (default: on)")
@@ -272,6 +305,16 @@ def main():
     args = ap.parse_args()
 
     cmap = get_cmap(args.cmap)
+
+    # Font setup for Chinese names in titles
+    if args.font and str(args.font).lower() != "auto":
+        mpl.rcParams["font.sans-serif"] = [args.font, "DejaVu Sans"]
+        mpl.rcParams["axes.unicode_minus"] = False
+    else:
+        setup_cjk_font()
+
+    if args.quiet_glyph_warning:
+        warnings.filterwarnings("ignore", message=r"Glyph .* missing from font\(s\) .*", category=UserWarning)
 
     outdir = Path(args.outdir)
     (outdir / "individual").mkdir(parents=True, exist_ok=True)

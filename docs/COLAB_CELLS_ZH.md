@@ -44,6 +44,15 @@
 !pip -q install -r requirements.txt
 ```
 
+### （推荐）Cell 2.1：安装中文字体（避免中文标题报 Glyph missing 警告）
+
+> 如果你的输出图里标题要显示中文姓名，Colab 默认字体可能不全，会刷一堆 `Glyph ... missing from font`。
+
+```bash
+!apt-get -qq update
+!apt-get -qq install -y fonts-noto-cjk
+```
+
 ---
 
 ## Cell 3：上传文件（csvs.zip / group_manifest.csv / scene.png）
