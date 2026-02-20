@@ -9,7 +9,7 @@
 
 ---
 
-## 使用步骤
+## 使用步骤（单文件）
 
 1. 打开上面的 Colab 链接
 2. 依次运行每个代码块（从上到下）
@@ -20,6 +20,59 @@
    - `outputs/scanpath.png`
 5. （可选）上传 `aoi.json` 并运行 AOI 指标
 6. 下载 `eyetrack_outputs.zip`
+
+---
+
+## 批处理：只生成热图（不做 AOI）
+
+适用场景：你有很多个 CSV，想批量导出每个文件的 `heatmap.png`。
+
+### Step 1. 准备并上传 zip
+
+把多个 CSV 放到同一个文件夹，压缩为 `csvs.zip`（内部可包含子文件夹）。
+
+在 Colab 运行：
+
+```python
+from google.colab import files
+files.upload()  # 上传 csvs.zip
+```
+
+解压：
+
+```bash
+!rm -rf batch_csvs
+!mkdir -p batch_csvs
+!unzip -q csvs.zip -d batch_csvs
+```
+
+### Step 2. 运行批处理脚本
+
+在 Colab 设置你的屏幕分辨率（按实验屏幕像素改）：
+
+```bash
+!python scripts/batch_heatmap.py \
+  --input_dir batch_csvs \
+  --screen_w 1920 --screen_h 1080 \
+  --outdir outputs_batch_heatmap
+```
+
+> 说明：批处理默认不强制 validity（更鲁棒）；如果你明确需要 validity 过滤，可以加 `--require_validity`。
+
+输出：
+- `outputs_batch_heatmap/<文件名>/heatmap.png`
+- `outputs_batch_heatmap/batch_quality_report.csv`（汇总每个文件的清洗后有效比例/时长等；失败的会写 error）
+
+### Step 3. 打包下载
+
+```bash
+!zip -qr outputs_batch_heatmap.zip outputs_batch_heatmap
+```
+
+```python
+from google.colab import files
+files.download('outputs_batch_heatmap.zip')
+```
 
 ---
 

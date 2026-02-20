@@ -90,8 +90,8 @@ python3 -m http.server 8080
 
 - 直接打开：
   `https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb`
-- 详细中文说明：`docs/COLAB_ZH.md`
 - 纯中文逐 Cell 版 Notebook：`https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb`
+- 详细中文说明（含：**批处理只出热图**）：`docs/COLAB_ZH.md`
 
 ## 4. 小白全流程
 
