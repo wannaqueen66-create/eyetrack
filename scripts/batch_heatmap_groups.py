@@ -752,7 +752,7 @@ def main():
             ax.axis("off")
             if bg is not None:
                 ax.imshow(bg, extent=[0, args.screen_w, args.screen_h, 0], aspect="auto")
-                A = _alpha_map_from_density(dens_4[k], alpha=args.alpha, thresh_rel=args.thresh)
+                Aalp = _alpha_map_from_density(dens_4[k], alpha=args.alpha, thresh_rel=args.thresh)
                 ax.imshow(
                     dens_4[k].T,
                     origin="upper",
@@ -760,7 +760,7 @@ def main():
                     cmap=cmap,
                     vmin=0,
                     vmax=vmax,
-                    alpha=A.T if A is not None else args.alpha,
+                    alpha=Aalp.T if Aalp is not None else args.alpha,
                     aspect="auto",
                 )
             else:
@@ -771,6 +771,80 @@ def main():
     fig.tight_layout()
     fig.savefig(outdir / "compare" / "4way_grid.png", dpi=300)
     plt.close(fig)
+
+    # ---- 4-way stratified composite diffs (方案 2) ----
+    # SportFreq within Experience-High / Experience-Low
+    EH_H = dens_4["Experience-High×SportFreq-High"]
+    EH_L = dens_4["Experience-High×SportFreq-Low"]
+    EL_H = dens_4["Experience-Low×SportFreq-High"]
+    EL_L = dens_4["Experience-Low×SportFreq-Low"]
+
+    save_binary_compare(
+        EH_H,
+        EH_L,
+        outdir / "compare" / "4way_SportFreq_within_ExperienceHigh_composite_2panel.png",
+        title="SportFreq diff within Experience=High (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
+    save_binary_compare(
+        EL_H,
+        EL_L,
+        outdir / "compare" / "4way_SportFreq_within_ExperienceLow_composite_2panel.png",
+        title="SportFreq diff within Experience=Low (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
+
+    # Experience within SportFreq-High / SportFreq-Low
+    save_binary_compare(
+        EH_H,
+        EL_H,
+        outdir / "compare" / "4way_Experience_within_SportFreqHigh_composite_2panel.png",
+        title="Experience diff within SportFreq=High (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
+    save_binary_compare(
+        EH_L,
+        EL_L,
+        outdir / "compare" / "4way_Experience_within_SportFreqLow_composite_2panel.png",
+        title="Experience diff within SportFreq=Low (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
 
     print("Done. Outputs in:", str(outdir))
     if errors:
