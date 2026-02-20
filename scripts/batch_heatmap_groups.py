@@ -219,15 +219,26 @@ def save_binary_compare(
     layout: int = 4,
     overlap_mode: str = "min",
     overlap_cmap = None,
+    composite: bool = False,
+    reference: str = "overlap",
 ):
     """Save compare figure.
 
-    layout=3: A, B, log2(A/B)
-    layout=4: A, B, overlap(A,B), log2(A/B)
+    layout modes:
+      - 3: A, B, log2(A/B)
+      - 4: A, B, overlap(A,B), log2(A/B)
+      - 2 (composite): composite_diff, reference
+      - 3 (composite): A, B, composite_diff
+
+    composite_diff shows log2(A/B) as color (red/blue) with overlap strength as alpha.
 
     overlap_mode:
       - 'min'     : overlap = min(A,B) (common attention)
       - 'product' : overlap = sqrt(A*B) (emphasize shared hotspots)
+
+    reference:
+      - 'overlap' : show overlap heatmap
+      - 'mean'    : show mean heatmap (A+B)/2
     """
 
     out_png.parent.mkdir(parents=True, exist_ok=True)
@@ -252,10 +263,17 @@ def save_binary_compare(
     if background_img:
         bg = plt.imread(background_img)
 
-    if layout not in (3, 4):
-        layout = 4
+    # Decide layout
+    if composite:
+        if layout not in (2, 3):
+            layout = 2
+    else:
+        if layout not in (3, 4):
+            layout = 4
 
     fig, axes = plt.subplots(1, layout, figsize=(5 * layout, 6))
+    if layout == 1:
+        axes = [axes]
     for ax in axes:
         ax.axis("off")
 
@@ -279,22 +297,68 @@ def save_binary_compare(
     A_alpha = _alpha_map_from_density(A, alpha=alpha, thresh_rel=thresh_rel)
     B_alpha = _alpha_map_from_density(B, alpha=alpha, thresh_rel=thresh_rel)
 
-    draw_panel(axes[0], A, "Group A", cmap, 0, vmax, A_alpha)
-    draw_panel(axes[1], B, "Group B", cmap, 0, vmax, B_alpha)
+    def draw_composite(ax, title_text: str):
+        # composite: color=log2(A/B), alpha=overlap strength
+        Ln = np.clip(np.abs(L) / lim, 0, 1)
+        # weight by overlap (shared attention)
+        On = O / max(float(O.max()), eps) if float(O.max()) > 0 else O
+        Acomp = (Ln ** 0.6) * (On ** 0.7) * float(alpha)
+        if thresh_rel is not None and thresh_rel > 0:
+            Acomp = np.where(On >= float(thresh_rel), Acomp, 0.0)
 
-    col = 2
-    if layout == 4:
-        O_alpha = _alpha_map_from_density(O, alpha=alpha, thresh_rel=thresh_rel)
-        draw_panel(axes[col], O, "Overlap", overlap_cmap, 0, max(float(O.max()), eps), O_alpha)
-        col += 1
+        if bg is not None:
+            ax.imshow(bg, extent=[0, screen_w, screen_h, 0], aspect="auto")
+            ax.imshow(
+                L.T,
+                origin="upper",
+                extent=[0, screen_w, screen_h, 0],
+                cmap=plt.get_cmap("RdBu_r"),
+                vmin=-lim,
+                vmax=lim,
+                alpha=Acomp.T,
+                aspect="auto",
+            )
+        else:
+            ax.imshow(L.T, origin="upper", cmap=plt.get_cmap("RdBu_r"), vmin=-lim, vmax=lim, alpha=Acomp.T, aspect="auto")
+        ax.set_title(title_text)
 
-    # For log-ratio panel, alpha based on magnitude
-    Ln = np.clip(np.abs(L) / lim, 0, 1)
-    L_alpha = (Ln ** 0.7) * float(alpha)
-    if thresh_rel is not None and thresh_rel > 0:
-        L_alpha = np.where(Ln >= float(thresh_rel), L_alpha, 0.0)
+    def draw_reference(ax, title_text: str):
+        ref = (reference or "overlap").strip().lower()
+        if ref == "mean":
+            R = (A + B) / 2.0
+            R_alpha = _alpha_map_from_density(R, alpha=alpha, thresh_rel=thresh_rel)
+            draw_panel(ax, R, title_text, cmap, 0, vmax, R_alpha)
+        else:
+            O_alpha = _alpha_map_from_density(O, alpha=alpha, thresh_rel=thresh_rel)
+            draw_panel(ax, O, title_text, overlap_cmap, 0, max(float(O.max()), eps), O_alpha)
 
-    draw_panel(axes[col], L, "log2(A/B)", plt.get_cmap("RdBu_r"), -lim, lim, L_alpha)
+    if composite:
+        # Composite outputs
+        if layout == 2:
+            draw_composite(axes[0], "Composite diff (overlap-weighted log2)")
+            draw_reference(axes[1], "Reference")
+        else:
+            # 3-panel composite: A, B, Composite
+            draw_panel(axes[0], A, "Group A", cmap, 0, vmax, A_alpha)
+            draw_panel(axes[1], B, "Group B", cmap, 0, vmax, B_alpha)
+            draw_composite(axes[2], "Composite diff")
+    else:
+        # Traditional outputs
+        draw_panel(axes[0], A, "Group A", cmap, 0, vmax, A_alpha)
+        draw_panel(axes[1], B, "Group B", cmap, 0, vmax, B_alpha)
+
+        col = 2
+        if layout == 4:
+            O_alpha = _alpha_map_from_density(O, alpha=alpha, thresh_rel=thresh_rel)
+            draw_panel(axes[col], O, "Overlap", overlap_cmap, 0, max(float(O.max()), eps), O_alpha)
+            col += 1
+
+        Ln = np.clip(np.abs(L) / lim, 0, 1)
+        L_alpha = (Ln ** 0.7) * float(alpha)
+        if thresh_rel is not None and thresh_rel > 0:
+            L_alpha = np.where(Ln >= float(thresh_rel), L_alpha, 0.0)
+
+        draw_panel(axes[col], L, "log2(A/B)", plt.get_cmap("RdBu_r"), -lim, lim, L_alpha)
 
     fig.suptitle(title)
     fig.tight_layout()
@@ -326,6 +390,8 @@ def main():
     ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii -> turbo/jet).")
     ap.add_argument("--compare_layout", type=int, default=4, choices=[3, 4], help="Compare figure layout: 3 panels (A,B,log2) or 4 panels (A,B,overlap,log2). Default 4")
     ap.add_argument("--overlap_mode", default="min", choices=["min", "product"], help="How to compute overlap heatmap: min(A,B) or sqrt(A*B). Default min")
+    ap.add_argument("--compare_composite", action="store_true", help="Use composite diff (log2 color weighted by overlap alpha)")
+    ap.add_argument("--compare_reference", default="overlap", choices=["overlap", "mean"], help="Reference panel for composite layout (default overlap)")
     ap.add_argument("--font", default="auto", help="Font for titles. Use 'auto' to pick a CJK font if available (default: auto)")
     ap.add_argument("--quiet_glyph_warning", action="store_true", help="Suppress matplotlib 'Glyph missing' warnings (does not fix rendering)")
 
@@ -581,6 +647,42 @@ def main():
         layout=args.compare_layout,
         overlap_mode=args.overlap_mode,
     )
+
+    # Additional composite views (requested):
+    #  - 3-panel: A / B / Composite
+    #  - 2-panel: Composite + Reference
+    save_binary_compare(
+        dens_sf["High"],
+        dens_sf["Low"],
+        outdir / "compare" / "SportFreq_composite_3panel.png",
+        title="SportFreq: High vs Low (A/B + composite diff)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=3,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
+    save_binary_compare(
+        dens_sf["High"],
+        dens_sf["Low"],
+        outdir / "compare" / "SportFreq_composite_2panel.png",
+        title="SportFreq: High vs Low (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
     save_binary_compare(
         dens_ex["High"],
         dens_ex["Low"],
@@ -594,6 +696,39 @@ def main():
         thresh_rel=args.thresh,
         layout=args.compare_layout,
         overlap_mode=args.overlap_mode,
+    )
+
+    save_binary_compare(
+        dens_ex["High"],
+        dens_ex["Low"],
+        outdir / "compare" / "Experience_composite_3panel.png",
+        title="Experience: High vs Low (A/B + composite diff)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=3,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
+    )
+    save_binary_compare(
+        dens_ex["High"],
+        dens_ex["Low"],
+        outdir / "compare" / "Experience_composite_2panel.png",
+        title="Experience: High vs Low (composite + reference)",
+        cmap=cmap,
+        background_img=args.background_img,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        alpha=args.alpha,
+        thresh_rel=args.thresh,
+        layout=2,
+        overlap_mode=args.overlap_mode,
+        composite=True,
+        reference=args.compare_reference,
     )
 
     # ---- 4-way grid (overlay background if provided) ----
