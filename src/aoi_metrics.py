@@ -33,8 +33,18 @@ def _bbox_mask(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]]) ->
     return (x >= xmin) & (x <= xmax) & (y >= ymin) & (y <= ymax)
 
 
-def point_in_poly(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]]) -> np.ndarray:
-    """Vectorized ray casting with bbox pre-filter."""
+def point_in_poly(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]], boundary_eps: float = 1e-6) -> np.ndarray:
+    """Vectorized point-in-polygon (even–odd / ray casting) with bbox pre-filter.
+
+    Boundary rule (recommended for papers / reproducibility):
+    - Points on polygon edges are treated as INSIDE, using a small tolerance `boundary_eps`.
+
+    Notes:
+    - Coordinates are in the same pixel coordinate system as the background image.
+    - `boundary_eps` is mainly for numerical robustness; in typical eye-tracking data,
+      exact-on-edge points are rare.
+    """
+
     n = len(poly)
     if n < 3:
         return np.zeros_like(x, dtype=bool)
@@ -45,14 +55,36 @@ def point_in_poly(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]])
     if not np.any(bbox):
         return inside
 
-    px = np.array([p[0] for p in poly])
-    py = np.array([p[1] for p in poly])
+    px = np.array([p[0] for p in poly], dtype=float)
+    py = np.array([p[1] for p in poly], dtype=float)
 
     # Only compute for candidate points
-    xx = x[bbox]
-    yy = y[bbox]
-    ins = np.zeros_like(xx, dtype=bool)
+    xx = x[bbox].astype(float)
+    yy = y[bbox].astype(float)
 
+    # 1) Boundary check: consider points on any edge as inside
+    on_edge = np.zeros_like(xx, dtype=bool)
+    j = n - 1
+    for i in range(n):
+        x1, y1 = px[j], py[j]
+        x2, y2 = px[i], py[i]
+
+        # Segment bbox test (fast)
+        minx, maxx = (x1, x2) if x1 <= x2 else (x2, x1)
+        miny, maxy = (y1, y2) if y1 <= y2 else (y2, y1)
+        seg_bbox = (xx >= (minx - boundary_eps)) & (xx <= (maxx + boundary_eps)) & (yy >= (miny - boundary_eps)) & (yy <= (maxy + boundary_eps))
+
+        # Collinearity via cross product
+        dx = x2 - x1
+        dy = y2 - y1
+        cross = (xx - x1) * dy - (yy - y1) * dx
+        col = np.abs(cross) <= boundary_eps
+
+        on_edge |= seg_bbox & col
+        j = i
+
+    # 2) Ray casting (even–odd rule)
+    ins = np.zeros_like(xx, dtype=bool)
     j = n - 1
     for i in range(n):
         xi, yi = px[i], py[i]
@@ -61,6 +93,7 @@ def point_in_poly(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]])
         ins ^= intersect
         j = i
 
+    ins |= on_edge
     inside[bbox] = ins
     return inside
 
