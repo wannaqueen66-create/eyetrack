@@ -126,19 +126,30 @@ def density_from_points(
     screen_h: int,
     bins: int = 200,
     sigma: float = 2.0,
+    weights: np.ndarray | None = None,
 ):
-    """Return a normalized 2D density image (bins x bins) in screen coordinate space."""
+    """Return a normalized 2D density image (bins x bins) in screen coordinate space.
+
+    If `weights` is provided, it must be 1D with the same length as `xy`.
+    """
     if xy.size == 0:
         return np.zeros((bins, bins), dtype=float)
 
     x = np.clip(xy[:, 0], 0, screen_w)
     y = np.clip(xy[:, 1], 0, screen_h)
 
+    w = None
+    if weights is not None:
+        w = np.asarray(weights, dtype=float)
+        if w.ndim != 1 or len(w) != len(x):
+            raise ValueError(f"weights must be 1D and match xy length; got weights.shape={w.shape}, xy.shape={xy.shape}")
+
     H, _, _ = np.histogram2d(
         x,
         y,
         bins=[bins, bins],
         range=[[0, screen_w], [0, screen_h]],
+        weights=w,
     )
 
     H = gaussian_filter(H, sigma=sigma, mode="nearest")
@@ -392,6 +403,26 @@ def main():
     ap.add_argument("--bins", type=int, default=220, help="Grid bins for density (default 220x220)")
     ap.add_argument("--sigma", type=float, default=2.2, help="Gaussian smoothing sigma (default 2.2)")
 
+    # Point source / weighting (for more Pro Lab-like outputs)
+    ap.add_argument(
+        "--point_source",
+        default="gaze",
+        choices=["gaze", "fixation"],
+        help="Which points to use for heatmap: gaze (default) or fixation (Fixation Point X/Y)",
+    )
+    ap.add_argument(
+        "--weight",
+        default="none",
+        choices=["none", "fixation_duration"],
+        help="Optional weighting: none (default) or fixation_duration (uses Fixation Duration[ms])",
+    )
+    ap.add_argument(
+        "--fixation_dedup",
+        default="index",
+        choices=["index", "none"],
+        help="When point_source=fixation, deduplicate repeated fixation rows by Fixation Index (default index)",
+    )
+
     ap.add_argument("--require_validity", action="store_true", help="Require Validity Left/Right == 1 (if columns exist)")
     ap.add_argument("--columns_map", default=None, help="Path to JSON mapping of required columns to candidate names")
 
@@ -521,8 +552,16 @@ def main():
 
         one_out = outdir / "individual" / pid
         one_out.mkdir(parents=True, exist_ok=True)
-        points_path = one_out / "points.npy"
-        meta_path = one_out / "meta.json"
+        # Cache depends on point_source/weighting choices to avoid mixing outputs.
+        cache_tag = f"{args.point_source}"
+        if args.point_source == "fixation":
+            cache_tag += f"_dedup-{args.fixation_dedup}"
+        if args.weight != "none":
+            cache_tag += f"_w-{args.weight}"
+
+        points_path = one_out / f"points_{cache_tag}.npy"
+        weights_path = one_out / f"weights_{cache_tag}.npy"
+        meta_path = one_out / f"meta_{cache_tag}.json"
 
         # Avoid putting Chinese names in PNG titles by default (publication-friendly)
         pid_title = fmt_title(pid)
@@ -530,8 +569,10 @@ def main():
         try:
             if args.resume and points_path.exists():
                 xy = np.load(points_path)
+                w = np.load(weights_path) if weights_path.exists() else None
                 source_csv = None
             else:
+                w = None
                 csv_path = resolve_csv_path(pid, r["csv_path"] if has_csv_path else None)
                 df, clean = load_and_clean(
                     csv_path,
@@ -540,7 +581,40 @@ def main():
                     require_validity=args.require_validity,
                     columns_map_path=args.columns_map,
                 )
-                xy = clean[["Gaze Point X[px]", "Gaze Point Y[px]"]].dropna().to_numpy(dtype=np.float32)
+                # Select point source
+                if args.point_source == "fixation":
+                    if ("Fixation Point X[px]" not in clean.columns) or ("Fixation Point Y[px]" not in clean.columns):
+                        raise ValueError("point_source=fixation but Fixation Point X/Y columns are missing")
+                    # Keep only rows that actually belong to a fixation
+                    sub = clean.copy()
+                    if "Fixation Index" in sub.columns:
+                        sub = sub[pd.to_numeric(sub["Fixation Index"], errors="coerce").notna()]
+                    if args.fixation_dedup == "index" and ("Fixation Index" in sub.columns):
+                        # Deduplicate by fixation index: one point per fixation (first occurrence)
+                        sub = sub.dropna(subset=["Fixation Index"]).drop_duplicates(subset=["Fixation Index"], keep="first")
+
+                    xy = sub[["Fixation Point X[px]", "Fixation Point Y[px]"]].dropna().to_numpy(dtype=np.float32)
+                else:
+                    xy = clean[["Gaze Point X[px]", "Gaze Point Y[px]"]].dropna().to_numpy(dtype=np.float32)
+
+                # Optional weights
+                if args.weight == "fixation_duration":
+                    if args.point_source != "fixation":
+                        raise ValueError("weight=fixation_duration requires point_source=fixation")
+                    if "Fixation Duration[ms]" not in sub.columns:
+                        raise ValueError("weight=fixation_duration but Fixation Duration[ms] column is missing")
+                    w = pd.to_numeric(sub.get("Fixation Duration[ms]"), errors="coerce").to_numpy(dtype=float)
+                    # align with xy rows: after dropna on fixation points, we need to filter weights too
+                    mask_xy = sub[["Fixation Point X[px]", "Fixation Point Y[px]"]].notna().all(axis=1).to_numpy()
+                    w = w[mask_xy]
+                    w = np.where(np.isfinite(w) & (w > 0), w, 0.0)
+                    np.save(weights_path, w.astype(np.float32))
+                else:
+                    w = None
+                    if weights_path.exists():
+                        # stale cache safety: ignore old weights
+                        pass
+
                 np.save(points_path, xy)
                 meta_path.write_text(
                     json.dumps(
@@ -549,7 +623,11 @@ def main():
                             "csv_path": csv_path,
                             "SportFreq": sf,
                             "Experience": ex,
-                            "n_samples_after_clean": int(xy.shape[0]),
+                            "point_source": args.point_source,
+                            "weight": args.weight,
+                            "fixation_dedup": args.fixation_dedup if args.point_source == "fixation" else None,
+                            "n_points_after_clean": int(xy.shape[0]),
+                            "weight_sum": float(np.nansum(w)) if w is not None else None,
                         },
                         ensure_ascii=False,
                         indent=2,
@@ -559,7 +637,7 @@ def main():
                 source_csv = csv_path
 
             # Individual outputs: always produce density + (optional) overlay
-            H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
+            H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
             save_density_png(H, one_out / "heatmap_density.png", fmt_title(f"Participant density: {pid_title}"), cmap)
 
             if args.background_img:
@@ -597,23 +675,27 @@ def main():
                     "SportFreq": sf,
                     "Experience": ex,
                     "csv_path": source_csv,
-                    "n_samples": int(xy.shape[0]),
+                    "point_source": args.point_source,
+                    "weight": args.weight,
+                    "fixation_dedup": args.fixation_dedup if args.point_source == "fixation" else "",
+                    "n_points": int(xy.shape[0]),
+                    "weight_sum": float(np.nansum(w)) if w is not None else np.nan,
                     "status": "ok",
                 }
             )
 
             if sf in points_sport:
-                points_sport[sf].append(xy)
+                points_sport[sf].append((xy, w))
             if ex in points_exp:
-                points_exp[ex].append(xy)
+                points_exp[ex].append((xy, w))
             key4 = f"Experience-{ex}×SportFreq-{sf}"
             if key4 in points_4:
-                points_4[key4].append(xy)
+                points_4[key4].append((xy, w))
 
         except Exception as e:
-            err = {"id": pid, "SportFreq": sf, "Experience": ex, "error": repr(e)}
+            err = {"id": pid, "SportFreq": sf, "Experience": ex, "point_source": args.point_source, "weight": args.weight, "error": repr(e)}
             errors.append(err)
-            rows.append({"id": pid, "SportFreq": sf, "Experience": ex, "csv_path": None, "n_samples": 0, "status": "error", "error": repr(e)})
+            rows.append({"id": pid, "SportFreq": sf, "Experience": ex, "csv_path": None, "point_source": args.point_source, "weight": args.weight, "n_points": 0, "status": "error", "error": repr(e)})
             if args.fail_fast:
                 raise
 
@@ -622,13 +704,27 @@ def main():
         pd.DataFrame(errors).to_csv(outdir / "errors.csv", index=False)
 
     def concat_list(lst):
-        return np.concatenate(lst, axis=0) if len(lst) and any(x.size for x in lst) else np.zeros((0, 2), dtype=np.float32)
+        # lst is list of (xy, w)
+        if not lst:
+            return np.zeros((0, 2), dtype=np.float32), None
+        xys = [xy for (xy, _) in lst if isinstance(xy, np.ndarray) and xy.size]
+        if not xys:
+            return np.zeros((0, 2), dtype=np.float32), None
+        XY = np.concatenate(xys, axis=0)
+
+        # weights: only valid when all items have weights (and not None)
+        ws = [w for (_, w) in lst if w is not None]
+        if len(ws) == len([1 for (_, w) in lst if (isinstance(_, np.ndarray) and _.size)]):
+            W = np.concatenate(ws, axis=0) if ws else None
+        else:
+            W = None
+        return XY, W
 
     # ---- Group aggregated heatmaps ----
     dens_sf = {}
     for level in ["High", "Low"]:
-        xy = concat_list(points_sport[level])
-        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
+        xy, w = concat_list(points_sport[level])
+        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
         dens_sf[level] = H
         base = outdir / "groups" / f"SportFreq-{level}"
         base.mkdir(parents=True, exist_ok=True)
@@ -641,8 +737,8 @@ def main():
 
     dens_ex = {}
     for level in ["High", "Low"]:
-        xy = concat_list(points_exp[level])
-        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
+        xy, w = concat_list(points_exp[level])
+        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
         dens_ex[level] = H
         base = outdir / "groups" / f"Experience-{level}"
         base.mkdir(parents=True, exist_ok=True)
@@ -655,8 +751,8 @@ def main():
 
     dens_4 = {}
     for k in points_4.keys():
-        xy = concat_list(points_4[k])
-        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma)
+        xy, w = concat_list(points_4[k])
+        H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
         dens_4[k] = H
         base = outdir / "groups" / "4way" / k
         base.mkdir(parents=True, exist_ok=True)

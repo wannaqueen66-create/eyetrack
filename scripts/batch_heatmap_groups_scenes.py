@@ -70,6 +70,11 @@ def main():
     ap.add_argument("--quiet_glyph_warning", action="store_true")
     ap.add_argument("--font", default=None)
 
+    # fixation-based heatmaps (forwarded)
+    ap.add_argument("--point_source", default=None, choices=["gaze", "fixation"], help="Use gaze points or fixation points")
+    ap.add_argument("--weight", default=None, choices=["none", "fixation_duration"], help="Optional weighting")
+    ap.add_argument("--fixation_dedup", default=None, choices=["index", "none"], help="How to deduplicate fixation points")
+
     ap.add_argument("--fail_fast", action="store_true", help="Stop on first failed scene")
 
     args = ap.parse_args()
@@ -126,6 +131,9 @@ def main():
         f("--cmap", args.cmap)
         f("--title_mode", args.title_mode)
         f("--font", args.font)
+        f("--point_source", args.point_source)
+        f("--weight", args.weight)
+        f("--fixation_dedup", args.fixation_dedup)
         if args.quiet_glyph_warning:
             cmd.append("--quiet_glyph_warning")
         if args.fail_fast:
