@@ -12,9 +12,13 @@
 
 ## 你需要提前准备并上传到 Colab 的文件
 
-- `csvs.zip`：包含所有人的 CSV（**每人 1 个 CSV**；文件名包含 name 用于匹配）
-- `group_manifest.csv`：表头为 `name,SportFreq,Experience`
-- `scene.png`（或 jpg）：所有人同一场景的一张底图（像素尺寸要与 screen_w/screen_h 一致）
+- `csvs.zip`：眼动 CSV 数据
+  - 旧版结构：所有 CSV 都在同一个文件夹（**每人 1 个 CSV**）
+  - **新版结构（推荐/常见）**：按场景分文件夹（例如 12 个场景文件夹）；每个场景文件夹内包含该场景下所有人的 CSV（每人 1 个）
+- `group_manifest.csv`：表头为 `name,SportFreq,Experience`（每人 1 行）
+- 场景底图（png/jpg）：
+  - 旧版结构：所有人同一场景一张底图
+  - 新版结构：每个场景文件夹内放该场景底图（与该场景 CSV 坐标同分辨率）
 
 ---
 
@@ -65,7 +69,9 @@ files.upload()
 
 ---
 
-## Cell 4：解压 CSV 到同一文件夹 batch_csvs/
+## Cell 4：解压 CSV
+
+### 4A) 旧版结构：解压到同一文件夹 batch_csvs/
 
 ```bash
 !rm -rf batch_csvs
@@ -74,6 +80,28 @@ files.upload()
 
 # quick check
 !find batch_csvs -maxdepth 2 -type f -name "*.csv" | head
+```
+
+### 4B) 新版结构（推荐）：解压为“按场景分文件夹” scenes/
+
+> 目标结构：
+> - scenes/<scene_1>/*.csv + (scene_1).png
+> - scenes/<scene_2>/*.csv + (scene_2).png
+> - ...
+
+```bash
+!rm -rf scenes
+!mkdir -p scenes
+!unzip -q csvs.zip -d scenes
+
+# quick check: list scene folders
+!find scenes -maxdepth 1 -mindepth 1 -type d | head
+
+# quick check: show some csv
+!find scenes -maxdepth 2 -type f -name "*.csv" | head
+
+# quick check: show some images
+!find scenes -maxdepth 2 -type f \( -name "*.png" -o -name "*.jpg" -o -name "*.jpeg" \) | head
 ```
 
 ---
@@ -100,6 +128,8 @@ Image.open('scene.jpg').size
 
 把 `--screen_w/--screen_h` 改成 Cell 5 得到的分辨率。
 
+### 6A) 旧版结构（单文件夹 CSV + 单张底图）
+
 ```bash
 !python scripts/batch_heatmap_groups.py \
   --manifest group_manifest.csv \
@@ -108,6 +138,23 @@ Image.open('scene.jpg').size
   --background_img scene.png \
   --outdir outputs_batch_groups
 ```
+
+### 6B) 新版结构（按场景分文件夹：一次跑完所有场景）
+
+> 前提：每个场景文件夹里都放了该场景底图（png/jpg）
+
+```bash
+!python scripts/batch_heatmap_groups_scenes.py \
+  --manifest group_manifest.csv \
+  --scenes_root scenes \
+  --screen_w 1920 --screen_h 1080 \
+  --outdir outputs_by_scene
+```
+
+输出结构示例：
+- `outputs_by_scene/<scene_name>/individual/...`
+- `outputs_by_scene/<scene_name>/groups/...`
+- `outputs_by_scene/<scene_name>/compare/...`
 
 ---
 
