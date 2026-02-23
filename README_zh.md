@@ -307,6 +307,10 @@ pip install -r requirements.txt
 
 可用脚本：`scripts/summarize_aoi_visit_rate.py`
 
+补充脚本（分布诊断 + 两部建模辅助）：
+- 分布诊断：`scripts/aoi_distribution_diagnostics.py`
+- 两部建模辅助（visited + 条件化 TTFF/dwell/count）：`scripts/model_aoi_two_part.py`
+
 ---
 
 ## 8. 论文向下一步

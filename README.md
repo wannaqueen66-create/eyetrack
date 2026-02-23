@@ -471,6 +471,11 @@ Recommended reporting (paper-friendly):
 
 See: `scripts/summarize_aoi_visit_rate.py`
 
+### (New) Diagnostics + two-part modeling helpers
+
+- Distribution diagnostics: `scripts/aoi_distribution_diagnostics.py`
+- Two-part modeling helper (visited + conditional TTFF/dwell/count): `scripts/model_aoi_two_part.py`
+
 ---
 
 ## 9. Paper-Oriented Next Steps / 论文向下一步
