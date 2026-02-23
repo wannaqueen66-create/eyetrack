@@ -351,6 +351,7 @@ Output files / 输出文件：
 - `dwell_time_ms`: total fixation time in AOI (recommended: aggregate by fixation) / AOI 总停留时长（推荐按 fixation 去重聚合）
 - `TTFF_ms`: time to first fixation / 首次注视时间
 - `fixation_count`: number of fixations / 注视次数
+- `visited`: whether the AOI was visited in this trial/scene (1=yes, 0=no). If `visited==0`, then `TTFF_ms` is NaN by definition. / 本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF_ms` 按定义为 NaN。
 - `polygon_count`: number of polygons under class / 该类别下子区域数量
 
 ---
@@ -459,7 +460,16 @@ pip install -r requirements.txt
 - Check outlier gaze points (negative or huge values)
 
 ### Q4. `TTFF_ms` is NaN
-No gaze entered that AOI class; check polygon location and data quality.
+No gaze entered that AOI class in that trial/scene (`visited==0`). This is expected behavior.
+
+Recommended reporting (paper-friendly):
+- Report both TTFF (conditioned on `visited==1`) AND the non-visit probability:
+  - `p_not_visited = P(visited==0)` per condition × AOI
+- For inferential stats, use a two-part approach:
+  1) Model `visited` (binary) with a logit model (preferably GLMM with participant random intercept)
+  2) Model `TTFF_ms` on the subset where `visited==1`
+
+See: `scripts/summarize_aoi_visit_rate.py`
 
 ---
 

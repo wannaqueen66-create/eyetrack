@@ -200,6 +200,7 @@ python scripts/run_aoi_metrics.py \
 - `dwell_time_ms`：该类 AOI 总停留时长（推荐按 fixation 去重聚合，避免重复累计）
 - `TTFF_ms`：首次注视时间
 - `fixation_count`：注视次数
+- `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF_ms` 按定义为 NaN。
 - `polygon_count`：该类包含的区域数量
 
 ---
@@ -296,7 +297,15 @@ pip install -r requirements.txt
 
 ### 4）`TTFF_ms` 为 NaN
 
-说明该 AOI 类没有被注视点命中，检查框选区域或数据质量。
+- 原因：该试次/场景中该 AOI 没有被注视到（`visited==0`），这是**预期行为**；当然数据质量或 AOI 标注偏移也可能导致“看起来不合理的未注视”。
+- 建议论文报告方式（更强、更可解释）：
+  1) 在 `visited==1` 的子样本上报告/建模 `TTFF_ms`
+  2) 同时报告“未进入比例”`p_not_visited = P(visited==0)`（每个条件×AOI）
+  3) 推断统计建议用“两部模型”：
+     - 第一步：对 `visited` 做二项 logit（最好用 GLMM：被试随机截距）
+     - 第二步：对 `TTFF_ms`（仅 visited==1）做线性混合/或 log 变换后建模
+
+可用脚本：`scripts/summarize_aoi_visit_rate.py`
 
 ---
 

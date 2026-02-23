@@ -164,10 +164,12 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
         else:
             ttff = np.nan
 
+        samples = int(mask.sum())
         per_poly_rows.append({
             'class_name': a.class_name,
             'polygon_id': a.polygon_id,
-            'samples': int(mask.sum()),
+            'samples': samples,
+            'visited': int(samples > 0),
             'dwell_time_ms': float(dwell) if pd.notna(dwell) else np.nan,
             'fixation_count': int(fcount) if pd.notna(fcount) else 0,
             'TTFF_ms': float(ttff) if pd.notna(ttff) else np.nan,
@@ -182,10 +184,12 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
             ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
         else:
             ttff = np.nan
+        samples = int(union.sum())
         per_class_rows.append({
             'class_name': cls,
             'polygon_count': len(masks),
-            'samples': int(union.sum()),
+            'samples': samples,
+            'visited': int(samples > 0),
             'dwell_time_ms': float(dwell) if pd.notna(dwell) else np.nan,
             'fixation_count': int(fcount) if pd.notna(fcount) else 0,
             'TTFF_ms': float(ttff) if pd.notna(ttff) else np.nan,
