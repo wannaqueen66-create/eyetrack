@@ -208,9 +208,16 @@ python scripts/run_aoi_metrics.py \
 - `--dwell_empty_as_zero`：当 `visited==0` 时将 `dwell_time_ms` 记为 0.0（`TTFF_ms` 仍为 NaN）
 - `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
 - `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
-- `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
-- `--report_class_overlap`：导出 overlap 表（`aoi_class_overlap.csv` 或 `batch_aoi_class_overlap.csv`）
 - `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
+- `--report_time_segments`：导出 `timestamp_segments_summary.csv`（单文件=每个 CSV 一行；批处理=每个 participant×scene 一行）
+- `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
+- `--report_class_overlap`：导出 overlap 表（`aoi_class_overlap.csv` 或 `batch_aoi_class_overlap.csv`，包含 overlap ratio）
+
+**论文写法模板（可直接改动使用）**
+- *AOI 尺寸一致性*：我们要求 AOI 标注所用底图的像素尺寸与眼动坐标系一致（aoi.json 记录的 image 宽高与 screen_w/screen_h 不一致时按错误处理）。
+- *TTFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF_ms` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
+- *多段记录保护*：通过检测时间戳断点（负跳变或大间隔）标记潜在多段/多 trial 的 CSV，并输出 segment 汇总表供排查。
+- *AOI 重叠*：对不同 AOI 类在屏幕空间的重叠进行检测，并在存在时报告重叠的数量/比例。
 
 为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
 
