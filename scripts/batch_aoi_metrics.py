@@ -7,6 +7,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
+import numpy as np
 from src.aoi_metrics import load_aoi_json, compute_metrics
 from src.filters import filter_by_screen_and_validity, compute_valid_mask
 
