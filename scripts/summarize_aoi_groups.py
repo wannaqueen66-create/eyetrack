@@ -63,6 +63,7 @@ def _save_bar(
     title: str,
     annotate: bool = True,
     yfmt=None,
+    force_single_class: str | None = None,
 ):
     import matplotlib.pyplot as plt
 
@@ -77,6 +78,8 @@ def _save_bar(
         return f"{v:.3g}" if isinstance(v, (int, float)) else str(v)
 
     classes = sorted(df["class_name"].dropna().unique().tolist())
+    if force_single_class is not None:
+        classes = [force_single_class]
     n_cls = len(classes)
 
     # If too many classes, keep it simple to avoid unreadable grids
@@ -226,6 +229,8 @@ def main():
     # Plots
     ap.add_argument("--plots", action="store_true", help="If set, export paper-friendly plots (visited_rate and conditional TTFF/dwell) by group")
     ap.add_argument("--plot_format", default="png", choices=["png", "pdf"], help="Plot format (default: png)")
+    ap.add_argument("--plot_per_class", action="store_true", help="If set, export one figure per AOI class (avoids crowded multi-panel plots)")
+    ap.add_argument("--no_annotate", action="store_true", help="If set, do not print numeric labels on bars")
     ap.add_argument("--scene_map_csv", default=None, help="Optional CSV mapping: scene_id -> scene_label (and optionally order). Columns: scene_id, scene_label[, scene_order]")
     ap.add_argument(
         "--scene_label_mode",
@@ -345,7 +350,24 @@ def main():
                     return f"{v:.0f}"
                 return f"{v:.3g}"
 
-            _save_bar(sdf, x=plot_x, y=ycol, hue="group_value", out_path=outp, title=title, annotate=True, yfmt=_yfmt)
+            do_annotate = (not args.no_annotate)
+
+            if args.plot_per_class:
+                for cls in sorted(sdf["class_name"].dropna().unique().tolist()):
+                    outp_cls = os.path.join(plots_dir, f"{gt}_{metric}__{cls}.{args.plot_format}")
+                    _save_bar(
+                        sdf,
+                        x=plot_x,
+                        y=ycol,
+                        hue="group_value",
+                        out_path=outp_cls,
+                        title=f"{title} ({cls})",
+                        annotate=do_annotate,
+                        yfmt=_yfmt,
+                        force_single_class=cls,
+                    )
+            else:
+                _save_bar(sdf, x=plot_x, y=ycol, hue="group_value", out_path=outp, title=title, annotate=do_annotate, yfmt=_yfmt)
 
     if not args.quiet:
         print("Saved:")
