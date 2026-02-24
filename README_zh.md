@@ -207,6 +207,8 @@ python scripts/run_aoi_metrics.py \
 - `--point_source fixation`：用 `Fixation Point X/Y` 做 AOI 命中判定（与 fixation-based 指标更一致）
 - `--dwell_empty_as_zero`：当 `visited==0` 时将 `dwell_time_ms` 记为 0.0（`TTFF_ms` 仍为 NaN）
 - `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
+- `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
+- `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
 
 为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
 

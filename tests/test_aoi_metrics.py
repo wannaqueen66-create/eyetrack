@@ -64,3 +64,17 @@ def test_dwell_empty_as_zero():
     poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', dwell_empty_as_zero=True)
     assert int(poly.loc[0, 'visited']) == 0
     assert float(poly.loc[0, 'dwell_time_ms']) == 0.0
+
+
+def test_ttff_trial_start_ms_override():
+    # AOI hit occurs at t=120; if trial_start_ms=100, TTFF should be 20.
+    df = pd.DataFrame({
+        'Recording Time Stamp[ms]': [100, 110, 120],
+        'Gaze Point X[px]': [999, 999, 5],
+        'Gaze Point Y[px]': [999, 999, 5],
+        'Fixation Index': [1, 2, 3],
+        'Fixation Duration[ms]': [10, 10, 10],
+    })
+    aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
+    poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', trial_start_ms=100)
+    assert float(poly.loc[0, 'TTFF_ms']) == 20.0

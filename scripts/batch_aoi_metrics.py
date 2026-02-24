@@ -19,6 +19,14 @@ def main():
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
     ap.add_argument('--point_source', default='gaze', choices=['gaze', 'fixation'], help="AOI hit testing source: gaze (default) or fixation (Fixation Point X/Y)")
     ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, dwell_time_ms will be 0.0 (instead of NaN) when visited==0')
+
+    # TTFF t0 control
+    ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional trial start timestamp (ms). If set, TTFF_ms = first_hit_ts - trial_start_ms')
+    ap.add_argument('--trial_start_col', default=None, help='Optional column name used to derive trial start (t0 = min(col)). Used only if --trial_start_ms is not set.')
+
+    # AOI overlap warning
+    ap.add_argument('--warn_class_overlap', action='store_true', help='If set, print warnings when different AOI classes overlap in screen space')
+    ap.add_argument('--no_warn_class_overlap', action='store_true', help='Disable class-overlap warnings')
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
@@ -75,12 +83,21 @@ def main():
                         print('[WARN]', msg)
 
         aois = load_aoi_json(r['aoi_path'])
+        warn_overlap = True
+        if args.no_warn_class_overlap:
+            warn_overlap = False
+        elif args.warn_class_overlap:
+            warn_overlap = True
+
         poly_df, class_df = compute_metrics(
             df,
             aois,
             dwell_mode=args.dwell_mode,
             point_source=args.point_source,
             dwell_empty_as_zero=args.dwell_empty_as_zero,
+            trial_start_ms=args.trial_start_ms,
+            trial_start_col=args.trial_start_col,
+            warn_class_overlap=warn_overlap,
         )
 
         poly_df.insert(0, 'scene_id', r['scene_id'])
@@ -111,6 +128,10 @@ def main():
                     'dwell_mode': args.dwell_mode,
                     'point_source': args.point_source,
                     'dwell_empty_as_zero': bool(args.dwell_empty_as_zero),
+                    'trial_start_ms': args.trial_start_ms,
+                    'trial_start_col': args.trial_start_col,
+                    'warn_class_overlap': bool(warn_overlap),
+                    'diagnostics': (all_poly[0].attrs.get('diagnostics', {}) if all_poly else {}),
                     'screen_w': args.screen_w,
                     'screen_h': args.screen_h,
                     'require_validity': bool(args.require_validity),

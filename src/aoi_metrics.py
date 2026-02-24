@@ -155,6 +155,9 @@ def compute_metrics(
     dwell_mode: str = 'row',
     point_source: str = 'gaze',
     dwell_empty_as_zero: bool = False,
+    trial_start_ms: float | None = None,
+    trial_start_col: str | None = None,
+    warn_class_overlap: bool = True,
 ):
     """Compute AOI metrics.
 
@@ -188,10 +191,15 @@ def compute_metrics(
         y = pd.to_numeric(df['Fixation Point Y[px]'], errors='coerce').to_numpy()
 
     t = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').to_numpy()
-    if not np.isfinite(t).any():
-        t0 = np.nan
+    # Determine t0 (trial start)
+    # Priority: explicit trial_start_ms > trial_start_col > min(Recording Time Stamp)
+    if trial_start_ms is not None:
+        t0 = float(trial_start_ms)
+    elif trial_start_col is not None and (trial_start_col in df.columns):
+        t_alt = pd.to_numeric(df[trial_start_col], errors='coerce').to_numpy()
+        t0 = np.nanmin(t_alt) if np.isfinite(t_alt).any() else np.nan
     else:
-        t0 = np.nanmin(t)
+        t0 = np.nanmin(t) if np.isfinite(t).any() else np.nan
 
     per_poly_rows = []
     per_class_rows = []
@@ -247,4 +255,37 @@ def compute_metrics(
             'TTFF_ms': float(ttff) if pd.notna(ttff) else np.nan,
         })
 
-    return pd.DataFrame(per_poly_rows), pd.DataFrame(per_class_rows)
+    poly_df = pd.DataFrame(per_poly_rows)
+    class_df = pd.DataFrame(per_class_rows)
+
+    # Diagnostics: class overlap counts (based on union masks)
+    overlap_info = []
+    if warn_class_overlap and len(class_to_masks) >= 2:
+        classes = list(class_to_masks.keys())
+        unions = {c: (np.logical_or.reduce(class_to_masks[c]) if class_to_masks[c] else np.zeros_like(x, dtype=bool)) for c in classes}
+        for i in range(len(classes)):
+            for j in range(i + 1, len(classes)):
+                ci, cj = classes[i], classes[j]
+                cnt = int(np.logical_and(unions[ci], unions[cj]).sum())
+                if cnt > 0:
+                    overlap_info.append({"class_a": ci, "class_b": cj, "overlap_samples": cnt})
+        if overlap_info:
+            top = sorted(overlap_info, key=lambda d: d["overlap_samples"], reverse=True)[:10]
+            print("[WARN] AOI class overlap detected (a point can belong to multiple classes). Top overlaps:")
+            for d in top:
+                print(f"  - {d['class_a']} × {d['class_b']}: overlap_samples={d['overlap_samples']}")
+
+    diag = {
+        "t0_ms": float(t0) if pd.notna(t0) else None,
+        "point_source": point_source,
+        "trial_start_ms": float(trial_start_ms) if trial_start_ms is not None else None,
+        "trial_start_col": trial_start_col,
+        "warn_class_overlap": bool(warn_class_overlap),
+        "class_overlap": overlap_info,
+    }
+
+    # attach to DataFrame attrs so callers can export to run_config.json
+    poly_df.attrs["diagnostics"] = diag
+    class_df.attrs["diagnostics"] = diag
+
+    return poly_df, class_df
