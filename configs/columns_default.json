@@ -41,5 +41,19 @@
     "Fixation Duration[ms]",
     "FixationDuration[ms]",
     "fixation_duration_ms"
+  ],
+  "Fixation Point X[px]": [
+    "Fixation Point X[px]",
+    "FixationPointX[px]",
+    "Fixation X[px]",
+    "FixationPointX",
+    "fixation_x"
+  ],
+  "Fixation Point Y[px]": [
+    "Fixation Point Y[px]",
+    "FixationPointY[px]",
+    "Fixation Y[px]",
+    "FixationPointY",
+    "fixation_y"
   ]
 }

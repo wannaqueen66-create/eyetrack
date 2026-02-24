@@ -17,7 +17,7 @@ def main():
     ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSVs already cleaned)')
     ap.add_argument('--outdir', default='outputs_batch')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
-    ap.add_argument('--point_source', default='gaze', choices=['gaze', 'fixation'], help="AOI hit testing source: gaze (default) or fixation (Fixation Point X/Y)")
+    ap.add_argument('--point_source', default='fixation', choices=['gaze', 'fixation'], help="AOI hit testing source: fixation (default) or gaze. Use fixation to align with fixation-based dwell/TTFF.")
     ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, dwell_time_ms will be 0.0 (instead of NaN) when visited==0')
 
     # TTFF t0 control
@@ -66,11 +66,15 @@ def main():
 
         # Optional filtering to align with pipeline cleaning
         if not args.assume_clean:
+            x_col = 'Fixation Point X[px]' if args.point_source == 'fixation' else 'Gaze Point X[px]'
+            y_col = 'Fixation Point Y[px]' if args.point_source == 'fixation' else 'Gaze Point Y[px]'
             df = filter_by_screen_and_validity(
                 df,
                 screen_w=args.screen_w,
                 screen_h=args.screen_h,
                 require_validity=args.require_validity,
+                x_col=x_col,
+                y_col=y_col,
             )
 
         # Timestamp continuity diagnostics (multi-trial protection)
@@ -199,6 +203,7 @@ def main():
                     'image_match': args.image_match,
                     'dwell_mode': args.dwell_mode,
                     'point_source': args.point_source,
+                    'point_source_note': "AOI hit-testing used x/y columns based on point_source (fixation uses Fixation Point X/Y; gaze uses Gaze Point X/Y).",
                     'dwell_empty_as_zero': bool(args.dwell_empty_as_zero),
                     'trial_start_ms': args.trial_start_ms,
                     'trial_start_col': args.trial_start_col,
