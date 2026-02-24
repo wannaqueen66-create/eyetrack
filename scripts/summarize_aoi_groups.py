@@ -54,6 +54,67 @@ def _safe_num(s):
     return pd.to_numeric(s, errors="coerce")
 
 
+def _save_bar(df: pd.DataFrame, x: str, y: str, hue: str, out_path: str, title: str):
+    import matplotlib.pyplot as plt
+
+    if df.empty:
+        return
+
+    # small helper: bar plot using group means already computed
+    plt.figure(figsize=(9, 4.8))
+    # pivot to make grouped bars stable
+    # We'll plot one panel per class using subplots if many classes
+    classes = sorted(df["class_name"].dropna().unique().tolist())
+    n_cls = len(classes)
+
+    # If too many classes, just save one combined (faceting kept minimal)
+    if n_cls <= 4:
+        fig, axes = plt.subplots(1, n_cls, figsize=(4.6 * n_cls, 4.2), sharey=True)
+        if n_cls == 1:
+            axes = [axes]
+        for ax, cls in zip(axes, classes):
+            sub = df[df["class_name"] == cls]
+            # order group values for nicer display
+            order = ["High", "Low"]
+            gvals = [g for g in order if g in set(sub[hue])]
+            if not gvals:
+                gvals = sorted(sub[hue].unique().tolist())
+            xs = sorted(sub[x].unique().tolist())
+            width = 0.35
+            for i, gv in enumerate(gvals):
+                yv = [float(sub[(sub[x] == xx) & (sub[hue] == gv)][y].iloc[0]) if len(sub[(sub[x] == xx) & (sub[hue] == gv)]) else np.nan for xx in xs]
+                ax.bar([j + (i - (len(gvals)-1)/2)*width for j in range(len(xs))], yv, width=width, label=str(gv))
+            ax.set_xticks(range(len(xs)))
+            ax.set_xticklabels(xs, rotation=0)
+            ax.set_title(f"{cls}")
+            ax.grid(axis="y", alpha=0.3)
+        axes[0].set_ylabel(y)
+        axes[-1].legend(title=hue, loc="best")
+        fig.suptitle(title)
+        fig.tight_layout()
+        fig.savefig(out_path, dpi=200)
+        plt.close(fig)
+    else:
+        # fallback: only save overall without faceting
+        fig, ax = plt.subplots(1, 1, figsize=(10, 4.5))
+        sub = df.copy()
+        xs = sorted(sub[x].unique().tolist())
+        gvals = sorted(sub[hue].unique().tolist())
+        width = 0.8 / max(1, len(gvals))
+        for i, gv in enumerate(gvals):
+            yv = [float(sub[(sub[x] == xx) & (sub[hue] == gv)][y].mean()) for xx in xs]
+            ax.bar([j + (i - (len(gvals)-1)/2)*width for j in range(len(xs))], yv, width=width, label=str(gv))
+        ax.set_xticks(range(len(xs)))
+        ax.set_xticklabels(xs)
+        ax.set_ylabel(y)
+        ax.set_title(title)
+        ax.legend(title=hue)
+        ax.grid(axis="y", alpha=0.3)
+        fig.tight_layout()
+        fig.savefig(out_path, dpi=200)
+        plt.close(fig)
+
+
 def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame:
     out_rows = []
     for (scene_id, class_name, gval), sub in df.groupby(["scene_id", "class_name", group_col], dropna=False):
@@ -100,6 +161,11 @@ def main():
     ap.add_argument("--group_manifest", required=True, help="group_manifest.csv (name,SportFreq,Experience)")
     ap.add_argument("--outdir", default="outputs_aoi_groups")
     ap.add_argument("--id_col", default="name", help="ID column name in group_manifest (default: name)")
+
+    # Plots
+    ap.add_argument("--plots", action="store_true", help="If set, export paper-friendly plots (visited_rate and conditional TTFF/dwell) by group")
+    ap.add_argument("--plot_format", default="png", choices=["png", "pdf"], help="Plot format (default: png)")
+    ap.add_argument("--quiet", action="store_true", help="Reduce console output")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -140,9 +206,31 @@ def main():
     merged_path = os.path.join(args.outdir, "aoi_with_groups.csv")
     merged.to_csv(merged_path, index=False)
 
-    print("Saved:")
-    print(" -", out_path)
-    print(" -", merged_path)
+    if args.plots:
+        plots_dir = os.path.join(args.outdir, "plots")
+        os.makedirs(plots_dir, exist_ok=True)
+
+        # For SportFreq / Experience: x=scene_id, hue=group_value
+        for gt, metric, ycol, title in [
+            ("SportFreq", "visited_rate", "visited_rate", "Visited rate by SportFreq"),
+            ("Experience", "visited_rate", "visited_rate", "Visited rate by Experience"),
+            ("SportFreq", "TTFF_median_given_visited", "TTFF_median_given_visited", "TTFF (median | visited) by SportFreq"),
+            ("Experience", "TTFF_median_given_visited", "TTFF_median_given_visited", "TTFF (median | visited) by Experience"),
+            ("SportFreq", "dwell_median_given_visited", "dwell_median_given_visited", "Dwell (median | visited) by SportFreq"),
+            ("Experience", "dwell_median_given_visited", "dwell_median_given_visited", "Dwell (median | visited) by Experience"),
+        ]:
+            sdf = out_df[out_df["group_type"] == gt].copy()
+            if sdf.empty:
+                continue
+            outp = os.path.join(plots_dir, f"{gt}_{metric}.{args.plot_format}")
+            _save_bar(sdf, x="scene_id", y=ycol, hue="group_value", out_path=outp, title=title)
+
+    if not args.quiet:
+        print("Saved:")
+        print(" -", out_path)
+        print(" -", merged_path)
+        if args.plots:
+            print(" -", os.path.join(args.outdir, "plots"))
 
 
 if __name__ == "__main__":

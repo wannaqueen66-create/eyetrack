@@ -200,7 +200,8 @@ python scripts/run_aoi_metrics.py \
 python scripts/summarize_aoi_groups.py \
   --aoi_class_csv outputs_aoi_all/batch_aoi_metrics_by_class.csv \
   --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
-  --outdir outputs_aoi_groups
+  --outdir outputs_aoi_groups \
+  --plots
 ```
 
 输出：
