@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pandas as pd
 from src.aoi_metrics import load_aoi_json, compute_metrics
-from src.filters import filter_by_screen_and_validity
+from src.filters import filter_by_screen_and_validity, compute_valid_mask
 
 
 def main():
@@ -37,6 +37,7 @@ def main():
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
     ap.add_argument('--require_validity', action='store_true', help='If set, enforce Validity Left/Right == 1 (only if those columns exist)')
+    ap.add_argument('--min_valid_ratio', type=float, default=None, help='Optional trial-level minimum valid ratio (0-1). If provided, will mark trial_excluded when below threshold and write batch_exclusion_log.csv')
 
     # Image size validation (aoi.json may include image width/height)
     ap.add_argument('--image_match', default='error', choices=['error', 'warn', 'ignore'], help="If aoi.json provides image width/height and you pass --screen_w/--screen_h: what to do on mismatch (default: error)")
@@ -52,6 +53,7 @@ def main():
 
     all_poly, all_class = [], []
     time_rows = []
+    exclusions = []
 
     for _, r in m.iterrows():
         df = pd.read_csv(r['csv_path'], encoding='utf-8-sig')
@@ -64,18 +66,29 @@ def main():
         cmap = load_columns_map(args.columns_map)
         rename_df_columns_inplace(df, cmap)
 
+        # Trial-level valid ratio (auditable inclusion/exclusion)
+        x_col = 'Fixation Point X[px]' if args.point_source == 'fixation' else 'Gaze Point X[px]'
+        y_col = 'Fixation Point Y[px]' if args.point_source == 'fixation' else 'Gaze Point Y[px]'
+        valid_mask = compute_valid_mask(
+            df,
+            screen_w=args.screen_w,
+            screen_h=args.screen_h,
+            require_validity=args.require_validity,
+            x_col=x_col,
+            y_col=y_col,
+        )
+        n_total = int(len(df))
+        n_valid = int(valid_mask.sum()) if n_total else 0
+        valid_ratio = (n_valid / n_total) if n_total else None
+        trial_excluded = False
+        exclusion_reason = None
+        if args.min_valid_ratio is not None and valid_ratio is not None and valid_ratio < float(args.min_valid_ratio):
+            trial_excluded = True
+            exclusion_reason = f"valid_ratio<{float(args.min_valid_ratio)}"
+
         # Optional filtering to align with pipeline cleaning
         if not args.assume_clean:
-            x_col = 'Fixation Point X[px]' if args.point_source == 'fixation' else 'Gaze Point X[px]'
-            y_col = 'Fixation Point Y[px]' if args.point_source == 'fixation' else 'Gaze Point Y[px]'
-            df = filter_by_screen_and_validity(
-                df,
-                screen_w=args.screen_w,
-                screen_h=args.screen_h,
-                require_validity=args.require_validity,
-                x_col=x_col,
-                y_col=y_col,
-            )
+            df = df[valid_mask].copy()
 
         # Timestamp continuity diagnostics (multi-trial protection)
         time_diag = {}
@@ -144,10 +157,33 @@ def main():
         except Exception:
             pass
 
+        # Add trial-level audit fields
+        for _df in (poly_df, class_df):
+            _df.insert(0, 'exclusion_reason', exclusion_reason)
+            _df.insert(0, 'trial_excluded', int(trial_excluded))
+            _df.insert(0, 'min_valid_ratio', args.min_valid_ratio)
+            _df.insert(0, 'valid_ratio', valid_ratio)
+            _df.insert(0, 'n_valid_rows', n_valid)
+            _df.insert(0, 'n_total_rows', n_total)
+
         poly_df.insert(0, 'scene_id', r['scene_id'])
         poly_df.insert(0, 'participant_id', r['participant_id'])
         class_df.insert(0, 'scene_id', r['scene_id'])
         class_df.insert(0, 'participant_id', r['participant_id'])
+
+        # Exclusion log row (even if not excluded, if threshold provided)
+        if args.min_valid_ratio is not None:
+            exclusions.append({
+                'participant_id': r['participant_id'],
+                'scene_id': r['scene_id'],
+                'csv_path': r['csv_path'],
+                'valid_ratio': valid_ratio,
+                'min_valid_ratio': float(args.min_valid_ratio),
+                'trial_excluded': int(trial_excluded),
+                'exclusion_reason': exclusion_reason,
+                'n_total_rows': n_total,
+                'n_valid_rows': n_valid,
+            })
 
         if args.report_time_segments:
             time_rows.append({
@@ -192,6 +228,10 @@ def main():
     if args.report_time_segments and time_rows:
         pd.DataFrame(time_rows).to_csv(os.path.join(args.outdir, 'timestamp_segments_summary.csv'), index=False)
 
+    # Optional exclusion log
+    if args.min_valid_ratio is not None and exclusions:
+        pd.DataFrame(exclusions).to_csv(os.path.join(args.outdir, 'batch_exclusion_log.csv'), index=False)
+
     # Save run config for reproducibility
     cfg_path = os.path.join(args.outdir, 'run_config.json')
     try:
@@ -216,6 +256,7 @@ def main():
                     'screen_w': args.screen_w,
                     'screen_h': args.screen_h,
                     'require_validity': bool(args.require_validity),
+                    'min_valid_ratio': args.min_valid_ratio,
                     'assume_clean': bool(args.assume_clean),
                     'columns_map': args.columns_map,
                 },

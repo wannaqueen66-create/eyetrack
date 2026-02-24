@@ -210,12 +210,14 @@ python scripts/run_aoi_metrics.py \
 - `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
 - `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
 - `--report_time_segments`：导出 `timestamp_segments_summary.csv`（单文件=每个 CSV 一行；批处理=每个 participant×scene 一行）
+- `--min_valid_ratio`：trial-level 追踪率阈值；设置后会输出 `exclusion_log.csv` / `batch_exclusion_log.csv`
 - `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
 - `--report_class_overlap`：导出 overlap 表（`aoi_class_overlap.csv` 或 `batch_aoi_class_overlap.csv`，包含 overlap ratio）
 
 **论文写法模板（可直接改动使用）**
 - *AOI 尺寸一致性*：我们要求 AOI 标注所用底图的像素尺寸与眼动坐标系一致（aoi.json 记录的 image 宽高与 screen_w/screen_h 不一致时按错误处理）。
 - *TTFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF_ms` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
+- *追踪率纳入规则*：基于越界与（可选）Validity 字段计算 trial-level 的 valid_ratio，并在 valid_ratio 低于阈值时落盘 exclusion log（避免不同条件下追踪丢失造成系统性偏倚）。
 - *多段记录保护*：通过检测时间戳断点（负跳变或大间隔）标记潜在多段/多 trial 的 CSV，并输出 segment 汇总表供排查。
 - *AOI 重叠*：对不同 AOI 类在屏幕空间的重叠进行检测，并在存在时报告重叠的数量/比例。
 

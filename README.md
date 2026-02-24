@@ -361,12 +361,14 @@ Output files / 输出文件：
 - `--trial_start_ms` / `--trial_start_col`: control TTFF baseline t0 (optional; default t0=min timestamp)
 - `--time_segments {warn,error,ignore}`: detect timestamp discontinuities (multi-trial risk) and warn/error
 - `--report_time_segments`: export `timestamp_segments_summary.csv` (per file in single-run; per participant×scene in batch)
+- `--min_valid_ratio`: trial-level tracking-rate threshold; exports `exclusion_log.csv` / `batch_exclusion_log.csv` when set
 - `--warn_class_overlap` (default on): warn if different AOI classes overlap in screen space
 - `--report_class_overlap`: export overlap table (`aoi_class_overlap.csv` or `batch_aoi_class_overlap.csv`) including overlap ratios
 
 **How to describe these checks in a paper (template)**
 - *AOI size consistency*: We ensured AOI definitions were drawn on the same background image size as the eye-tracking coordinates (mismatched AOI image size vs. screen size was treated as an error).
 - *TTFF missingness*: If an AOI was not visited, `TTFF_ms` was undefined and recorded as missing (NaN); visit probability and conditional TTFF were analyzed separately (two-part strategy).
+- *Tracking-rate inclusion*: We computed a trial-level valid ratio based on screen bounds and (optionally) validity flags, and logged trial exclusions when valid_ratio fell below a pre-defined threshold.
 - *Multi-trial protection*: We flagged potential multi-segment recordings by detecting timestamp discontinuities (negative jumps or large gaps) and reported a segment count summary.
 - *AOI overlap*: We checked overlaps between AOI classes in screen space and reported overlap counts/ratios when present.
 
