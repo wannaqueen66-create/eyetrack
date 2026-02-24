@@ -227,6 +227,12 @@ def main():
     ap.add_argument("--plots", action="store_true", help="If set, export paper-friendly plots (visited_rate and conditional TTFF/dwell) by group")
     ap.add_argument("--plot_format", default="png", choices=["png", "pdf"], help="Plot format (default: png)")
     ap.add_argument("--scene_map_csv", default=None, help="Optional CSV mapping: scene_id -> scene_label (and optionally order). Columns: scene_id, scene_label[, scene_order]")
+    ap.add_argument(
+        "--scene_label_mode",
+        default="condition",
+        choices=["raw", "condition", "condition_with_group"],
+        help="How to label scenes on plots when --scene_map_csv is not provided (default: condition).",
+    )
     ap.add_argument("--quiet", action="store_true", help="Reduce console output")
     args = ap.parse_args()
 
@@ -252,6 +258,21 @@ def main():
     # 4-way cross
     merged["SportFreq_x_Experience"] = merged["SportFreq"].astype(str) + "_" + merged["Experience"].astype(str)
 
+    def _auto_scene_label(scene_id: str) -> str:
+        s = str(scene_id)
+        # Try parse condition like C1W45 from scene_id
+        import re
+        m = re.search(r"C\d+W\d+", s)
+        cond = m.group(0) if m else s
+        if args.scene_label_mode == "raw":
+            return s
+        if args.scene_label_mode == "condition":
+            return cond
+        # condition_with_group
+        m2 = re.search(r"(?:组|group)(\d+)", s)
+        grp = f"G{m2.group(1)}" if m2 else ""
+        return f"{grp}-{cond}" if grp else cond
+
     # Optional scene label mapping (for nicer x-axis in plots)
     scene_label_map = None
     scene_order_map = None
@@ -272,10 +293,11 @@ def main():
 
     out_df = pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
-    if scene_label_map is not None and not out_df.empty:
-        out_df["scene_label"] = out_df["scene_id"].astype(str).map(scene_label_map).fillna(out_df["scene_id"].astype(str))
-    else:
-        out_df["scene_label"] = out_df["scene_id"].astype(str)
+    if not out_df.empty:
+        if scene_label_map is not None:
+            out_df["scene_label"] = out_df["scene_id"].astype(str).map(scene_label_map).fillna(out_df["scene_id"].astype(str))
+        else:
+            out_df["scene_label"] = out_df["scene_id"].astype(str).apply(_auto_scene_label)
 
     if scene_order_map is not None and not out_df.empty:
         out_df["scene_order"] = out_df["scene_id"].astype(str).map(scene_order_map)
