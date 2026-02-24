@@ -25,9 +25,14 @@ def main():
     ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional trial start timestamp (ms). If set, TTFF_ms = first_hit_ts - trial_start_ms')
     ap.add_argument('--trial_start_col', default=None, help='Optional column name used to derive trial start (t0 = min(col)). Used only if --trial_start_ms is not set.')
 
-    # AOI overlap warning
+    # AOI overlap warning / report
     ap.add_argument('--warn_class_overlap', action='store_true', help='If set, print warnings when different AOI classes overlap in screen space')
     ap.add_argument('--no_warn_class_overlap', action='store_true', help='Disable class-overlap warnings')
+    ap.add_argument('--report_class_overlap', action='store_true', help='If set, write aoi_class_overlap.csv into outdir when overlap exists')
+
+    # Multi-trial / timestamp discontinuity checks
+    ap.add_argument('--time_segments', default='warn', choices=['warn', 'error', 'ignore'], help='Policy when multiple timestamp segments detected (default: warn)')
+    ap.add_argument('--time_segment_gap_ms', type=float, default=5000.0, help='Gap threshold (ms) to split segments when timestamp jumps forward (default: 5000)')
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
@@ -56,6 +61,30 @@ def main():
             screen_h=args.screen_h,
             require_validity=args.require_validity,
         )
+
+    # Timestamp continuity diagnostics (multi-trial protection)
+    time_diag = {}
+    if 'Recording Time Stamp[ms]' in df.columns:
+        ts = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').to_numpy()
+        ts = ts[np.isfinite(ts)]
+        if ts.size >= 2:
+            dif = ts[1:] - ts[:-1]
+            neg = int((dif < 0).sum())
+            gap_thr = float(args.time_segment_gap_ms) if args.time_segment_gap_ms is not None else None
+            gap = int((dif > gap_thr).sum()) if gap_thr is not None else 0
+            segments = 1 + neg + gap
+            time_diag = {
+                'neg_jumps': neg,
+                'gap_jumps': gap,
+                'gap_threshold_ms': gap_thr,
+                'segments_estimated': int(segments),
+            }
+            if segments > 1:
+                msg = f"Detected multiple timestamp segments (segments={segments}, neg_jumps={neg}, gap_jumps={gap}, gap_thr_ms={gap_thr}). TTFF may be unreliable unless you set --trial_start_ms/--trial_start_col or pre-split trials."
+                if args.time_segments == 'error':
+                    raise SystemExit(msg)
+                elif args.time_segments == 'warn':
+                    print('[WARN]', msg)
 
     # Optional image size validation
     from src.aoi_metrics import load_aoi_json_meta
@@ -108,7 +137,7 @@ def main():
                     'trial_start_ms': args.trial_start_ms,
                     'trial_start_col': args.trial_start_col,
                     'warn_class_overlap': bool(warn_overlap),
-                    'diagnostics': poly_df.attrs.get('diagnostics', {}),
+                    'diagnostics': {**poly_df.attrs.get('diagnostics', {}), 'time_segments': time_diag},
                     'screen_w': args.screen_w,
                     'screen_h': args.screen_h,
                     'require_validity': bool(args.require_validity),
@@ -126,6 +155,13 @@ def main():
     class_path = os.path.join(args.outdir, 'aoi_metrics_by_class.csv')
     poly_df.to_csv(poly_path, index=False)
     class_df.to_csv(class_path, index=False)
+
+    if args.report_class_overlap:
+        diag = poly_df.attrs.get('diagnostics', {})
+        overlaps = diag.get('class_overlap', []) if isinstance(diag, dict) else []
+        if overlaps:
+            odf = pd.DataFrame(overlaps)
+            odf.to_csv(os.path.join(args.outdir, 'aoi_class_overlap.csv'), index=False)
 
     print('Saved:')
     print(' -', poly_path)

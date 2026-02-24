@@ -209,6 +209,8 @@ python scripts/run_aoi_metrics.py \
 - `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
 - `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
 - `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
+- `--report_class_overlap`：导出 overlap 表（`aoi_class_overlap.csv` 或 `batch_aoi_class_overlap.csv`）
+- `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
 
 为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
 

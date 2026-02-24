@@ -360,6 +360,8 @@ Output files / 输出文件：
 - `--image_match error`: if aoi.json includes image width/height and you pass --screen_w/--screen_h, stop on mismatch (default)
 - `--trial_start_ms` / `--trial_start_col`: control TTFF baseline t0 (optional; default t0=min timestamp)
 - `--warn_class_overlap` (default on): warn if different AOI classes overlap in screen space
+- `--report_class_overlap`: export overlap table (`aoi_class_overlap.csv` or `batch_aoi_class_overlap.csv`)
+- `--time_segments {warn,error,ignore}`: detect timestamp discontinuities (multi-trial risk) and warn/error
 
 For reproducibility, AOI scripts now write `run_config.json` into the output directory.
 
