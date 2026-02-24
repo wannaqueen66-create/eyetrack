@@ -42,6 +42,11 @@ def main():
 
     # Image size validation (aoi.json may include image width/height)
     ap.add_argument('--image_match', default='error', choices=['error', 'warn', 'ignore'], help="If aoi.json provides image width/height and you pass --screen_w/--screen_h: what to do on mismatch (default: error)")
+
+    # AOI overlay export (audit figure)
+    ap.add_argument('--export_aoi_overlay', action='store_true', help='If set, export aoi_overlay.png (polygons on background) into outdir')
+    ap.add_argument('--aoi_background_img', default=None, help='Optional background image for AOI overlay (default: auto-detect in same folder as aoi.json)')
+    ap.add_argument('--aoi_overlay_dpi', type=int, default=200, help='DPI for AOI overlay PNG (default: 200)')
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -165,6 +170,9 @@ def main():
                     'require_validity': bool(args.require_validity),
                     'assume_clean': bool(args.assume_clean),
                     'columns_map': args.columns_map,
+                    'export_aoi_overlay': bool(args.export_aoi_overlay),
+                    'aoi_background_img': args.aoi_background_img,
+                    'aoi_overlay_dpi': args.aoi_overlay_dpi,
                 },
                 f,
                 ensure_ascii=False,
@@ -218,6 +226,19 @@ def main():
             'segments_estimated': time_diag.get('segments_estimated'),
         }
         pd.DataFrame([row]).to_csv(os.path.join(args.outdir, 'timestamp_segments_summary.csv'), index=False)
+
+    if args.export_aoi_overlay:
+        try:
+            from src.aoi_visualize import export_aoi_overlay_png
+            export_aoi_overlay_png(
+                aoi_json_path=args.aoi,
+                background_img=args.aoi_background_img,
+                out_png=os.path.join(args.outdir, 'aoi_overlay.png'),
+                title=None,
+                dpi=int(args.aoi_overlay_dpi),
+            )
+        except Exception as e:
+            print('[WARN] Failed to export aoi_overlay.png:', e)
 
     print('Saved:')
     print(' -', poly_path)

@@ -49,6 +49,10 @@ def main():
 
     # Image size validation (aoi.json may include image width/height)
     ap.add_argument('--image_match', default='error', choices=['error', 'warn', 'ignore'], help="If aoi.json provides image width/height and you pass --screen_w/--screen_h: what to do on mismatch (default: error)")
+
+    # AOI overlay export (audit figure)
+    ap.add_argument('--export_aoi_overlay', action='store_true', help='If set, export AOI overlay PNGs per scene into outdir/aoi_overlays/<scene_id>.png')
+    ap.add_argument('--aoi_overlay_dpi', type=int, default=200, help='DPI for AOI overlay PNG (default: 200)')
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -169,6 +173,7 @@ def main():
     all_poly, all_class = [], []
     time_rows = []
     exclusions = []
+    exported_aoi_overlays = set()
 
     for _, r in m.iterrows():
         df = pd.read_csv(r['csv_path'], encoding='utf-8-sig')
@@ -244,6 +249,24 @@ def main():
                         raise SystemExit(msg)
                     elif args.image_match == 'warn':
                         print('[WARN]', msg)
+
+        # Export AOI overlay once per scene (audit figure)
+        if args.export_aoi_overlay:
+            try:
+                key = (str(r['scene_id']), str(r['aoi_path']))
+                if key not in exported_aoi_overlays:
+                    from src.aoi_visualize import export_aoi_overlay_png
+                    out_png = os.path.join(args.outdir, 'aoi_overlays', f"{r['scene_id']}.png")
+                    export_aoi_overlay_png(
+                        aoi_json_path=r['aoi_path'],
+                        background_img=None,
+                        out_png=out_png,
+                        title=None,
+                        dpi=int(args.aoi_overlay_dpi),
+                    )
+                    exported_aoi_overlays.add(key)
+            except Exception as e:
+                print('[WARN] Failed to export AOI overlay for scene:', r['scene_id'], e)
 
         aois = load_aoi_json(r['aoi_path'])
         warn_overlap = True
@@ -378,6 +401,8 @@ def main():
                     'min_valid_ratio': args.min_valid_ratio,
                     'assume_clean': bool(args.assume_clean),
                     'columns_map': args.columns_map,
+                    'export_aoi_overlay': bool(args.export_aoi_overlay),
+                    'aoi_overlay_dpi': args.aoi_overlay_dpi,
                 },
                 f,
                 ensure_ascii=False,

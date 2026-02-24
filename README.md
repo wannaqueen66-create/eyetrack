@@ -374,6 +374,9 @@ Output files / 输出文件：
 
 For reproducibility, AOI scripts write `run_config.json` into the output directory.
 
+**AOI overlay figure (recommended for audit / paper appendix)**
+- `--export_aoi_overlay`: export `aoi_overlay.png` (single-run) or per-scene overlays under `outdir/aoi_overlays/<scene_id>.png` (batch).
+
 ---
 
 ## 6. AOI Web Tool v3 Guide / AOI网页工具v3说明

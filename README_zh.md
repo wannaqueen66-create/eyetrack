@@ -223,6 +223,9 @@ python scripts/run_aoi_metrics.py \
 
 为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
 
+**AOI 可视化图（推荐用于审计/论文附录）**
+- `--export_aoi_overlay`：导出 AOI overlay PNG（单文件输出 `aoi_overlay.png`；批处理输出到 `outdir/aoi_overlays/<scene_id>.png`）。
+
 ---
 
 ## 5. AOI网页工具v3说明
