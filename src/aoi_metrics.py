@@ -266,9 +266,21 @@ def compute_metrics(
         for i in range(len(classes)):
             for j in range(i + 1, len(classes)):
                 ci, cj = classes[i], classes[j]
-                cnt = int(np.logical_and(unions[ci], unions[cj]).sum())
+                mask_i = unions[ci]
+                mask_j = unions[cj]
+                cnt = int(np.logical_and(mask_i, mask_j).sum())
                 if cnt > 0:
-                    overlap_info.append({"class_a": ci, "class_b": cj, "overlap_samples": cnt})
+                    cnt_i = int(mask_i.sum())
+                    cnt_j = int(mask_j.sum())
+                    overlap_info.append({
+                        "class_a": ci,
+                        "class_b": cj,
+                        "overlap_samples": cnt,
+                        "samples_a": cnt_i,
+                        "samples_b": cnt_j,
+                        "overlap_ratio_a": (cnt / cnt_i) if cnt_i > 0 else None,
+                        "overlap_ratio_b": (cnt / cnt_j) if cnt_j > 0 else None,
+                    })
         if overlap_info:
             top = sorted(overlap_info, key=lambda d: d["overlap_samples"], reverse=True)[:10]
             print("[WARN] AOI class overlap detected (a point can belong to multiple classes). Top overlaps:")

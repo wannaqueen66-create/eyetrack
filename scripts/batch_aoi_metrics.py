@@ -32,6 +32,7 @@ def main():
     # Multi-trial / timestamp discontinuity checks
     ap.add_argument('--time_segments', default='warn', choices=['warn', 'error', 'ignore'], help='Policy when multiple timestamp segments detected (default: warn)')
     ap.add_argument('--time_segment_gap_ms', type=float, default=5000.0, help='Gap threshold (ms) to split segments when timestamp jumps forward (default: 5000)')
+    ap.add_argument('--report_time_segments', action='store_true', help='If set, write timestamp_segments_summary.csv into outdir')
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
@@ -50,6 +51,7 @@ def main():
       raise ValueError(f'Manifest missing columns: {sorted(miss)}')
 
     all_poly, all_class = [], []
+    time_rows = []
 
     for _, r in m.iterrows():
         df = pd.read_csv(r['csv_path'], encoding='utf-8-sig')
@@ -143,6 +145,14 @@ def main():
         class_df.insert(0, 'scene_id', r['scene_id'])
         class_df.insert(0, 'participant_id', r['participant_id'])
 
+        if args.report_time_segments:
+            time_rows.append({
+                'participant_id': r['participant_id'],
+                'scene_id': r['scene_id'],
+                'csv_path': r['csv_path'],
+                **time_diag,
+            })
+
         all_poly.append(poly_df)
         all_class.append(class_df)
 
@@ -174,6 +184,10 @@ def main():
             odf = pd.DataFrame(overlap_rows)
             odf.to_csv(os.path.join(args.outdir, 'batch_aoi_class_overlap.csv'), index=False)
 
+    # Optional time segment report
+    if args.report_time_segments and time_rows:
+        pd.DataFrame(time_rows).to_csv(os.path.join(args.outdir, 'timestamp_segments_summary.csv'), index=False)
+
     # Save run config for reproducibility
     cfg_path = os.path.join(args.outdir, 'run_config.json')
     try:
@@ -193,6 +207,7 @@ def main():
                     'time_segments': args.time_segments,
                     'time_segment_gap_ms': args.time_segment_gap_ms,
                     'report_class_overlap': bool(args.report_class_overlap),
+                    'report_time_segments': bool(args.report_time_segments),
                     'screen_w': args.screen_w,
                     'screen_h': args.screen_h,
                     'require_validity': bool(args.require_validity),

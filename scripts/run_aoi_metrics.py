@@ -33,6 +33,7 @@ def main():
     # Multi-trial / timestamp discontinuity checks
     ap.add_argument('--time_segments', default='warn', choices=['warn', 'error', 'ignore'], help='Policy when multiple timestamp segments detected (default: warn)')
     ap.add_argument('--time_segment_gap_ms', type=float, default=5000.0, help='Gap threshold (ms) to split segments when timestamp jumps forward (default: 5000)')
+    ap.add_argument('--report_time_segments', action='store_true', help='If set, write timestamp_segments_summary.csv into outdir')
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
@@ -162,6 +163,16 @@ def main():
         if overlaps:
             odf = pd.DataFrame(overlaps)
             odf.to_csv(os.path.join(args.outdir, 'aoi_class_overlap.csv'), index=False)
+
+    if args.report_time_segments:
+        row = {
+            'csv_path': args.csv,
+            'neg_jumps': time_diag.get('neg_jumps'),
+            'gap_jumps': time_diag.get('gap_jumps'),
+            'gap_threshold_ms': time_diag.get('gap_threshold_ms'),
+            'segments_estimated': time_diag.get('segments_estimated'),
+        }
+        pd.DataFrame([row]).to_csv(os.path.join(args.outdir, 'timestamp_segments_summary.csv'), index=False)
 
     print('Saved:')
     print(' -', poly_path)
