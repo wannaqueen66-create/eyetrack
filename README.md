@@ -346,6 +346,20 @@ Output files / 输出文件：
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总，论文常用）
 
+**Group summaries (SportFreq / Experience)**
+After you have `batch_aoi_metrics_by_class.csv`, you can summarize outcomes by groups (like heatmap grouping):
+
+```bash
+python scripts/summarize_aoi_groups.py \
+  --aoi_class_csv outputs_aoi_all/batch_aoi_metrics_by_class.csv \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --outdir outputs_aoi_groups
+```
+
+Outputs:
+- `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TTFF/dwell summaries)
+- `outputs_aoi_groups/aoi_with_groups.csv` (analysis-ready merged long table)
+
 ### Step E. Read Results / 解读结果
 
 - `dwell_time_ms`: total fixation time in AOI (recommended: aggregate by fixation) / AOI 总停留时长（推荐按 fixation 去重聚合）

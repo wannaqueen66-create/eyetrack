@@ -193,6 +193,20 @@ python scripts/run_aoi_metrics.py \
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总）
 
+**按组汇总（SportFreq / Experience）**
+当你已经得到 `batch_aoi_metrics_by_class.csv` 后，可以像热力图一样按组汇总：
+
+```bash
+python scripts/summarize_aoi_groups.py \
+  --aoi_class_csv outputs_aoi_all/batch_aoi_metrics_by_class.csv \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --outdir outputs_aoi_groups
+```
+
+输出：
+- `outputs_aoi_groups/aoi_group_summary.csv`（visited 访问率 + 条件化 TTFF/dwell 等汇总）
+- `outputs_aoi_groups/aoi_with_groups.csv`（用于建模的合并长表）
+
 ### 步骤 E：看论文常用结果
 
 重点看 `outputs/aoi_metrics_by_class.csv`：
