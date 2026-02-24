@@ -13,7 +13,15 @@ from src.filters import filter_by_screen_and_validity, compute_valid_mask
 
 def main():
     ap = argparse.ArgumentParser(description='Batch AOI metrics for multiple participants/scenes')
-    ap.add_argument('--manifest', required=True, help='CSV with columns: participant_id,scene_id,csv_path,aoi_path')
+
+    # Input mode A: explicit AOI batch manifest
+    ap.add_argument('--manifest', default=None, help='CSV with columns: participant_id,scene_id,csv_path,aoi_path')
+
+    # Input mode B: group manifest + scene folders (auto-build the AOI batch manifest)
+    ap.add_argument('--group_manifest', default=None, help='CSV with at least column: name (participant id). Extra columns (e.g., SportFreq/Experience) are allowed.')
+    ap.add_argument('--scenes_root', default=None, help='Root directory containing scene subfolders. Each scene folder should contain: background image (png/jpg), AOI json, and multiple participant CSVs.')
+    ap.add_argument('--aoi_json_mode', default='image_stem', choices=['image_stem', 'aoi_json', 'auto'], help="How to find AOI json inside each scene folder: image_stem=<bg_stem>.json (default), aoi_json=aoi.json, auto=any *.json")
+    ap.add_argument('--unmatched_csv', default='skip', choices=['skip', 'error'], help='What to do when a CSV filename cannot be matched to any participant in group_manifest (default: skip)')
     ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSVs already cleaned)')
     ap.add_argument('--outdir', default='outputs_batch')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
@@ -44,12 +52,119 @@ def main():
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
-    m = pd.read_csv(args.manifest)
+
+    # Resolve input table (explicit manifest OR auto-build from group_manifest + scenes_root)
+    if args.manifest:
+        m = pd.read_csv(args.manifest)
+    else:
+        if not args.group_manifest or not args.scenes_root:
+            raise SystemExit('Provide either --manifest OR (--group_manifest and --scenes_root).')
+
+        gm = pd.read_csv(args.group_manifest)
+        if 'name' not in gm.columns:
+            raise SystemExit('group_manifest must contain column: name')
+        names = [str(x).strip() for x in gm['name'].tolist()]
+        names_set = set(names)
+
+        scenes_root = args.scenes_root
+        if not os.path.isdir(scenes_root):
+            raise SystemExit(f'--scenes_root not found or not a dir: {scenes_root}')
+
+        IMG_EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
+        SKIP_CSV = {os.path.basename(args.group_manifest), 'aoi_batch_manifest.csv'}
+
+        def pick_bg(scene_dir):
+            imgs = []
+            for fn in os.listdir(scene_dir):
+                p = os.path.join(scene_dir, fn)
+                if not os.path.isfile(p):
+                    continue
+                ext = os.path.splitext(fn)[1].lower()
+                if ext in IMG_EXTS:
+                    imgs.append(p)
+            if not imgs:
+                return None
+            return max(imgs, key=lambda p: os.path.getsize(p))
+
+        def find_aoi_json(scene_dir, bg_path):
+            if args.aoi_json_mode == 'aoi_json':
+                p = os.path.join(scene_dir, 'aoi.json')
+                return p if os.path.exists(p) else None
+            if args.aoi_json_mode == 'auto':
+                js = [os.path.join(scene_dir, fn) for fn in os.listdir(scene_dir) if fn.lower().endswith('.json')]
+                # prefer aoi.json if exists
+                for p in js:
+                    if os.path.basename(p).lower() == 'aoi.json':
+                        return p
+                return js[0] if js else None
+            # default: image_stem
+            stem = os.path.splitext(os.path.basename(bg_path))[0]
+            p = os.path.join(scene_dir, f'{stem}.json')
+            return p if os.path.exists(p) else None
+
+        def match_participant_id_from_filename(csv_name):
+            # Try match any name as substring in filename
+            for nm in names:
+                if nm and (nm in csv_name):
+                    return nm
+            return None
+
+        rows = []
+        problems = []
+        for scene_id in sorted(os.listdir(scenes_root)):
+            scene_dir = os.path.join(scenes_root, scene_id)
+            if not os.path.isdir(scene_dir):
+                continue
+
+            bg = pick_bg(scene_dir)
+            if not bg:
+                problems.append((scene_id, 'NO_BG_IMAGE', 'no image found'))
+                continue
+            aoi_path = find_aoi_json(scene_dir, bg)
+            if not aoi_path:
+                problems.append((scene_id, 'NO_AOI_JSON', f'mode={args.aoi_json_mode}'))
+                continue
+
+            # collect CSVs
+            csvs = [fn for fn in os.listdir(scene_dir) if fn.lower().endswith('.csv') and fn not in SKIP_CSV]
+            if not csvs:
+                problems.append((scene_id, 'NO_CSV', 'no csv found'))
+                continue
+
+            for fn in sorted(csvs):
+                pid = match_participant_id_from_filename(fn)
+                if pid is None:
+                    if args.unmatched_csv == 'error':
+                        raise SystemExit(f'Unmatched CSV filename under scene={scene_id}: {fn}. Cannot match any name in group_manifest.')
+                    else:
+                        continue
+                rows.append({
+                    'participant_id': pid,
+                    'scene_id': scene_id,
+                    'csv_path': os.path.join(scene_dir, fn),
+                    'aoi_path': aoi_path,
+                })
+
+        if problems:
+            print('[WARN] Scene scan issues (these scenes may be skipped):')
+            for p in problems[:50]:
+                print('  -', p)
+            if len(problems) > 50:
+                print('  ... total problems:', len(problems))
+
+        m = pd.DataFrame(rows)
+        if len(m) == 0:
+            raise SystemExit('Auto-built manifest is empty. Check scenes_root structure and unmatched CSV policy.')
+
+        # Save the auto-built manifest for auditability
+        auto_path = os.path.join(args.outdir, 'aoi_batch_manifest_autobuilt.csv')
+        m.to_csv(auto_path, index=False, encoding='utf-8-sig')
+        print('Auto-built AOI manifest saved:', auto_path)
 
     req = {'participant_id', 'scene_id', 'csv_path', 'aoi_path'}
     miss = req - set(m.columns)
     if miss:
-      raise ValueError(f'Manifest missing columns: {sorted(miss)}')
+        raise ValueError(f'Manifest missing columns: {sorted(miss)}')
 
     all_poly, all_class = [], []
     time_rows = []
@@ -240,6 +355,10 @@ def main():
             json.dump(
                 {
                     'manifest': args.manifest,
+                    'group_manifest': args.group_manifest,
+                    'scenes_root': args.scenes_root,
+                    'aoi_json_mode': args.aoi_json_mode,
+                    'unmatched_csv': args.unmatched_csv,
                     'image_match': args.image_match,
                     'dwell_mode': args.dwell_mode,
                     'point_source': args.point_source,
@@ -270,6 +389,8 @@ def main():
     print('Saved:')
     print(' -', poly_path)
     print(' -', class_path)
+    if not args.manifest:
+        print(' -', os.path.join(args.outdir, 'aoi_batch_manifest_autobuilt.csv'))
 
 
 if __name__ == '__main__':
