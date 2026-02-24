@@ -17,6 +17,8 @@ def main():
     ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSVs already cleaned)')
     ap.add_argument('--outdir', default='outputs_batch')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
+    ap.add_argument('--point_source', default='gaze', choices=['gaze', 'fixation'], help="AOI hit testing source: gaze (default) or fixation (Fixation Point X/Y)")
+    ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, dwell_time_ms will be 0.0 (instead of NaN) when visited==0')
     ap.add_argument('--columns_map', default=None, help="Path to JSON mapping of required columns to candidate names (default: use configs/columns_default.json)")
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
@@ -54,7 +56,13 @@ def main():
             )
 
         aois = load_aoi_json(r['aoi_path'])
-        poly_df, class_df = compute_metrics(df, aois, dwell_mode=args.dwell_mode)
+        poly_df, class_df = compute_metrics(
+            df,
+            aois,
+            dwell_mode=args.dwell_mode,
+            point_source=args.point_source,
+            dwell_empty_as_zero=args.dwell_empty_as_zero,
+        )
 
         poly_df.insert(0, 'scene_id', r['scene_id'])
         poly_df.insert(0, 'participant_id', r['participant_id'])
@@ -71,6 +79,30 @@ def main():
     class_path = os.path.join(args.outdir, 'batch_aoi_metrics_by_class.csv')
     poly_all.to_csv(poly_path, index=False)
     class_all.to_csv(class_path, index=False)
+
+    # Save run config for reproducibility
+    cfg_path = os.path.join(args.outdir, 'run_config.json')
+    try:
+        import json
+        with open(cfg_path, 'w', encoding='utf-8') as f:
+            json.dump(
+                {
+                    'manifest': args.manifest,
+                    'dwell_mode': args.dwell_mode,
+                    'point_source': args.point_source,
+                    'dwell_empty_as_zero': bool(args.dwell_empty_as_zero),
+                    'screen_w': args.screen_w,
+                    'screen_h': args.screen_h,
+                    'require_validity': bool(args.require_validity),
+                    'assume_clean': bool(args.assume_clean),
+                    'columns_map': args.columns_map,
+                },
+                f,
+                ensure_ascii=False,
+                indent=2,
+            )
+    except Exception:
+        pass
 
     print('Saved:')
     print(' -', poly_path)

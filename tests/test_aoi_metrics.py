@@ -36,11 +36,31 @@ def test_bbox_prefilter_no_points():
         'Recording Time Stamp[ms]': [0, 1, 2],
         'Gaze Point X[px]': [100, 101, 102],
         'Gaze Point Y[px]': [100, 101, 102],
+        'Fixation Point X[px]': [100, 101, 102],
+        'Fixation Point Y[px]': [100, 101, 102],
         'Fixation Index': [1, 2, 3],
         'Fixation Duration[ms]': [10, 20, 30],
     })
     aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
-    poly, cls = compute_metrics(df, aoi, dwell_mode='fixation')
+
+    poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', point_source='gaze')
     assert int(poly.loc[0, 'samples']) == 0
     assert np.isnan(poly.loc[0, 'dwell_time_ms'])
     assert np.isnan(poly.loc[0, 'TTFF_ms'])
+
+    poly2, cls2 = compute_metrics(df, aoi, dwell_mode='fixation', point_source='fixation')
+    assert int(poly2.loc[0, 'samples']) == 0
+
+
+def test_dwell_empty_as_zero():
+    df = pd.DataFrame({
+        'Recording Time Stamp[ms]': [0, 1, 2],
+        'Gaze Point X[px]': [100, 101, 102],
+        'Gaze Point Y[px]': [100, 101, 102],
+        'Fixation Index': [1, 2, 3],
+        'Fixation Duration[ms]': [10, 20, 30],
+    })
+    aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
+    poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', dwell_empty_as_zero=True)
+    assert int(poly.loc[0, 'visited']) == 0
+    assert float(poly.loc[0, 'dwell_time_ms']) == 0.0

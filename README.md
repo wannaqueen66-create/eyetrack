@@ -354,6 +354,12 @@ Output files / 输出文件：
 - `visited`: whether the AOI was visited in this trial/scene (1=yes, 0=no). If `visited==0`, then `TTFF_ms` is NaN by definition. / 本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF_ms` 按定义为 NaN。
 - `polygon_count`: number of polygons under class / 该类别下子区域数量
 
+**New options (recommended)**
+- `--point_source fixation`: use `Fixation Point X/Y` for AOI hit testing (aligns better with fixation-based dwell/TTFF)
+- `--dwell_empty_as_zero`: set dwell_time_ms=0.0 when visited==0 (keeps TTFF as NaN)
+
+For reproducibility, AOI scripts now write `run_config.json` into the output directory.
+
 ---
 
 ## 6. AOI Web Tool v3 Guide / AOI网页工具v3说明

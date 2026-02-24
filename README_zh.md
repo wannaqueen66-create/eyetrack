@@ -203,6 +203,12 @@ python scripts/run_aoi_metrics.py \
 - `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF_ms` 按定义为 NaN。
 - `polygon_count`：该类包含的区域数量
 
+**新增选项（推荐）**
+- `--point_source fixation`：用 `Fixation Point X/Y` 做 AOI 命中判定（与 fixation-based 指标更一致）
+- `--dwell_empty_as_zero`：当 `visited==0` 时将 `dwell_time_ms` 记为 0.0（`TTFF_ms` 仍为 NaN）
+
+为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
+
 ---
 
 ## 5. AOI网页工具v3说明

@@ -131,14 +131,44 @@ def _dwell_time(sub: pd.DataFrame, mode: str = 'row') -> float:
     return float(per_fix['Fixation Duration[ms]'].sum())
 
 
-def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 'row'):
-    required = ['Gaze Point X[px]', 'Gaze Point Y[px]', 'Recording Time Stamp[ms]']
+def compute_metrics(
+    df: pd.DataFrame,
+    aois: List[PolygonAOI],
+    dwell_mode: str = 'row',
+    point_source: str = 'gaze',
+    dwell_empty_as_zero: bool = False,
+):
+    """Compute AOI metrics.
+
+    point_source:
+      - 'gaze' (default): AOI hit testing uses Gaze Point X/Y
+      - 'fixation': AOI hit testing uses Fixation Point X/Y (recommended when metrics are fixation-based)
+
+    dwell_empty_as_zero:
+      - If True, return 0.0 for dwell_time_ms when visited==0, instead of NaN.
+        (TTFF_ms remains NaN; fixation_count remains 0.)
+    """
+
+    if point_source not in ('gaze', 'fixation'):
+        raise ValueError("point_source must be 'gaze' or 'fixation'")
+
+    required = ['Recording Time Stamp[ms]']
+    if point_source == 'gaze':
+        required += ['Gaze Point X[px]', 'Gaze Point Y[px]']
+    else:
+        required += ['Fixation Point X[px]', 'Fixation Point Y[px]']
+
     for c in required:
         if c not in df.columns:
             raise ValueError(f"Missing required column: {c}")
 
-    x = pd.to_numeric(df['Gaze Point X[px]'], errors='coerce').to_numpy()
-    y = pd.to_numeric(df['Gaze Point Y[px]'], errors='coerce').to_numpy()
+    if point_source == 'gaze':
+        x = pd.to_numeric(df['Gaze Point X[px]'], errors='coerce').to_numpy()
+        y = pd.to_numeric(df['Gaze Point Y[px]'], errors='coerce').to_numpy()
+    else:
+        x = pd.to_numeric(df['Fixation Point X[px]'], errors='coerce').to_numpy()
+        y = pd.to_numeric(df['Fixation Point Y[px]'], errors='coerce').to_numpy()
+
     t = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').to_numpy()
     if not np.isfinite(t).any():
         t0 = np.nan
@@ -158,6 +188,8 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
 
         sub = df[mask]
         dwell = _dwell_time(sub, mode=dwell_mode)
+        if (not np.isfinite(dwell)) and dwell_empty_as_zero and int(mask.sum()) == 0:
+            dwell = 0.0
         fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
         if len(sub) and pd.notna(t0):
             ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
@@ -179,6 +211,8 @@ def compute_metrics(df: pd.DataFrame, aois: List[PolygonAOI], dwell_mode: str = 
         union = np.logical_or.reduce(masks) if masks else np.zeros_like(x, dtype=bool)
         sub = df[union]
         dwell = _dwell_time(sub, mode=dwell_mode)
+        if (not np.isfinite(dwell)) and dwell_empty_as_zero and int(union.sum()) == 0:
+            dwell = 0.0
         fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
         if len(sub) and pd.notna(t0):
             ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
