@@ -21,6 +21,8 @@ def main():
     ap.add_argument('--group_manifest', default=None, help='CSV with at least column: name (participant id). Extra columns (e.g., SportFreq/Experience) are allowed.')
     ap.add_argument('--scenes_root', default=None, help='Root directory containing scene subfolders. Each scene folder should contain: background image (png/jpg), AOI json, and multiple participant CSVs.')
     ap.add_argument('--aoi_json_mode', default='image_stem', choices=['image_stem', 'aoi_json', 'auto'], help="How to find AOI json inside each scene folder: image_stem=<bg_stem>.json (default), aoi_json=aoi.json, auto=any *.json")
+    ap.add_argument('--missing_aoi_json', default='skip', choices=['skip', 'error'], help='What to do when a scene folder has no AOI json (default: skip). Useful for practice/adaptation folders like VR适应.')
+    ap.add_argument('--scene_exclude_regex', default=None, help='Optional regex to exclude scene folders by name (e.g., "VR适应|练习|practice")')
     ap.add_argument('--unmatched_csv', default='skip', choices=['skip', 'error'], help='What to do when a CSV filename cannot be matched to any participant in group_manifest (default: skip)')
     ap.add_argument('--assume_clean', action='store_true', help='If set, skip screen/validity filtering regardless of flags (useful if input CSVs already cleaned)')
     ap.add_argument('--outdir', default='outputs_batch')
@@ -115,7 +117,12 @@ def main():
 
         rows = []
         problems = []
+        import re as _re
+        scene_ex_re = _re.compile(args.scene_exclude_regex) if args.scene_exclude_regex else None
+
         for scene_id in sorted(os.listdir(scenes_root)):
+            if scene_ex_re and scene_ex_re.search(str(scene_id)):
+                continue
             scene_dir = os.path.join(scenes_root, scene_id)
             if not os.path.isdir(scene_dir):
                 continue
@@ -126,7 +133,10 @@ def main():
                 continue
             aoi_path = find_aoi_json(scene_dir, bg)
             if not aoi_path:
-                problems.append((scene_id, 'NO_AOI_JSON', f'mode={args.aoi_json_mode}'))
+                msg = (scene_id, 'NO_AOI_JSON', f'mode={args.aoi_json_mode}')
+                if args.missing_aoi_json == 'error':
+                    raise SystemExit(f"Missing AOI json for scene={scene_id} (mode={args.aoi_json_mode}).")
+                problems.append(msg)
                 continue
 
             # collect CSVs
@@ -381,6 +391,8 @@ def main():
                     'group_manifest': args.group_manifest,
                     'scenes_root': args.scenes_root,
                     'aoi_json_mode': args.aoi_json_mode,
+                    'missing_aoi_json': args.missing_aoi_json,
+                    'scene_exclude_regex': args.scene_exclude_regex,
                     'unmatched_csv': args.unmatched_csv,
                     'image_match': args.image_match,
                     'dwell_mode': args.dwell_mode,
