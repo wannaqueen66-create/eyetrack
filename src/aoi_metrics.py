@@ -14,6 +14,11 @@ class PolygonAOI:
 
 
 def load_aoi_json(path: str) -> List[PolygonAOI]:
+    """Load AOIs (polygons) from aoi.json.
+
+    This function returns only polygon definitions for backward compatibility.
+    Use `load_aoi_json_meta()` if you also need image/tool metadata.
+    """
     with open(path, 'r', encoding='utf-8') as f:
         d = json.load(f)
     out = []
@@ -23,6 +28,19 @@ def load_aoi_json(path: str) -> List[PolygonAOI]:
             pts = p.get('points', [])
             out.append(PolygonAOI(cls, i, [(float(x), float(y)) for x, y in pts]))
     return out
+
+
+def load_aoi_json_meta(path: str) -> dict:
+    """Load metadata from aoi.json (image width/height, tool info, etc.)."""
+    with open(path, 'r', encoding='utf-8') as f:
+        d = json.load(f)
+    meta = {}
+    if isinstance(d, dict):
+        if isinstance(d.get('tool'), dict):
+            meta['tool'] = d.get('tool')
+        if isinstance(d.get('image'), dict):
+            meta['image'] = d.get('image')
+    return meta
 
 
 def _bbox_mask(x: np.ndarray, y: np.ndarray, poly: List[Tuple[float, float]]) -> np.ndarray:

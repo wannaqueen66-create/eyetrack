@@ -357,6 +357,7 @@ Output files / 输出文件：
 **New options (recommended)**
 - `--point_source fixation`: use `Fixation Point X/Y` for AOI hit testing (aligns better with fixation-based dwell/TTFF)
 - `--dwell_empty_as_zero`: set dwell_time_ms=0.0 when visited==0 (keeps TTFF as NaN)
+- `--image_match error`: if aoi.json includes image width/height and you pass --screen_w/--screen_h, stop on mismatch (default)
 
 For reproducibility, AOI scripts now write `run_config.json` into the output directory.
 

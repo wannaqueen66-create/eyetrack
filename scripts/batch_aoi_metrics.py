@@ -23,6 +23,9 @@ def main():
     ap.add_argument('--screen_w', type=int, default=None, help='Optional screen width for coordinate filtering')
     ap.add_argument('--screen_h', type=int, default=None, help='Optional screen height for coordinate filtering')
     ap.add_argument('--require_validity', action='store_true', help='If set, enforce Validity Left/Right == 1 (only if those columns exist)')
+
+    # Image size validation (aoi.json may include image width/height)
+    ap.add_argument('--image_match', default='error', choices=['error', 'warn', 'ignore'], help="If aoi.json provides image width/height and you pass --screen_w/--screen_h: what to do on mismatch (default: error)")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -54,6 +57,22 @@ def main():
                 screen_h=args.screen_h,
                 require_validity=args.require_validity,
             )
+
+        # Optional image size validation
+        from src.aoi_metrics import load_aoi_json_meta
+        meta = load_aoi_json_meta(r['aoi_path'])
+        img = meta.get('image') if isinstance(meta, dict) else None
+        if img and (args.screen_w is not None) and (args.screen_h is not None):
+            iw = img.get('width')
+            ih = img.get('height')
+            if isinstance(iw, (int, float)) and isinstance(ih, (int, float)):
+                iw, ih = int(iw), int(ih)
+                if (iw != int(args.screen_w)) or (ih != int(args.screen_h)):
+                    msg = f"AOI image size mismatch for aoi_path={r['aoi_path']}: aoi.json image=({iw},{ih}) vs screen=({args.screen_w},{args.screen_h})."
+                    if args.image_match == 'error':
+                        raise SystemExit(msg)
+                    elif args.image_match == 'warn':
+                        print('[WARN]', msg)
 
         aois = load_aoi_json(r['aoi_path'])
         poly_df, class_df = compute_metrics(
@@ -88,6 +107,7 @@ def main():
             json.dump(
                 {
                     'manifest': args.manifest,
+                    'image_match': args.image_match,
                     'dwell_mode': args.dwell_mode,
                     'point_source': args.point_source,
                     'dwell_empty_as_zero': bool(args.dwell_empty_as_zero),
