@@ -361,6 +361,10 @@ Outputs:
 - `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TTFF/dwell summaries)
 - `outputs_aoi_groups/aoi_with_groups.csv` (analysis-ready merged long table)
 
+**What are `aoi_overlays/` and `plots/`? (quick)**
+- `outdir/aoi_overlays/<scene_id>.png`: AOI *definition* audit figures. Polygons from `aoi.json` are drawn on the background image to verify AOI location/shape and coordinate consistency. These figures do **not** include gaze/fixation points and do **not** represent group differences.
+- `outdir/plots/*.png`: AOI *result* figures (group summaries). These plots visualize group-level outcomes such as `visited_rate`, and conditional `TTFF` / `dwell` given `visited==1` (two-part reporting idea). Numeric labels on bars show the aggregated values (%, ms).
+
 ### Step E. Read Results / 解读结果
 
 - `dwell_time_ms`: total fixation time in AOI (recommended: aggregate by fixation) / AOI 总停留时长（推荐按 fixation 去重聚合）

@@ -208,6 +208,10 @@ python scripts/summarize_aoi_groups.py \
 - `outputs_aoi_groups/aoi_group_summary.csv`（visited 访问率 + 条件化 TTFF/dwell 等汇总）
 - `outputs_aoi_groups/aoi_with_groups.csv`（用于建模的合并长表）
 
+**`aoi_overlays/` 和 `plots/` 分别是什么？（快速说明）**
+- `outdir/aoi_overlays/<scene_id>.png`：AOI **定义审计图**。把 `aoi.json` 里的多边形叠加到场景底图上，用于核对 AOI 位置/形状/坐标系是否一致。该图**不包含** gaze/fixation 点，也**不表示**组间差异或显著性。
+- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TTFF` / `dwell` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
+
 ### 步骤 E：看论文常用结果
 
 重点看 `outputs/aoi_metrics_by_class.csv`：
