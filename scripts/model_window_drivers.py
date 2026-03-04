@@ -37,6 +37,71 @@ import pandas as pd
 import statsmodels.formula.api as smf
 
 
+def _export_plots(summary: pd.DataFrame, outdir: str):
+    """Export lightweight PNG visualizations from model summary.
+
+    Files:
+    - window_driver_effect_sizes.png
+    - window_driver_dominance.png
+    """
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    s = summary.copy()
+    if len(s) == 0:
+        return
+
+    # Coerce numeric columns safely
+    for c in ["wwr_coef", "complexity_coef", "wwr_p", "complexity_p"]:
+        if c in s.columns:
+            s[c] = pd.to_numeric(s[c], errors="coerce")
+
+    # 1) Signed standardized effect bars
+    try:
+        x = np.arange(len(s))
+        w = 0.36
+        fig, ax = plt.subplots(figsize=(10, 4.8))
+        ax.bar(x - w / 2, s["wwr_coef"], width=w, label="WWR", color="#4e79a7")
+        ax.bar(x + w / 2, s["complexity_coef"], width=w, label="Complexity", color="#f28e2b")
+        ax.axhline(0, color="black", linewidth=0.8)
+        ax.set_xticks(x)
+        ax.set_xticklabels(s["outcome"], rotation=20, ha="right")
+        ax.set_ylabel("Standardized coefficient")
+        ax.set_title("Window AOI: WWR vs Complexity effect sizes")
+        ax.legend(loc="best")
+
+        # significance stars
+        for i, r in s.reset_index(drop=True).iterrows():
+            for dx, pval, coef in [(-w / 2, r.get("wwr_p"), r.get("wwr_coef")), (w / 2, r.get("complexity_p"), r.get("complexity_coef"))]:
+                if pd.notna(pval) and pval < 0.05 and pd.notna(coef):
+                    ax.text(i + dx, coef + (0.03 if coef >= 0 else -0.05), "*", ha="center", va="bottom" if coef >= 0 else "top", fontsize=12)
+
+        fig.tight_layout()
+        fig.savefig(os.path.join(outdir, "window_driver_effect_sizes.png"), dpi=180)
+        plt.close(fig)
+    except Exception:
+        pass
+
+    # 2) Dominance count chart
+    try:
+        vc = s["dominant"].fillna("undetermined").value_counts()
+        order = ["WWR", "Complexity", "both_or_close", "none_significant", "undetermined"]
+        vc = vc.reindex(order).fillna(0)
+        fig, ax = plt.subplots(figsize=(7, 4.2))
+        bars = ax.bar(vc.index, vc.values, color=["#59a14f", "#e15759", "#9c755f", "#bab0ab", "#4e79a7"])
+        ax.set_ylabel("Outcome count")
+        ax.set_title("Dominant driver summary")
+        ax.bar_label(bars, padding=2, fmt="%.0f")
+        plt.xticks(rotation=20, ha="right")
+        fig.tight_layout()
+        fig.savefig(os.path.join(outdir, "window_driver_dominance.png"), dpi=180)
+        plt.close(fig)
+    except Exception:
+        pass
+
+
 def _parse_scene(scene_id: str) -> Tuple[Optional[float], Optional[float]]:
     s = str(scene_id)
 
@@ -254,6 +319,9 @@ def main():
     summary_path = os.path.join(args.outdir, "window_driver_summary.csv")
     summary.to_csv(summary_path, index=False)
 
+    # Optional lightweight visual outputs
+    _export_plots(summary, args.outdir)
+
     report_path = os.path.join(args.outdir, "window_driver_report.txt")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write("Window AOI driver comparison (WWR vs Complexity)\n")
@@ -266,6 +334,8 @@ def main():
     print("Saved:")
     print(" -", summary_path)
     print(" -", report_path)
+    print(" -", os.path.join(args.outdir, "window_driver_effect_sizes.png"), "(if matplotlib available)")
+    print(" -", os.path.join(args.outdir, "window_driver_dominance.png"), "(if matplotlib available)")
 
 
 if __name__ == "__main__":
