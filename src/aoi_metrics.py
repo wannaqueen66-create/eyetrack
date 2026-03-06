@@ -279,7 +279,6 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
         mfd = np.nan
 
     rf = _compute_return_fixations(df, mask)
-    mpd = _compute_mpd(sub)
 
     out = {
         'samples': samples,
@@ -290,7 +289,6 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
         'TFD': float(tfd) if pd.notna(tfd) else np.nan,
         'MFD': float(mfd) if pd.notna(mfd) else np.nan,
         'RF': int(rf),
-        'MPD': float(mpd) if pd.notna(mpd) else np.nan,
     }
 
     # Backward-compatible aliases
