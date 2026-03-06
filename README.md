@@ -126,6 +126,24 @@ Colab 推荐用于**无需本地/VPS 配环境**的快速试跑。
 >
 > Copy-by-cell markdown (no notebook, just paste cell by cell): `docs/COLAB_CELLS_ZH.md`
 
+### Colab mixed-size one-command pipeline / Colab 混合尺寸一键脚本
+
+```bash
+cd /content/eyetrack
+python scripts/run_colab_aoi_pipeline.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+If you already finished the mixed-size batch + merged step and only want to optimize the merged folder:
+
+```bash
+cd /content/eyetrack
+python scripts/optimize_merged_aoi_outputs.py \
+  --merged_outdir "/content/drive/MyDrive/映射/AOI输出_xxx/输出结果_AOI_合并" \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
 ### 1) Install dependencies / 安装依赖
 
 Run the first cells in the notebook to install `requirements.txt`.

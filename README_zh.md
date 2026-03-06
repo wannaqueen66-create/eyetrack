@@ -96,6 +96,24 @@ python3 -m http.server 8080
 - 纯中文逐 Cell 版 Notebook：`https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb`
 - 详细中文说明（含：**批处理只出热图**）：`docs/COLAB_ZH.md`
 
+### Colab 混合尺寸一键脚本（推荐）
+
+```bash
+cd /content/eyetrack
+python scripts/run_colab_aoi_pipeline.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+如果你已经完成 mixed-size batch + merged，只想对 `输出结果_AOI_合并` 做后处理：
+
+```bash
+cd /content/eyetrack
+python scripts/optimize_merged_aoi_outputs.py \
+  --merged_outdir "/content/drive/MyDrive/映射/AOI输出_xxx/输出结果_AOI_合并" \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
 ## 4. 小白全流程
 
 ### 一键运行（可选）
