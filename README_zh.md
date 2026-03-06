@@ -442,7 +442,7 @@ outputs_organized/
 
 > 说明：不再输出 2×2 交叉分组（SportFreq×Experience）。
 >
-> 若 `group_manifest.csv` 中包含类似 `trial01_scene / trial01_WWR / trial01_Cond` 的列，分组 PNG 会优先按这些列生成更友好的场景标签，例如：`WWR45_C1`。
+> 若 `group_manifest.csv` 中包含类似 `trial01_scene` 的列，分组 PNG 会优先直接使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制；当前默认按轮次 1→2、轮次内 `WWR15→WWR45→WWR75`、每个 WWR 内 `C0→C1` 排序，并在两轮之间加分隔线。
 
 ## 10. Building and Environment 图形规范参数表
 

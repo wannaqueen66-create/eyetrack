@@ -119,7 +119,18 @@ def _group_summary(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
     rf_col = _metric_col(df, "RF")
     mpd_col = _metric_col(df, "MPD")
 
-    for (scene_id, class_name, gv), sub in df.groupby(["scene_id", "class_name", group_col], dropna=False):
+    group_keys = ["scene_id", "class_name", group_col]
+    for extra in ["scene_label", "scene_order", "round_index", "wwr_order", "cond_order"]:
+        if extra in df.columns:
+            group_keys.append(extra)
+
+    for keys, sub in df.groupby(group_keys, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_map = dict(zip(group_keys, keys))
+        scene_id = key_map["scene_id"]
+        class_name = key_map["class_name"]
+        gv = key_map[group_col]
         if pd.isna(gv) or str(gv).strip() == "":
             continue
         v = _safe_num(sub.get("visited", 0)).fillna(0)
@@ -133,6 +144,9 @@ def _group_summary(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
             "n_trials": int(len(sub)),
             "visited_rate": float(v.mean()) if len(v) else np.nan,
         }
+        for extra in ["scene_label", "scene_order", "round_index", "wwr_order", "cond_order"]:
+            if extra in key_map:
+                row[extra] = key_map[extra]
         if ttff_col:
             tt = _safe_num(sub_v.get(ttff_col))
             row["TTFF_mean_given_visited"] = float(tt.mean()) if tt.notna().any() else np.nan
@@ -177,17 +191,28 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
         return
 
     scene_key = "scene_label" if "scene_label" in data.columns else "scene_id"
+    order_cols = [c for c in ["scene_order", "round_index", "wwr_order", "cond_order"] if c in data.columns]
 
     # aggregate to scene x group mean across classes for cleaner figure
-    agg = data.groupby([scene_key, "group_value"], as_index=False)[metric].mean(numeric_only=True)
-    scenes = list(agg[scene_key].astype(str).unique())
-    groups = sorted(agg["group_value"].astype(str).unique())
+    group_cols = order_cols + [scene_key, "group_value"]
+    agg = data.groupby(group_cols, as_index=False)[metric].mean(numeric_only=True)
+    if order_cols:
+        agg = agg.sort_values(order_cols + [scene_key])
+        scene_order_df = agg[order_cols + [scene_key]].drop_duplicates()
+        scenes = scene_order_df[scene_key].astype(str).tolist()
+    else:
+        scenes = list(agg[scene_key].astype(str).unique())
+
+    groups = [g for g in ["Low", "High"] if g in set(agg["group_value"].astype(str))]
+    if not groups:
+        groups = sorted(agg["group_value"].astype(str).unique())
 
     width = 0.8 / max(1, len(groups))
     x = np.arange(len(scenes))
 
-    fig, ax = plt.subplots(figsize=(10.5, 4.8))
-    palette = ["#4C78A8", "#F58518", "#54A24B", "#B279A2"]
+    fig, ax = plt.subplots(figsize=(12.0, 4.8))
+    palette_map = {"Low": "#4C78A8", "High": "#F58518"}
+    fallback_palette = ["#4C78A8", "#F58518", "#54A24B", "#B279A2"]
 
     for i, g in enumerate(groups):
         y = []
@@ -195,7 +220,15 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             tmp = agg[(agg[scene_key].astype(str) == s) & (agg["group_value"].astype(str) == g)][metric]
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
-        ax.bar(offs, y, width=width, label=g, color=palette[i % len(palette)], alpha=0.92)
+        color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
+        ax.bar(offs, y, width=width, label=g, color=color, alpha=0.92)
+
+    if "round_index" in agg.columns:
+        round_df = agg[[scene_key, "round_index"]].drop_duplicates().sort_values(["round_index", scene_key])
+        rounds = round_df["round_index"].tolist()
+        for i in range(1, len(rounds)):
+            if rounds[i] != rounds[i - 1]:
+                ax.axvline(i - 0.5, color="#888888", linestyle="--", linewidth=1.0, alpha=0.8)
 
     ax.set_xticks(x)
     ax.set_xticklabels(scenes, rotation=30, ha="right")
@@ -247,38 +280,56 @@ def main():
         if "Experience" in gm.columns:
             gm["Experience"] = gm["Experience"].apply(_norm_group)
 
-        # Optional scene label mapping from manifest columns like:
-        # trial01_scene / trial01_WWR / trial01_Cond  -> scene_id=trial01 => label='WWR45_C1'
-        scene_label_map = {}
-        trial_scene_cols = [c for c in gm.columns if c.endswith('_scene')]
+        # Scene labels/order from manifest columns like:
+        # trial01_scene=WWR45_C1. Prefer direct scene value for labeling.
+        scene_meta_rows = []
+        trial_scene_cols = sorted([c for c in gm.columns if c.endswith('_scene')])
         for c in trial_scene_cols:
             prefix = c[:-6]  # remove _scene
-            wwr_col = f"{prefix}_WWR"
-            cond_col = f"{prefix}_Cond"
+            digits = ''.join(ch for ch in prefix if ch.isdigit())
+            trial_num = int(digits) if digits else None
             vals = gm[c].dropna().astype(str).str.strip().unique().tolist()
             if not vals:
                 continue
-            scene_id_key = vals[0]
-            wwr_val = None
-            cond_val = None
-            if wwr_col in gm.columns:
-                vv = gm[wwr_col].dropna().astype(str).str.strip().unique().tolist()
-                wwr_val = vv[0] if vv else None
-            if cond_col in gm.columns:
-                vv = gm[cond_col].dropna().astype(str).str.strip().unique().tolist()
-                cond_val = vv[0] if vv else None
-            if wwr_val and cond_val:
-                scene_label_map[scene_id_key] = f"WWR{wwr_val}_{cond_val}"
-            elif wwr_val:
-                scene_label_map[scene_id_key] = f"WWR{wwr_val}"
-            elif cond_val:
-                scene_label_map[scene_id_key] = f"{cond_val}"
+            scene_label = vals[0]
+            scene_id_key = scene_label
+
+            # round: 1-6 -> 1, 7-12 -> 2 (fallback keeps increasing blocks of 6)
+            round_index = ((trial_num - 1) // 6 + 1) if trial_num else np.nan
+
+            upper = scene_label.upper()
+            wwr_order = np.nan
+            cond_order = np.nan
+            if 'WWR15' in upper:
+                wwr_order = 15
+            elif 'WWR45' in upper:
+                wwr_order = 45
+            elif 'WWR75' in upper:
+                wwr_order = 75
+            if 'C0' in upper:
+                cond_order = 0
+            elif 'C1' in upper:
+                cond_order = 1
+
+            scene_meta_rows.append({
+                'scene_id': scene_id_key,
+                'scene_label': scene_label,
+                'scene_order': trial_num,
+                'round_index': round_index,
+                'wwr_order': wwr_order,
+                'cond_order': cond_order,
+            })
+
+        scene_meta = pd.DataFrame(scene_meta_rows).drop_duplicates(subset=['scene_id']) if scene_meta_rows else pd.DataFrame()
 
         d = df_class.copy()
         d["participant_id"] = d["participant_id"].astype(str).str.strip()
         d = d.merge(gm[[c for c in ["participant_id", "SportFreq", "Experience"] if c in gm.columns]], on="participant_id", how="left")
-        if scene_label_map:
-            d["scene_label"] = d["scene_id"].astype(str).map(scene_label_map).fillna(d["scene_id"].astype(str))
+        if not scene_meta.empty:
+            d["scene_id"] = d["scene_id"].astype(str).str.strip()
+            d = d.merge(scene_meta, on="scene_id", how="left")
+            if "scene_label" in d.columns:
+                d["scene_label"] = d["scene_label"].fillna(d["scene_id"].astype(str))
 
         if "SportFreq" in d.columns:
             sport = _group_summary(d, "SportFreq")

@@ -611,8 +611,8 @@ outputs_organized/
 Notes / 说明：
 - Grouped output currently includes only `SportFreq` and `Experience` (no 2×2 cross-group export).
 - 当前分组仅输出 `SportFreq` 与 `Experience`，不导出 2×2 交叉分组。
-- If `group_manifest.csv` contains columns like `trial01_scene / trial01_WWR / trial01_Cond`, grouped PNGs will prefer friendly scene labels such as `WWR45_C1`.
-- 如果 `group_manifest.csv` 含有类似 `trial01_scene / trial01_WWR / trial01_Cond` 的列，分组 PNG 会优先使用如 `WWR45_C1` 这样的友好场景标签。
+- If `group_manifest.csv` contains columns like `trial01_scene`, grouped PNGs will directly prefer those scene labels (e.g. `WWR45_C1`) and use trial order for plotting; current default order is round 1→2, within each round `WWR15→WWR45→WWR75`, and within each WWR `C0→C1`, with a separator line between the two rounds.
+- 如果 `group_manifest.csv` 含有类似 `trial01_scene` 的列，分组 PNG 会优先直接使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制；当前默认按轮次 1→2、轮次内 `WWR15→WWR45→WWR75`、每个 WWR 内 `C0→C1` 排序，并在两轮之间加分隔线。
 
 ## 11. Building and Environment Figure Style Parameters / B&E图形规范参数表
 
