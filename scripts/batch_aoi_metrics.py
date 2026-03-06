@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+import subprocess
 
 # Ensure repo root is on sys.path so `import src.*` works when running from scripts/
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -57,6 +58,12 @@ def main():
     # AOI overlay export (audit figure)
     ap.add_argument('--export_aoi_overlay', action='store_true', help='If set, export AOI overlay PNGs per scene into outdir/aoi_overlays/<scene_id>.png')
     ap.add_argument('--aoi_overlay_dpi', type=int, default=200, help='DPI for AOI overlay PNG (default: 200)')
+
+    # New: optional integrated post-step (no extra manual command)
+    ap.add_argument('--optimize_outputs', action='store_true', help='If set, run scripts/optimize_aoi_outputs.py after batch outputs are generated')
+    ap.add_argument('--optimize_group_id_col', default='name', help='ID column in group_manifest for optimize step (default: name)')
+    ap.add_argument('--optimize_outdir', default=None, help='Output dir for optimize step (default: <outdir>/optimized_outputs)')
+
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
@@ -446,6 +453,30 @@ def main():
             )
     except Exception:
         pass
+
+    # Optional integrated optimize step
+    if args.optimize_outputs:
+        script_path = os.path.join(os.path.dirname(__file__), 'optimize_aoi_outputs.py')
+        if not os.path.exists(script_path):
+            print('[WARN] optimize step requested but script not found:', script_path)
+        elif not args.group_manifest:
+            print('[WARN] optimize step requested but --group_manifest is missing; skip optimize')
+        else:
+            opt_out = args.optimize_outdir or os.path.join(args.outdir, 'optimized_outputs')
+            cmd = [
+                sys.executable,
+                script_path,
+                '--aoi_class_csv', class_path,
+                '--aoi_polygon_csv', poly_path,
+                '--group_manifest', args.group_manifest,
+                '--group_id_col', args.optimize_group_id_col,
+                '--outdir', opt_out,
+            ]
+            try:
+                subprocess.run(cmd, check=True)
+                print(' - optimized outputs:', opt_out)
+            except Exception as e:
+                print('[WARN] optimize step failed:', e)
 
     print('Saved:')
     print(' -', poly_path)

@@ -381,6 +381,8 @@ pip install -r requirements.txt
 
 ### 一键命令
 
+方案 A（分两步，后处理独立执行）：
+
 ```bash
 python scripts/optimize_aoi_outputs.py \
   --aoi_class_csv /path/to/batch_aoi_metrics_by_class.csv \
@@ -389,6 +391,19 @@ python scripts/optimize_aoi_outputs.py \
   --group_id_col name \
   --outdir outputs_organized
 ```
+
+方案 B（直接在 batch 命令里一并完成）：
+
+```bash
+python scripts/batch_aoi_metrics.py \
+  --group_manifest /path/to/group_manifest.csv \
+  --scenes_root /path/to/scenes_root \
+  --outdir outputs_batch \
+  --dwell_mode fixation --point_source fixation \
+  --optimize_outputs
+```
+
+`--optimize_outputs` 会在 `--outdir` 下自动生成 `optimized_outputs/`。
 
 ### 输出结构
 

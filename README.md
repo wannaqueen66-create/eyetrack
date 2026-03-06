@@ -549,6 +549,8 @@ This workflow reorganizes AOI batch outputs into a structure that is easier for 
 
 ### Command / 命令
 
+Option A (run optimize as a separate step):
+
 ```bash
 python scripts/optimize_aoi_outputs.py \
   --aoi_class_csv /path/to/batch_aoi_metrics_by_class.csv \
@@ -557,6 +559,19 @@ python scripts/optimize_aoi_outputs.py \
   --group_id_col name \
   --outdir outputs_organized
 ```
+
+Option B (single command integrated in batch):
+
+```bash
+python scripts/batch_aoi_metrics.py \
+  --group_manifest /path/to/group_manifest.csv \
+  --scenes_root /path/to/scenes_root \
+  --outdir outputs_batch \
+  --dwell_mode fixation --point_source fixation \
+  --optimize_outputs
+```
+
+`--optimize_outputs` will automatically generate `optimized_outputs/` under `--outdir`.
 
 ### Output structure / 输出结构
 
