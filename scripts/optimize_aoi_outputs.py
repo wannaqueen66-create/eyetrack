@@ -195,7 +195,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
 
     # aggregate to scene x group mean across classes for cleaner figure
     group_cols = order_cols + [scene_key, "group_value"]
-    agg = data.groupby(group_cols, as_index=False)[metric].mean(numeric_only=True)
+    agg = data.groupby(group_cols, as_index=False, dropna=False)[metric].mean(numeric_only=True)
     if order_cols:
         agg = agg.sort_values(order_cols + [scene_key])
         scene_order_df = agg[order_cols + [scene_key]].drop_duplicates()
@@ -285,14 +285,17 @@ def main():
         scene_meta_rows = []
         trial_scene_cols = sorted([c for c in gm.columns if c.endswith('_scene')])
         for c in trial_scene_cols:
-            prefix = c[:-6]  # remove _scene
+            prefix = c[:-6]  # remove _scene, e.g. trial01
             digits = ''.join(ch for ch in prefix if ch.isdigit())
             trial_num = int(digits) if digits else None
             vals = gm[c].dropna().astype(str).str.strip().unique().tolist()
             if not vals:
                 continue
             scene_label = vals[0]
-            scene_id_key = scene_label
+            scene_id_key = prefix
+
+            # also allow direct scene-name matching if upstream scene_id already equals WWR45_C1
+            alt_scene_id_key = scene_label
 
             # round: 1-6 -> 1, 7-12 -> 2 (fallback keeps increasing blocks of 6)
             round_index = ((trial_num - 1) // 6 + 1) if trial_num else np.nan
@@ -319,6 +322,15 @@ def main():
                 'wwr_order': wwr_order,
                 'cond_order': cond_order,
             })
+            if alt_scene_id_key != scene_id_key:
+                scene_meta_rows.append({
+                    'scene_id': alt_scene_id_key,
+                    'scene_label': scene_label,
+                    'scene_order': trial_num,
+                    'round_index': round_index,
+                    'wwr_order': wwr_order,
+                    'cond_order': cond_order,
+                })
 
         scene_meta = pd.DataFrame(scene_meta_rows).drop_duplicates(subset=['scene_id']) if scene_meta_rows else pd.DataFrame()
 
