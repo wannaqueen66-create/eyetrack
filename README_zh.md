@@ -19,6 +19,9 @@
 - [6. 输入数据要求](#6-输入数据要求)
 - [7. 常见问题](#7-常见问题)
 - [8. 论文向下一步](#8-论文向下一步)
+- [9. 优化后的输出流程（按场景/按人/按分组）](#9-优化后的输出流程按场景按人按分组)
+- [10. Building and Environment 图形规范参数表](#10-building-and-environment-图形规范参数表)
+- [11. 室内乒乓球场景：已补齐的进阶模块](#11-室内乒乓球场景已补齐的进阶模块)
 
 ---
 
@@ -367,7 +370,75 @@ pip install -r requirements.txt
 
 ---
 
-## 9. 室内乒乓球场景：已补齐的进阶模块
+## 9. 优化后的输出流程（按场景/按人/按分组）
+
+新增脚本：`scripts/optimize_aoi_outputs.py`
+
+用于把 `batch_aoi_metrics.py` 的输出重组为更好管理的结构：
+- 按场景（`by_scene/`）
+- 按被试（`by_participant/`）
+- 按分组汇总（`grouped/`，仅保留 `SportFreq` 与 `Experience`）
+
+### 一键命令
+
+```bash
+python scripts/optimize_aoi_outputs.py \
+  --aoi_class_csv /path/to/batch_aoi_metrics_by_class.csv \
+  --aoi_polygon_csv /path/to/batch_aoi_metrics_by_polygon.csv \
+  --group_manifest /path/to/group_manifest.csv \
+  --group_id_col name \
+  --outdir outputs_organized
+```
+
+### 输出结构
+
+```text
+outputs_organized/
+├─ by_scene/
+│  └─ <scene_id>/participants/
+│     ├─ <participant>_class.csv
+│     └─ <participant>_polygon.csv
+├─ by_participant/
+│  └─ <participant_id>/
+│     ├─ <scene_id>_class.csv
+│     └─ <scene_id>_polygon.csv
+└─ grouped/
+   ├─ tables/
+   │  ├─ summary_sportfreq.csv
+   │  └─ summary_experience.csv
+   └─ plots/
+      ├─ sportfreq_visited_rate.png
+      ├─ sportfreq_TTFF.png
+      ├─ sportfreq_TFD.png
+      ├─ experience_visited_rate.png
+      ├─ experience_TTFF.png
+      └─ experience_TFD.png
+```
+
+> 说明：不再输出 2×2 交叉分组（SportFreq×Experience）。
+
+## 10. Building and Environment 图形规范参数表
+
+为保证投稿图风格统一，建议在绘图脚本中固定如下参数：
+
+- 背景：白底（figure/axes facecolor = white）
+- 轴样式：去掉上/右边框（top/right spines off）
+- 网格：仅 y 轴浅灰网格（alpha≈0.2）
+- 配色：低饱和且色盲友好（例如 `#4C78A8`、`#F58518`、`#54A24B`、`#B279A2`）
+- 字体：9–11 pt（轴标签 10 pt，刻度/图例 9 pt）
+- 线宽：1.0–1.5
+- 柱状图透明度：0.9–0.95
+- 导出分辨率：300 dpi
+- 图宽（单栏）：约 3.3–3.6 inch
+- 图宽（双栏）：约 7.0–7.2 inch
+- 标注规则：仅保留必要数值标注，避免视觉噪声
+
+实操建议：
+- 坐标轴必须显式单位（如 `ms`、`%`）。
+- 可比较面板尽量统一 y 轴范围。
+- 避免装饰性效果，优先可读性与可复现性。
+
+## 11. 室内乒乓球场景：已补齐的进阶模块
 
 你本次项目是室内乒乓球空间，已新增以下脚本（就是之前 roadmap 里没做完的部分）：
 

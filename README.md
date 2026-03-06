@@ -21,6 +21,8 @@ Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the t
 - [7. Input Data Requirements / 输入数据要求](#7-input-data-requirements--输入数据要求)
 - [8. FAQ / 常见问题](#8-faq--常见问题)
 - [9. Paper-Oriented Next Steps / 论文向下一步](#9-paper-oriented-next-steps--论文向下一步)
+- [10. Optimized Output Workflow / 优化后的输出流程](#10-optimized-output-workflow--优化后的输出流程)
+- [11. Building and Environment Figure Style Parameters / B&E图形规范参数表](#11-building-and-environment-figure-style-parameters--be图形规范参数表)
 
 ---
 
@@ -539,6 +541,78 @@ See: `scripts/summarize_aoi_visit_rate.py`
 5. 输出投稿级图表与结果表
 
 ---
+
+## 10. Optimized Output Workflow / 优化后的输出流程
+
+This workflow reorganizes AOI batch outputs into a structure that is easier for scene-based and participant-based analysis, and adds grouped summaries/plots.
+该流程会把 AOI 批处理结果重组为更适合“按场景”和“按被试”分析的结构，并自动生成按人群分组的汇总表与图。
+
+### Command / 命令
+
+```bash
+python scripts/optimize_aoi_outputs.py \
+  --aoi_class_csv /path/to/batch_aoi_metrics_by_class.csv \
+  --aoi_polygon_csv /path/to/batch_aoi_metrics_by_polygon.csv \
+  --group_manifest /path/to/group_manifest.csv \
+  --group_id_col name \
+  --outdir outputs_organized
+```
+
+### Output structure / 输出结构
+
+```text
+outputs_organized/
+├─ by_scene/
+│  └─ <scene_id>/participants/
+│     ├─ <participant>_class.csv
+│     └─ <participant>_polygon.csv
+├─ by_participant/
+│  └─ <participant_id>/
+│     ├─ <scene_id>_class.csv
+│     └─ <scene_id>_polygon.csv
+└─ grouped/
+   ├─ tables/
+   │  ├─ summary_sportfreq.csv
+   │  └─ summary_experience.csv
+   └─ plots/
+      ├─ sportfreq_visited_rate.png
+      ├─ sportfreq_TTFF.png
+      ├─ sportfreq_TFD.png
+      ├─ experience_visited_rate.png
+      ├─ experience_TTFF.png
+      └─ experience_TFD.png
+```
+
+Notes / 说明：
+- Grouped output currently includes only `SportFreq` and `Experience` (no 2×2 cross-group export).
+- 当前分组仅输出 `SportFreq` 与 `Experience`，不导出 2×2 交叉分组。
+
+## 11. Building and Environment Figure Style Parameters / B&E图形规范参数表
+
+Use the following defaults to keep figures journal-friendly and consistent across scripts.
+建议在各绘图脚本中统一采用以下参数，保持投稿图风格一致。
+
+| Item | Recommended setting |
+|---|---|
+| Figure background | white |
+| Style | clean axis, no top/right spines |
+| Grid | y-axis only, light gray, alpha≈0.2 |
+| Palette | low-saturation, color-blind-friendly (e.g., `#4C78A8`, `#F58518`, `#54A24B`, `#B279A2`) |
+| Font size | 9–11 pt |
+| Axis label size | 10 pt |
+| Tick label size | 9 pt |
+| Legend size | 9 pt |
+| Line width | 1.0–1.5 |
+| Bar alpha | 0.9–0.95 |
+| Export DPI | 300 |
+| Width (single-column style) | ~3.3–3.6 in |
+| Width (double-column style) | ~7.0–7.2 in |
+| Annotation | concise numeric labels only when needed |
+
+Practical rule / 实操规则：
+- Keep axis labels and units explicit (`ms`, `%`).
+- Use consistent y-scale across comparable panels.
+- Avoid decorative effects; prioritize readability and reproducibility.
 
 ## Chinese-only Version / 纯中文版本
 
