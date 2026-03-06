@@ -41,6 +41,26 @@ def _safe_num(s):
     return pd.to_numeric(s, errors="coerce")
 
 
+def _normalize_scene_token(x) -> str | None:
+    if pd.isna(x):
+        return None
+    s = str(x).strip()
+    if not s:
+        return None
+    import re
+    u = s.upper().replace(' ', '')
+    m = re.search(r'WWR?(15|45|75).*?C([01])', u)
+    if m:
+        return f"WWR{m.group(1)}_C{m.group(2)}"
+    m = re.search(r'C([01]).*?W(?:WR)?(15|45|75)', u)
+    if m:
+        return f"WWR{m.group(2)}_C{m.group(1)}"
+    m = re.search(r'W(?:WR)?(15|45|75).*?C([01])', u)
+    if m:
+        return f"WWR{m.group(1)}_C{m.group(2)}"
+    return None
+
+
 def _apply_be_style():
     # clean journal-like style (Building and Environment friendly)
     plt.rcParams.update({
@@ -300,7 +320,8 @@ def main():
             vals = gm[c].dropna().astype(str).str.strip().unique().tolist()
             if not vals:
                 continue
-            scene_label = vals[0]
+            scene_label_raw = vals[0]
+            scene_label = _normalize_scene_token(scene_label_raw) or scene_label_raw
             scene_id_key = prefix
 
             # also allow direct scene-name matching if upstream scene_id already equals WWR45_C1
@@ -353,10 +374,9 @@ def main():
                 d["scene_label"] = d["scene_label"].fillna(d["scene_id"].astype(str))
             else:
                 d["scene_label"] = d["scene_id"].astype(str)
-            # final fallback: if a dirty scene_id contains a clean WWRxx_Cx token, extract it
-            extracted = d["scene_id"].astype(str).str.extract(r'(WWR\s*\d+\s*_?\s*C[01])', expand=False)
-            extracted = extracted.str.replace(r'\s+', '', regex=True).str.replace(r'_(?=C)', '_', regex=True)
-            d["scene_label"] = extracted.fillna(d["scene_label"])
+            # final fallback: normalize dirty scene ids like '(1-1-1)...C1W45' -> 'WWR45_C1'
+            normalized_from_scene_id = d["scene_id"].apply(_normalize_scene_token)
+            d["scene_label"] = normalized_from_scene_id.fillna(d["scene_label"])
 
         if "SportFreq" in d.columns:
             sport = _group_summary(d, "SportFreq")
