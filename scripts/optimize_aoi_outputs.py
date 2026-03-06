@@ -239,13 +239,6 @@ def main():
             _plot_group_metric(exp, "TTFF_mean_given_visited", outdir / "grouped" / "plots" / "experience_TTFF.png", "TTFF (visited trials) by Experience")
             _plot_group_metric(exp, "TFD_mean_given_visited", outdir / "grouped" / "plots" / "experience_TFD.png", "TFD (visited trials) by Experience")
 
-        if ("SportFreq" in d.columns) and ("Experience" in d.columns):
-            d["SportFreq_x_Experience"] = d["SportFreq"].astype(str) + "_" + d["Experience"].astype(str)
-            cross = _group_summary(d, "SportFreq_x_Experience")
-            cross.to_csv(outdir / "grouped" / "tables" / "summary_cross_2x2.csv", index=False)
-            _plot_group_metric(cross, "visited_rate", outdir / "grouped" / "plots" / "cross2x2_visited_rate.png", "Visited rate by SportFreq × Experience")
-            _plot_group_metric(cross, "TTFF_mean_given_visited", outdir / "grouped" / "plots" / "cross2x2_TTFF.png", "TTFF by SportFreq × Experience")
-            _plot_group_metric(cross, "TFD_mean_given_visited", outdir / "grouped" / "plots" / "cross2x2_TFD.png", "TFD by SportFreq × Experience")
 
     print("Saved organized outputs to:", outdir)
 
