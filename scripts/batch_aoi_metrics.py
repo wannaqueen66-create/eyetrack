@@ -471,12 +471,32 @@ def main():
                 '--group_manifest', args.group_manifest,
                 '--group_id_col', args.optimize_group_id_col,
                 '--outdir', opt_out,
+                '--skip_if_exists',
             ]
             try:
                 subprocess.run(cmd, check=True)
                 print(' - optimized outputs:', opt_out)
             except Exception as e:
                 print('[WARN] optimize step failed:', e)
+
+            # If this is auto-built batch mode (group_manifest + scenes_root), also place optimized outputs
+            # directly under the main/merged outdir so users can inspect only one final folder.
+            try:
+                if (not args.manifest) and os.path.exists(class_path):
+                    merged_opt_out = args.optimize_outdir or os.path.join(args.outdir, 'optimized_outputs')
+                    cmd2 = [
+                        sys.executable,
+                        script_path,
+                        '--aoi_class_csv', class_path,
+                        '--aoi_polygon_csv', poly_path,
+                        '--group_manifest', args.group_manifest,
+                        '--group_id_col', args.optimize_group_id_col,
+                        '--outdir', merged_opt_out,
+                        '--skip_if_exists',
+                    ]
+                    subprocess.run(cmd2, check=True)
+            except Exception as e:
+                print('[WARN] merged optimize step failed:', e)
 
     print('Saved:')
     print(' -', poly_path)

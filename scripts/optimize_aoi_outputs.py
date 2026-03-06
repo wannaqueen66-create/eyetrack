@@ -194,9 +194,13 @@ def main():
     ap.add_argument("--group_manifest", default=None)
     ap.add_argument("--group_id_col", default="name", help="id column in group manifest (default: name)")
     ap.add_argument("--outdir", default="outputs_organized")
+    ap.add_argument("--skip_if_exists", action="store_true", help="Skip when outdir already appears populated")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)
+    if args.skip_if_exists and (outdir / 'by_scene').exists() and (outdir / 'grouped').exists():
+        print('Skip optimize: output already exists ->', outdir)
+        return
     _ensure_dirs(outdir)
 
     df_class = pd.read_csv(args.aoi_class_csv)
