@@ -176,9 +176,11 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     if data.empty:
         return
 
+    scene_key = "scene_label" if "scene_label" in data.columns else "scene_id"
+
     # aggregate to scene x group mean across classes for cleaner figure
-    agg = data.groupby(["scene_id", "group_value"], as_index=False)[metric].mean(numeric_only=True)
-    scenes = list(agg["scene_id"].astype(str).unique())
+    agg = data.groupby([scene_key, "group_value"], as_index=False)[metric].mean(numeric_only=True)
+    scenes = list(agg[scene_key].astype(str).unique())
     groups = sorted(agg["group_value"].astype(str).unique())
 
     width = 0.8 / max(1, len(groups))
@@ -190,7 +192,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     for i, g in enumerate(groups):
         y = []
         for s in scenes:
-            tmp = agg[(agg["scene_id"].astype(str) == s) & (agg["group_value"].astype(str) == g)][metric]
+            tmp = agg[(agg[scene_key].astype(str) == s) & (agg["group_value"].astype(str) == g)][metric]
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         ax.bar(offs, y, width=width, label=g, color=palette[i % len(palette)], alpha=0.92)
@@ -245,9 +247,38 @@ def main():
         if "Experience" in gm.columns:
             gm["Experience"] = gm["Experience"].apply(_norm_group)
 
+        # Optional scene label mapping from manifest columns like:
+        # trial01_scene / trial01_WWR / trial01_Cond  -> scene_id=trial01 => label='WWR45_C1'
+        scene_label_map = {}
+        trial_scene_cols = [c for c in gm.columns if c.endswith('_scene')]
+        for c in trial_scene_cols:
+            prefix = c[:-6]  # remove _scene
+            wwr_col = f"{prefix}_WWR"
+            cond_col = f"{prefix}_Cond"
+            vals = gm[c].dropna().astype(str).str.strip().unique().tolist()
+            if not vals:
+                continue
+            scene_id_key = vals[0]
+            wwr_val = None
+            cond_val = None
+            if wwr_col in gm.columns:
+                vv = gm[wwr_col].dropna().astype(str).str.strip().unique().tolist()
+                wwr_val = vv[0] if vv else None
+            if cond_col in gm.columns:
+                vv = gm[cond_col].dropna().astype(str).str.strip().unique().tolist()
+                cond_val = vv[0] if vv else None
+            if wwr_val and cond_val:
+                scene_label_map[scene_id_key] = f"WWR{wwr_val}_{cond_val}"
+            elif wwr_val:
+                scene_label_map[scene_id_key] = f"WWR{wwr_val}"
+            elif cond_val:
+                scene_label_map[scene_id_key] = f"{cond_val}"
+
         d = df_class.copy()
         d["participant_id"] = d["participant_id"].astype(str).str.strip()
         d = d.merge(gm[[c for c in ["participant_id", "SportFreq", "Experience"] if c in gm.columns]], on="participant_id", how="left")
+        if scene_label_map:
+            d["scene_label"] = d["scene_id"].astype(str).map(scene_label_map).fillna(d["scene_id"].astype(str))
 
         if "SportFreq" in d.columns:
             sport = _group_summary(d, "SportFreq")
