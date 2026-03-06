@@ -149,6 +149,158 @@ def _dwell_time(sub: pd.DataFrame, mode: str = 'row') -> float:
     return float(per_fix['Fixation Duration[ms]'].sum())
 
 
+def _build_fixation_table(sub: pd.DataFrame) -> pd.DataFrame:
+    """One-row-per-fixation table within an AOI subset.
+
+    Columns in return (when available):
+      - Fixation Index
+      - first_ts
+      - duration_ms
+    """
+    if sub is None or len(sub) == 0 or ('Fixation Index' not in sub.columns):
+        return pd.DataFrame(columns=['Fixation Index', 'first_ts', 'duration_ms'])
+
+    tmp = pd.DataFrame({
+        'Fixation Index': pd.to_numeric(sub.get('Fixation Index'), errors='coerce'),
+        'first_ts': pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce'),
+        'duration_ms': pd.to_numeric(sub.get('Fixation Duration[ms]'), errors='coerce') if 'Fixation Duration[ms]' in sub.columns else np.nan,
+    })
+    tmp = tmp.dropna(subset=['Fixation Index'])
+    if len(tmp) == 0:
+        return pd.DataFrame(columns=['Fixation Index', 'first_ts', 'duration_ms'])
+
+    agg = tmp.groupby('Fixation Index', as_index=False).agg(
+        first_ts=('first_ts', 'min'),
+        duration_ms=('duration_ms', 'max'),
+    )
+    return agg.sort_values(['first_ts', 'Fixation Index'], na_position='last').reset_index(drop=True)
+
+
+def _compute_mpd(sub: pd.DataFrame) -> float:
+    """Mean pupil diameter in AOI subset.
+
+    Preference: mm columns > px columns.
+    If both eyes exist, use row-wise mean of left/right then average across rows.
+    """
+    if sub is None or len(sub) == 0:
+        return np.nan
+
+    left = right = None
+    if 'Pupil Diameter Left[mm]' in sub.columns or 'Pupil Diameter Right[mm]' in sub.columns:
+        left = pd.to_numeric(sub.get('Pupil Diameter Left[mm]'), errors='coerce') if 'Pupil Diameter Left[mm]' in sub.columns else None
+        right = pd.to_numeric(sub.get('Pupil Diameter Right[mm]'), errors='coerce') if 'Pupil Diameter Right[mm]' in sub.columns else None
+    elif 'Pupil Diameter Left[px]' in sub.columns or 'Pupil Diameter Right[px]' in sub.columns:
+        left = pd.to_numeric(sub.get('Pupil Diameter Left[px]'), errors='coerce') if 'Pupil Diameter Left[px]' in sub.columns else None
+        right = pd.to_numeric(sub.get('Pupil Diameter Right[px]'), errors='coerce') if 'Pupil Diameter Right[px]' in sub.columns else None
+
+    if left is None and right is None:
+        return np.nan
+    if left is None:
+        return float(right.dropna().mean()) if right.notna().any() else np.nan
+    if right is None:
+        return float(left.dropna().mean()) if left.notna().any() else np.nan
+
+    pair = pd.concat([left.rename('L'), right.rename('R')], axis=1)
+    row_mean = pair.mean(axis=1, skipna=True)
+    return float(row_mean.dropna().mean()) if row_mean.notna().any() else np.nan
+
+
+def _compute_return_fixations(df: pd.DataFrame, mask: np.ndarray) -> int:
+    """Return fixations (RF): number of re-entries after first entry.
+
+    Operational definition in this repo:
+    - Build fixation sequence ordered by fixation first timestamp.
+    - Mark each fixation as in-AOI if any row of that fixation falls in AOI.
+    - Count AOI entry episodes (out->in transitions).
+    - RF = max(entry_episodes - 1, 0).
+
+    This is robust and auditable, and aligns with the common "refixation / revisit"
+    interpretation at AOI level.
+    """
+    if 'Fixation Index' not in df.columns or len(df) == 0:
+        return 0
+
+    tmp = pd.DataFrame({
+        'Fixation Index': pd.to_numeric(df.get('Fixation Index'), errors='coerce'),
+        'ts': pd.to_numeric(df.get('Recording Time Stamp[ms]'), errors='coerce'),
+        'in_aoi': np.asarray(mask, dtype=bool),
+    })
+    tmp = tmp.dropna(subset=['Fixation Index'])
+    if len(tmp) == 0:
+        return 0
+
+    seq = tmp.groupby('Fixation Index', as_index=False).agg(
+        first_ts=('ts', 'min'),
+        in_aoi=('in_aoi', 'max'),
+    )
+    if len(seq) == 0:
+        return 0
+
+    seq = seq.sort_values(['first_ts', 'Fixation Index'], na_position='last')
+    in_flags = seq['in_aoi'].astype(bool).tolist()
+
+    entries = 0
+    prev = False
+    for cur in in_flags:
+        if cur and (not prev):
+            entries += 1
+        prev = cur
+
+    return int(max(entries - 1, 0))
+
+
+def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: float, dwell_mode: str, dwell_empty_as_zero: bool) -> dict:
+    """Compute AOI metric pack for one mask (polygon or class union)."""
+    samples = int(mask.sum())
+    visited = int(samples > 0)
+
+    # TFD (legacy alias: dwell_time_ms)
+    tfd = _dwell_time(sub, mode=dwell_mode)
+    if (not np.isfinite(tfd)) and dwell_empty_as_zero and visited == 0:
+        tfd = 0.0
+
+    fix_tbl = _build_fixation_table(sub)
+    fc = int(len(fix_tbl))
+
+    if len(fix_tbl) and pd.notna(t0):
+        ttff = float(fix_tbl['first_ts'].min() - t0)
+    elif len(sub) and pd.notna(t0):
+        # Fallback when fixation columns are missing: first sample timestamp
+        ttff = float(pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
+    else:
+        ttff = np.nan
+
+    if len(fix_tbl):
+        first_row = fix_tbl.loc[fix_tbl['first_ts'].idxmin()]
+        ffd = float(first_row['duration_ms']) if pd.notna(first_row['duration_ms']) else np.nan
+        mfd = float(fix_tbl['duration_ms'].max()) if fix_tbl['duration_ms'].notna().any() else np.nan
+    else:
+        ffd = np.nan
+        mfd = np.nan
+
+    rf = _compute_return_fixations(df, mask)
+    mpd = _compute_mpd(sub)
+
+    out = {
+        'samples': samples,
+        'visited': visited,
+        'FC': fc,
+        'TTFF': float(ttff) if pd.notna(ttff) else np.nan,
+        'FFD': float(ffd) if pd.notna(ffd) else np.nan,
+        'TFD': float(tfd) if pd.notna(tfd) else np.nan,
+        'MFD': float(mfd) if pd.notna(mfd) else np.nan,
+        'RF': int(rf),
+        'MPD': float(mpd) if pd.notna(mpd) else np.nan,
+    }
+
+    # Backward-compatible aliases
+    out['fixation_count'] = out['FC']
+    out['TTFF_ms'] = out['TTFF']
+    out['dwell_time_ms'] = out['TFD']
+
+    return out
+
+
 def compute_metrics(
     df: pd.DataFrame,
     aois: List[PolygonAOI],
@@ -166,8 +318,8 @@ def compute_metrics(
       - 'fixation': AOI hit testing uses Fixation Point X/Y (recommended when metrics are fixation-based)
 
     dwell_empty_as_zero:
-      - If True, return 0.0 for dwell_time_ms when visited==0, instead of NaN.
-        (TTFF_ms remains NaN; fixation_count remains 0.)
+      - If True, return 0.0 for TFD when visited==0, instead of NaN.
+        (TTFF remains NaN; FC remains 0.)
     """
 
     if point_source not in ('gaze', 'fixation'):
@@ -213,47 +365,22 @@ def compute_metrics(
         class_to_masks.setdefault(a.class_name, []).append(mask)
 
         sub = df[mask]
-        dwell = _dwell_time(sub, mode=dwell_mode)
-        if (not np.isfinite(dwell)) and dwell_empty_as_zero and int(mask.sum()) == 0:
-            dwell = 0.0
-        fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
-        if len(sub) and pd.notna(t0):
-            ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
-        else:
-            ttff = np.nan
-
-        samples = int(mask.sum())
-        per_poly_rows.append({
+        row = {
             'class_name': a.class_name,
             'polygon_id': a.polygon_id,
-            'samples': samples,
-            'visited': int(samples > 0),
-            'dwell_time_ms': float(dwell) if pd.notna(dwell) else np.nan,
-            'fixation_count': int(fcount) if pd.notna(fcount) else 0,
-            'TTFF_ms': float(ttff) if pd.notna(ttff) else np.nan,
-        })
+            **_metric_pack(df, sub, mask, t0, dwell_mode, dwell_empty_as_zero),
+        }
+        per_poly_rows.append(row)
 
     for cls, masks in class_to_masks.items():
         union = np.logical_or.reduce(masks) if masks else np.zeros_like(x, dtype=bool)
         sub = df[union]
-        dwell = _dwell_time(sub, mode=dwell_mode)
-        if (not np.isfinite(dwell)) and dwell_empty_as_zero and int(union.sum()) == 0:
-            dwell = 0.0
-        fcount = pd.to_numeric(sub.get('Fixation Index'), errors='coerce').dropna().nunique() if len(sub) else 0
-        if len(sub) and pd.notna(t0):
-            ttff = (pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').min() - t0)
-        else:
-            ttff = np.nan
-        samples = int(union.sum())
-        per_class_rows.append({
+        row = {
             'class_name': cls,
             'polygon_count': len(masks),
-            'samples': samples,
-            'visited': int(samples > 0),
-            'dwell_time_ms': float(dwell) if pd.notna(dwell) else np.nan,
-            'fixation_count': int(fcount) if pd.notna(fcount) else 0,
-            'TTFF_ms': float(ttff) if pd.notna(ttff) else np.nan,
-        })
+            **_metric_pack(df, sub, union, t0, dwell_mode, dwell_empty_as_zero),
+        }
+        per_class_rows.append(row)
 
     poly_df = pd.DataFrame(per_poly_rows)
     class_df = pd.DataFrame(per_class_rows)
@@ -294,6 +421,7 @@ def compute_metrics(
         "trial_start_col": trial_start_col,
         "warn_class_overlap": bool(warn_class_overlap),
         "class_overlap": overlap_info,
+        "rf_definition": "RF = number of AOI re-entry episodes after first entry (based on fixation sequence).",
     }
 
     # attach to DataFrame attrs so callers can export to run_config.json

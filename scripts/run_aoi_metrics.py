@@ -19,7 +19,8 @@ def main():
     ap.add_argument('--outdir', default='outputs')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
     ap.add_argument('--point_source', default='fixation', choices=['gaze', 'fixation'], help="AOI hit testing source: fixation (default) or gaze. Use fixation to align with fixation-based dwell/TTFF.")
-    ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, dwell_time_ms will be 0.0 (instead of NaN) when visited==0')
+    ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, TFD will be 0.0 (instead of NaN) when visited==0')
+    ap.add_argument('--no_export_metric_plots', action='store_true', help='Disable AOI metric PNG export (default: export)')
 
     # TTFF t0 control
     ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional trial start timestamp (ms). If set, TTFF_ms = first_hit_ts - trial_start_ms')
@@ -239,6 +240,16 @@ def main():
             )
         except Exception as e:
             print('[WARN] Failed to export aoi_overlay.png:', e)
+
+    if not args.no_export_metric_plots:
+        try:
+            from src.aoi_metric_plots import export_metric_barplots
+            plot_dir = os.path.join(args.outdir, 'metric_plots')
+            plots = export_metric_barplots(class_df, plot_dir, prefix='aoi_class')
+            if plots:
+                print(f" - metric plots: {len(plots)} PNG(s) at {plot_dir}")
+        except Exception as e:
+            print('[WARN] Failed to export metric plots:', e)
 
     print('Saved:')
     print(' -', poly_path)

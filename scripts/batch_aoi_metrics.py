@@ -29,7 +29,8 @@ def main():
     ap.add_argument('--outdir', default='outputs_batch')
     ap.add_argument('--dwell_mode', default='row', choices=['row', 'fixation'], help="Dwell time aggregation: 'row' (legacy) or 'fixation' (dedup by Fixation Index)")
     ap.add_argument('--point_source', default='fixation', choices=['gaze', 'fixation'], help="AOI hit testing source: fixation (default) or gaze. Use fixation to align with fixation-based dwell/TTFF.")
-    ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, dwell_time_ms will be 0.0 (instead of NaN) when visited==0')
+    ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, TFD will be 0.0 (instead of NaN) when visited==0')
+    ap.add_argument('--no_export_metric_plots', action='store_true', help='Disable AOI metric PNG export (default: export)')
 
     # TTFF t0 control
     ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional trial start timestamp (ms). If set, TTFF_ms = first_hit_ts - trial_start_ms')
@@ -352,6 +353,28 @@ def main():
     class_path = os.path.join(args.outdir, 'batch_aoi_metrics_by_class.csv')
     poly_all.to_csv(poly_path, index=False)
     class_all.to_csv(class_path, index=False)
+
+    if (not args.no_export_metric_plots) and (len(class_all) > 0):
+        try:
+            from src.aoi_metric_plots import export_metric_barplots
+            plot_root = os.path.join(args.outdir, 'metric_plots')
+            os.makedirs(plot_root, exist_ok=True)
+
+            # Per participant x scene class-level plots
+            for (pid, sid), g in class_all.groupby(['participant_id', 'scene_id'], dropna=False):
+                subdir = os.path.join(plot_root, f"{pid}__{sid}")
+                export_metric_barplots(g, subdir, prefix='aoi_class')
+
+            # Overall mean by class across all rows
+            metric_cols = [c for c in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RF', 'MPD'] if c in class_all.columns]
+            if metric_cols:
+                gg = class_all.copy()
+                for c in metric_cols:
+                    gg[c] = pd.to_numeric(gg[c], errors='coerce')
+                summary = gg.groupby('class_name', as_index=False)[metric_cols].mean(numeric_only=True)
+                export_metric_barplots(summary, plot_root, prefix='overall_mean_by_class')
+        except Exception as e:
+            print('[WARN] Failed to export batch metric plots:', e)
 
     # Optional overlap report
     if args.report_class_overlap:
