@@ -210,25 +210,31 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     if data.empty:
         return
 
-    scene_key = "scene_label" if "scene_label" in data.columns else "scene_id"
+    scene_label_col = "scene_label" if "scene_label" in data.columns else "scene_id"
     order_cols = [c for c in ["scene_order", "round_index", "wwr_order", "cond_order"] if c in data.columns]
 
-    # aggregate to scene x group mean across classes for cleaner figure
-    group_cols = order_cols + [scene_key, "group_value"]
-    agg = data.groupby(group_cols, as_index=False, dropna=False)[metric].mean(numeric_only=True)
     if order_cols:
-        agg = agg.sort_values(order_cols + [scene_key])
-        scene_order_df = agg[order_cols + [scene_key]].drop_duplicates()
-        scenes = scene_order_df[scene_key].astype(str).tolist()
+        data["scene_slot"] = data[order_cols].astype(str).agg("|".join, axis=1)
+        group_cols = order_cols + ["scene_slot", scene_label_col, "group_value"]
+        agg = data.groupby(group_cols, as_index=False, dropna=False)[metric].mean(numeric_only=True)
+        agg = agg.sort_values(order_cols + [scene_label_col])
+        slot_df = agg[order_cols + ["scene_slot", scene_label_col]].drop_duplicates()
+        scene_slots = slot_df["scene_slot"].astype(str).tolist()
+        scene_labels = slot_df[scene_label_col].astype(str).tolist()
+        slot_to_label = dict(zip(scene_slots, scene_labels))
     else:
-        scenes = list(agg[scene_key].astype(str).unique())
+        data["scene_slot"] = data[scene_label_col].astype(str)
+        agg = data.groupby(["scene_slot", scene_label_col, "group_value"], as_index=False, dropna=False)[metric].mean(numeric_only=True)
+        slot_df = agg[["scene_slot", scene_label_col]].drop_duplicates()
+        scene_slots = slot_df["scene_slot"].astype(str).tolist()
+        slot_to_label = dict(zip(slot_df["scene_slot"].astype(str), slot_df[scene_label_col].astype(str)))
 
     groups = [g for g in ["Low", "High"] if g in set(agg["group_value"].astype(str))]
     if not groups:
         groups = sorted(agg["group_value"].astype(str).unique())
 
     width = 0.8 / max(1, len(groups))
-    x = np.arange(len(scenes))
+    x = np.arange(len(scene_slots))
 
     fig, ax = plt.subplots(figsize=(12.0, 4.8))
     palette_map = {"Low": "#4C78A8", "High": "#F58518"}
@@ -237,8 +243,8 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     ymax_all = []
     for i, g in enumerate(groups):
         y = []
-        for s in scenes:
-            tmp = agg[(agg[scene_key].astype(str) == s) & (agg["group_value"].astype(str) == g)][metric]
+        for slot in scene_slots:
+            tmp = agg[(agg["scene_slot"].astype(str) == slot) & (agg["group_value"].astype(str) == g)][metric]
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
@@ -249,15 +255,14 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             ymax_all.append(val)
             ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=7)
 
-    if "round_index" in agg.columns:
-        round_df = agg[[scene_key, "round_index"]].drop_duplicates().sort_values(["round_index", scene_key])
-        rounds = round_df["round_index"].tolist()
+    if order_cols and "round_index" in slot_df.columns:
+        rounds = slot_df["round_index"].tolist()
         for i in range(1, len(rounds)):
             if rounds[i] != rounds[i - 1]:
                 ax.axvline(i - 0.5, color="#888888", linestyle="--", linewidth=1.0, alpha=0.8)
 
     ax.set_xticks(x)
-    ax.set_xticklabels(scenes, rotation=30, ha="right")
+    ax.set_xticklabels([slot_to_label[s] for s in scene_slots], rotation=30, ha="right")
     ax.set_title(title)
     ax.set_xlabel("Scene")
     ax.set_ylabel(metric)
