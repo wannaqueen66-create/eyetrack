@@ -247,7 +247,7 @@ def main():
                     'segments_estimated': int(segments),
                 }
                 if segments > 1:
-                    msg = f"Detected multiple timestamp segments for csv_path={r['csv_path']} (segments={segments}, neg_jumps={neg}, gap_jumps={gap}, gap_thr_ms={gap_thr}). TTFF may be unreliable unless you set --trial_start_ms/--trial_start_col or pre-split trials."
+                    msg = f"Detected timestamp gaps / multiple time segments for csv_path={r['csv_path']} (segments={segments}, neg_jumps={neg}, gap_jumps={gap}, gap_thr_ms={gap_thr}). This CSV is still treated as ONE complete scene/view trial; no splitting is performed. TTFF is still computed from the CSV-level trial start by default."
                     if args.time_segments == 'error':
                         raise SystemExit(msg)
                     elif args.time_segments == 'warn':

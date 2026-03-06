@@ -98,6 +98,9 @@ python3 -m http.server 8080
 
 ### Colab 混合尺寸一键脚本（推荐）
 
+> 说明：如果日志提示 timestamp gaps / multiple time segments，这只是**提醒该 CSV 时间轴存在跳变**；当前工作流仍把**一个 CSV 当作一个完整 scene/view trial** 处理，不会按时间段自动切分。
+
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_aoi_pipeline.py \

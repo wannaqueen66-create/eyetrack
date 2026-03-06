@@ -128,6 +128,9 @@ Colab 推荐用于**无需本地/VPS 配环境**的快速试跑。
 
 ### Colab mixed-size one-command pipeline / Colab 混合尺寸一键脚本
 
+> Note / 说明: if logs report timestamp gaps / multiple time segments, this is only a diagnostic warning about jumps in the CSV timeline. The current workflow still treats **one CSV as one complete scene/view trial** and does **not** auto-split the file into multiple trials.
+
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_aoi_pipeline.py \
