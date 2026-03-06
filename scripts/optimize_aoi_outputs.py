@@ -114,6 +114,10 @@ def _group_summary(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
     tfd_col = _metric_col(df, "TFD", "dwell_time_ms")
     ttff_col = _metric_col(df, "TTFF", "TTFF_ms")
     fc_col = _metric_col(df, "FC", "fixation_count")
+    ffd_col = _metric_col(df, "FFD")
+    mfd_col = _metric_col(df, "MFD")
+    rf_col = _metric_col(df, "RF")
+    mpd_col = _metric_col(df, "MPD")
 
     for (scene_id, class_name, gv), sub in df.groupby(["scene_id", "class_name", group_col], dropna=False):
         if pd.isna(gv) or str(gv).strip() == "":
@@ -140,6 +144,22 @@ def _group_summary(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
         if fc_col:
             fc = _safe_num(sub.get(fc_col))
             row["FC_mean_all"] = float(fc.mean()) if fc.notna().any() else np.nan
+            fcv = _safe_num(sub_v.get(fc_col))
+            row["FC_mean_given_visited"] = float(fcv.mean()) if fcv.notna().any() else np.nan
+        if ffd_col:
+            ffd = _safe_num(sub_v.get(ffd_col))
+            row["FFD_mean_given_visited"] = float(ffd.mean()) if ffd.notna().any() else np.nan
+        if mfd_col:
+            mfd = _safe_num(sub_v.get(mfd_col))
+            row["MFD_mean_given_visited"] = float(mfd.mean()) if mfd.notna().any() else np.nan
+        if rf_col:
+            rf = _safe_num(sub.get(rf_col))
+            row["RF_mean_all"] = float(rf.mean()) if rf.notna().any() else np.nan
+            rfv = _safe_num(sub_v.get(rf_col))
+            row["RF_mean_given_visited"] = float(rfv.mean()) if rfv.notna().any() else np.nan
+        if mpd_col:
+            mpd = _safe_num(sub_v.get(mpd_col))
+            row["MPD_mean_given_visited"] = float(mpd.mean()) if mpd.notna().any() else np.nan
         rows.append(row)
 
     return pd.DataFrame(rows)
@@ -232,16 +252,32 @@ def main():
         if "SportFreq" in d.columns:
             sport = _group_summary(d, "SportFreq")
             sport.to_csv(outdir / "grouped" / "tables" / "summary_sportfreq.csv", index=False)
-            _plot_group_metric(sport, "visited_rate", outdir / "grouped" / "plots" / "sportfreq_visited_rate.png", "Visited rate by SportFreq")
-            _plot_group_metric(sport, "TTFF_mean_given_visited", outdir / "grouped" / "plots" / "sportfreq_TTFF.png", "TTFF (visited trials) by SportFreq")
-            _plot_group_metric(sport, "TFD_mean_given_visited", outdir / "grouped" / "plots" / "sportfreq_TFD.png", "TFD (visited trials) by SportFreq")
+            for metric, title in [
+                ("visited_rate", "Visited rate by SportFreq"),
+                ("TTFF_mean_given_visited", "TTFF (visited trials) by SportFreq"),
+                ("TFD_mean_given_visited", "TFD (visited trials) by SportFreq"),
+                ("FC_mean_given_visited", "FC (visited trials) by SportFreq"),
+                ("FFD_mean_given_visited", "FFD (visited trials) by SportFreq"),
+                ("MFD_mean_given_visited", "MFD (visited trials) by SportFreq"),
+                ("RF_mean_given_visited", "RF (visited trials) by SportFreq"),
+                ("MPD_mean_given_visited", "MPD (visited trials) by SportFreq"),
+            ]:
+                _plot_group_metric(sport, metric, outdir / "grouped" / "plots" / f"sportfreq_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", title)
 
         if "Experience" in d.columns:
             exp = _group_summary(d, "Experience")
             exp.to_csv(outdir / "grouped" / "tables" / "summary_experience.csv", index=False)
-            _plot_group_metric(exp, "visited_rate", outdir / "grouped" / "plots" / "experience_visited_rate.png", "Visited rate by Experience")
-            _plot_group_metric(exp, "TTFF_mean_given_visited", outdir / "grouped" / "plots" / "experience_TTFF.png", "TTFF (visited trials) by Experience")
-            _plot_group_metric(exp, "TFD_mean_given_visited", outdir / "grouped" / "plots" / "experience_TFD.png", "TFD (visited trials) by Experience")
+            for metric, title in [
+                ("visited_rate", "Visited rate by Experience"),
+                ("TTFF_mean_given_visited", "TTFF (visited trials) by Experience"),
+                ("TFD_mean_given_visited", "TFD (visited trials) by Experience"),
+                ("FC_mean_given_visited", "FC (visited trials) by Experience"),
+                ("FFD_mean_given_visited", "FFD (visited trials) by Experience"),
+                ("MFD_mean_given_visited", "MFD (visited trials) by Experience"),
+                ("RF_mean_given_visited", "RF (visited trials) by Experience"),
+                ("MPD_mean_given_visited", "MPD (visited trials) by Experience"),
+            ]:
+                _plot_group_metric(exp, metric, outdir / "grouped" / "plots" / f"experience_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", title)
 
 
     print("Saved organized outputs to:", outdir)

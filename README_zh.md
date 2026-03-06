@@ -425,9 +425,19 @@ outputs_organized/
       ├─ sportfreq_visited_rate.png
       ├─ sportfreq_TTFF.png
       ├─ sportfreq_TFD.png
+      ├─ sportfreq_FC.png
+      ├─ sportfreq_FFD.png
+      ├─ sportfreq_MFD.png
+      ├─ sportfreq_RF.png
+      ├─ sportfreq_MPD.png
       ├─ experience_visited_rate.png
       ├─ experience_TTFF.png
-      └─ experience_TFD.png
+      ├─ experience_TFD.png
+      ├─ experience_FC.png
+      ├─ experience_FFD.png
+      ├─ experience_MFD.png
+      ├─ experience_RF.png
+      └─ experience_MPD.png
 ```
 
 > 说明：不再输出 2×2 交叉分组（SportFreq×Experience）。
