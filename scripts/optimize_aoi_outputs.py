@@ -214,6 +214,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     palette_map = {"Low": "#4C78A8", "High": "#F58518"}
     fallback_palette = ["#4C78A8", "#F58518", "#54A24B", "#B279A2"]
 
+    ymax_all = []
     for i, g in enumerate(groups):
         y = []
         for s in scenes:
@@ -221,7 +222,12 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
-        ax.bar(offs, y, width=width, label=g, color=color, alpha=0.92)
+        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.92)
+        for rect, val in zip(bars, y):
+            if pd.isna(val):
+                continue
+            ymax_all.append(val)
+            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=7)
 
     if "round_index" in agg.columns:
         round_df = agg[[scene_key, "round_index"]].drop_duplicates().sort_values(["round_index", scene_key])
@@ -235,6 +241,9 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     ax.set_title(title)
     ax.set_xlabel("Scene")
     ax.set_ylabel(metric)
+    if ymax_all:
+        ymax = max(ymax_all)
+        ax.set_ylim(top=float(ymax) * 1.18 if float(ymax) > 0 else 1.0)
     ax.legend(title="Group", frameon=False)
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
@@ -342,6 +351,12 @@ def main():
             d = d.merge(scene_meta, on="scene_id", how="left")
             if "scene_label" in d.columns:
                 d["scene_label"] = d["scene_label"].fillna(d["scene_id"].astype(str))
+            else:
+                d["scene_label"] = d["scene_id"].astype(str)
+            # final fallback: if a dirty scene_id contains a clean WWRxx_Cx token, extract it
+            extracted = d["scene_id"].astype(str).str.extract(r'(WWR\s*\d+\s*_?\s*C[01])', expand=False)
+            extracted = extracted.str.replace(r'\s+', '', regex=True).str.replace(r'_(?=C)', '_', regex=True)
+            d["scene_label"] = extracted.fillna(d["scene_label"])
 
         if "SportFreq" in d.columns:
             sport = _group_summary(d, "SportFreq")

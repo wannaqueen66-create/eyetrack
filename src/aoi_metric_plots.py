@@ -27,23 +27,36 @@ def export_metric_barplots(df: pd.DataFrame, outdir: str, prefix: str = "aoi_cla
         return out_paths
 
     out_p = Path(outdir)
-    out_p.mkdir(parents=True, exist_ok=True)
 
     d = df.copy()
     d["class_name"] = d["class_name"].astype(str)
 
+    created_dir = False
     for m in metric_cols:
         y = pd.to_numeric(d[m], errors="coerce")
         if not y.notna().any():
             continue
 
+        if not created_dir:
+            out_p.mkdir(parents=True, exist_ok=True)
+            created_dir = True
+
         fig = plt.figure(figsize=(9, 4.8))
         ax = fig.add_subplot(1, 1, 1)
-        ax.bar(d["class_name"], y.fillna(0.0), color="#4C78A8", alpha=0.9)
+        bars = ax.bar(d["class_name"], y.fillna(0.0), color="#4C78A8", alpha=0.9)
         ax.set_title(f"AOI {m} by class")
         ax.set_xlabel("AOI class")
         ax.set_ylabel(m)
         ax.tick_params(axis='x', labelrotation=30)
+
+        ymax = y.max(skipna=True)
+        for rect, val in zip(bars, y.tolist()):
+            if pd.isna(val):
+                continue
+            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=8)
+        if pd.notna(ymax):
+            ax.set_ylim(top=float(ymax) * 1.12 if float(ymax) > 0 else 1.0)
+
         fig.tight_layout()
 
         p = out_p / f"{prefix}_{m}.png"
