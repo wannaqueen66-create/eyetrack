@@ -13,6 +13,72 @@ from src.aoi_metrics import load_aoi_json, compute_metrics
 from src.filters import filter_by_screen_and_validity, compute_valid_mask
 
 
+def parse_scene_id_tokens(scene_id: str):
+    """Parse round/block + WWR + Complexity from scene_id.
+
+    Naming convention in this experiment:
+    - 人群分组用 Experience/SportFreq 等字段；不要用“group1/2”。
+    - 中文“组1/组2”只表示 Round/Block 1/2。
+
+    Supported examples:
+      - "(1-1-1, 2-1-1) 组1-C1W45" -> round=1, wwr=45, complexity="C1"
+      - "组2-C0W15" -> round=2, wwr=15, complexity="C0"
+      - "WWR45_C1" -> round=None, wwr=45, complexity="C1"
+      - "C1W45" -> round=None, wwr=45, complexity="C1"
+
+    Returns dict with keys:
+      - round (int|None)
+      - round_label ("Round1"/"Round2"|None)
+      - wwr (int|None)
+      - complexity ("C0"/"C1"|None)
+      - condition_id ("WWR45_C1"|None)
+    """
+    import re
+
+    s = str(scene_id) if scene_id is not None else ""
+
+    # round/block from 中文“组1/组2” or english group1/group2
+    rnd = None
+    m = re.search(r"(?:组|group)\s*(?P<r>[12])", s, flags=re.IGNORECASE)
+    if m:
+        rnd = int(m.group("r"))
+
+    # condition patterns
+    wwr = None
+    comp = None
+
+    m = re.search(r"WWR(?P<wwr>15|45|75)_C(?P<c>[01])", s, flags=re.IGNORECASE)
+    if m:
+        wwr = int(m.group("wwr"))
+        comp = f"C{m.group('c')}"
+    else:
+        m = re.search(r"C(?P<c>[01])W(?P<wwr>15|45|75)", s, flags=re.IGNORECASE)
+        if m:
+            wwr = int(m.group("wwr"))
+            comp = f"C{m.group('c')}"
+        else:
+            # allow separate mentions
+            mw = re.search(r"(?:WWR|W)(?P<wwr>15|45|75)", s, flags=re.IGNORECASE)
+            mc = re.search(r"(?:COMPLEXITY|COMP|C)(?P<c>[01])", s, flags=re.IGNORECASE)
+            if mw:
+                wwr = int(mw.group("wwr"))
+            if mc:
+                comp = f"C{mc.group('c')}"
+
+    condition_id = None
+    if (wwr is not None) and (comp is not None):
+        condition_id = f"WWR{wwr}_{comp}"
+
+    out = {
+        "round": rnd,
+        "round_label": (f"Round{rnd}" if rnd in (1, 2) else None),
+        "wwr": wwr,
+        "complexity": comp,
+        "condition_id": condition_id,
+    }
+    return out
+
+
 def main():
     ap = argparse.ArgumentParser(description='Batch AOI metrics for multiple participants/scenes')
 
@@ -323,6 +389,22 @@ def main():
             _df.insert(0, 'n_valid_rows', n_valid)
             _df.insert(0, 'n_total_rows', n_total)
 
+        # Parse scene_id tokens for modeling/audit (round/block + condition)
+        toks = parse_scene_id_tokens(r['scene_id'])
+
+        # Keep raw scene id (folder name) for traceability
+        poly_df.insert(0, 'scene_id_raw', r['scene_id'])
+        class_df.insert(0, 'scene_id_raw', r['scene_id'])
+
+        # Add parsed columns (do NOT use the word "group" for round)
+        for _df in (poly_df, class_df):
+            _df.insert(0, 'condition_id', toks.get('condition_id'))
+            _df.insert(0, 'Complexity', toks.get('complexity'))
+            _df.insert(0, 'WWR', toks.get('wwr'))
+            _df.insert(0, 'round_label', toks.get('round_label'))
+            _df.insert(0, 'round', toks.get('round'))
+
+        # Keep scene_id as the ORIGINAL folder name to avoid breaking downstream
         poly_df.insert(0, 'scene_id', r['scene_id'])
         poly_df.insert(0, 'participant_id', r['participant_id'])
         class_df.insert(0, 'scene_id', r['scene_id'])

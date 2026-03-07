@@ -332,8 +332,19 @@ def main():
             # also allow direct scene-name matching if upstream scene_id already equals WWR45_C1
             alt_scene_id_key = scene_label
 
-            # round: 1-6 -> 1, 7-12 -> 2 (fallback keeps increasing blocks of 6)
-            round_index = ((trial_num - 1) // 6 + 1) if trial_num else np.nan
+            # round: prefer explicit manifest columns trialXX_Round / trialXX_RoundLabel when present.
+            # fallback: 1-6 -> 1, 7-12 -> 2 (keeps increasing blocks of 6)
+            round_index = np.nan
+            round_col = f"{prefix}_Round"
+            if round_col in gm.columns:
+                vv = gm[round_col].dropna().tolist()
+                if vv:
+                    try:
+                        round_index = float(vv[0])
+                    except Exception:
+                        round_index = np.nan
+            if (not np.isfinite(round_index)):
+                round_index = ((trial_num - 1) // 6 + 1) if trial_num else np.nan
 
             upper = scene_label.upper()
             wwr_order = np.nan
