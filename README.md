@@ -567,8 +567,23 @@ Outputs (per group variable):
 - `model_*.txt` (model summaries)
 - `fixef_*.csv` (tidy fixed-effect tables)
 
+#### Descriptive tables + interaction PNGs / 描述性汇总表 + 交互图
+
+To get the journal-friendly "means by (WWR×Complexity) × Group × AOI" tables and interaction plots:
+
+```bash
+python scripts/summarize_aoi_by_condition_group.py \
+  --aoi_class_csv <OUT_MERGED>/batch_aoi_metrics_by_class.csv \
+  --group_manifest <scenes_root>/group_manifest.csv \
+  --outdir <OUT_MERGED>/outputs_aoi_summary
+```
+
+It exports:
+- `outputs_aoi_summary/tables/summary_<GroupVar>_<outcome>.csv`
+- `outputs_aoi_summary/plots/plot_<GroupVar>_<outcome>.png`
+
 > Note: binary/count outcomes are better modeled via GLMM in R (lme4/glmmTMB).
-> This script focuses on LMM-style exploratory analysis on transformed outcomes.
+> The modeling script focuses on LMM-style exploratory analysis on transformed outcomes.
 
 **EN**
 
