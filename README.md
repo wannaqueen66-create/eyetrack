@@ -545,6 +545,31 @@ See: `scripts/summarize_aoi_visit_rate.py`
 
 ## 9. Paper-Oriented Next Steps / 论文向下一步
 
+### Mixed-effects (LMM-style) modeling for AOI allocation / AOI 注意分配的混合效应建模
+
+After you generate merged AOI outputs (especially `batch_aoi_metrics_by_class.csv`), you can run an LMM-style exploratory model to answer:
+"Which factors (WWR × Complexity × Group) influence visual attention allocation across AOIs?"
+
+This repo provides a pragmatic Python `statsmodels` implementation:
+
+```bash
+python scripts/model_aoi_lmm_allocation.py \
+  --aoi_class_csv <OUT_MERGED>/batch_aoi_metrics_by_class.csv \
+  --group_manifest <scenes_root>/group_manifest.csv \
+  --outdir <OUT_MERGED>/outputs_aoi_lmm
+```
+
+It will fit models for BOTH population group variables:
+- `Experience` (High/Low)
+- `SportFreq` (High/Low)
+
+Outputs (per group variable):
+- `model_*.txt` (model summaries)
+- `fixef_*.csv` (tidy fixed-effect tables)
+
+> Note: binary/count outcomes are better modeled via GLMM in R (lme4/glmmTMB).
+> This script focuses on LMM-style exploratory analysis on transformed outcomes.
+
 **EN**
 
 1. Use semantic AOIs (sky, greenery, facade, road, entrance, signage)
