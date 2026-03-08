@@ -23,6 +23,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+
 
 def _norm_group(x):
     if pd.isna(x):
@@ -62,24 +64,7 @@ def _normalize_scene_token(x) -> str | None:
 
 
 def _apply_be_style():
-    # clean journal-like style (Building and Environment friendly)
-    plt.rcParams.update({
-        "figure.facecolor": "white",
-        "axes.facecolor": "white",
-        "axes.spines.top": False,
-        "axes.spines.right": False,
-        "axes.grid": True,
-        "grid.alpha": 0.2,
-        "grid.linestyle": "-",
-        "grid.linewidth": 0.6,
-        "font.size": 10,
-        "axes.titlesize": 11,
-        "axes.labelsize": 10,
-        "legend.fontsize": 9,
-        "xtick.labelsize": 9,
-        "ytick.labelsize": 9,
-        "savefig.dpi": 300,
-    })
+    apply_paper_style()
 
 
 def _metric_col(df: pd.DataFrame, primary: str, fallback: str | None = None) -> str | None:
@@ -237,8 +222,8 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     x = np.arange(len(scene_slots))
 
     fig, ax = plt.subplots(figsize=(12.0, 4.8))
-    palette_map = {"Low": "#4C78A8", "High": "#F58518"}
-    fallback_palette = ["#4C78A8", "#F58518", "#54A24B", "#B279A2"]
+    palette_map = {"Low": PALETTE["blue"], "High": PALETTE["orange"]}
+    fallback_palette = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"], PALETTE["purple"]]
 
     ymax_all = []
     for i, g in enumerate(groups):
@@ -248,7 +233,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
-        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.92)
+        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.84, edgecolor='white', linewidth=0.8)
         for rect, val in zip(bars, y):
             if pd.isna(val):
                 continue
@@ -259,13 +244,14 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
         rounds = slot_df["round_index"].tolist()
         for i in range(1, len(rounds)):
             if rounds[i] != rounds[i - 1]:
-                ax.axvline(i - 0.5, color="#888888", linestyle="--", linewidth=1.0, alpha=0.8)
+                ax.axvline(i - 0.5, color=PALETTE['gray'], linestyle='--', linewidth=1.0, alpha=0.8)
 
     ax.set_xticks(x)
     ax.set_xticklabels([slot_to_label[s] for s in scene_slots], rotation=30, ha="right")
-    ax.set_title(title)
+    ax.set_title(title, pad=10)
     ax.set_xlabel("Scene")
-    ax.set_ylabel(metric)
+    ax.set_ylabel(metric_label(metric.replace('_mean_given_visited','').replace('_mean_all','')) if metric else metric)
+    soften_axes(ax)
     if ymax_all:
         ymax = max(ymax_all)
         ax.set_ylim(top=float(ymax) * 1.18 if float(ymax) > 0 else 1.0)

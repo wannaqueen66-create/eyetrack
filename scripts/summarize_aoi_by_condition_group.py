@@ -42,6 +42,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+
 
 def _safe_num(s: pd.Series) -> pd.Series:
     return pd.to_numeric(s, errors="coerce")
@@ -142,7 +144,8 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
         # one row
         axes = axes.reshape((1, -1))
 
-    colors = {"C0": "#4C78A8", "C1": "#F58518"}
+    apply_paper_style()
+    colors = {"C0": PALETTE["blue"], "C1": PALETTE["orange"]}
 
     for i, gv in enumerate(group_levels):
         for j, aoi in enumerate(aoi_levels):
@@ -177,22 +180,22 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
                         ys.append(float(rr["mean"]))
                         lo.append(float(rr["ci_low"]))
                         hi.append(float(rr["ci_high"]))
-                ax.plot(xs, ys, marker="o", linewidth=1.8, color=colors.get(cx, "#666666"), label=cx)
-                ax.fill_between(xs, lo, hi, color=colors.get(cx, "#666666"), alpha=0.18, linewidth=0)
+                ax.plot(xs, ys, marker="o", linewidth=1.9, color=colors.get(cx, PALETTE['gray']), label=cx)
+                ax.fill_between(xs, lo, hi, color=colors.get(cx, PALETTE['gray']), alpha=0.16, linewidth=0)
 
-            ax.set_title(f"{group_var}={gv} | AOI={aoi}")
+            ax.set_title(f"{group_var}={gv} | AOI={aoi}", pad=8)
             ax.set_xticks(wwr_levels)
             ax.set_xlabel("WWR")
             if j == 0:
-                ax.set_ylabel(outcome)
-            ax.grid(True, axis="y", alpha=0.25)
+                ax.set_ylabel(metric_label(outcome) if outcome in ['FC','TFF','FFD','TFD','MFD','RFF','MPD'] else outcome)
+            soften_axes(ax)
 
     # one legend
     handles, labels = axes[0, 0].get_legend_handles_labels()
     if handles:
         fig.legend(handles, labels, loc="upper right", frameon=False, title="Complexity")
 
-    fig.suptitle(title, y=1.02)
+    fig.suptitle(title, y=1.01, fontsize=12)
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=220, bbox_inches="tight")

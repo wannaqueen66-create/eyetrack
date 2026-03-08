@@ -6,16 +6,7 @@ from typing import List
 import matplotlib.pyplot as plt
 import pandas as pd
 
-
-METRIC_LABELS = {
-    "FC": "Fixation Count (FC)",
-    "TFF": "Time to First Fixation (TFF)",
-    "FFD": "First Fixation Duration (FFD)",
-    "TFD": "Total Fixation Duration (TFD)",
-    "MFD": "Mean Fixation Duration (MFD)",
-    "RFF": "Re-fixation Frequency (RFF)",
-    "MPD": "Mean Pupil Diameter (MPD)",
-}
+from .figure_style import apply_paper_style, soften_axes, metric_label, PALETTE
 
 
 def _pick_metric_cols(df: pd.DataFrame) -> List[str]:
@@ -52,19 +43,28 @@ def export_metric_barplots(df: pd.DataFrame, outdir: str, prefix: str = "aoi_cla
             out_p.mkdir(parents=True, exist_ok=True)
             created_dir = True
 
-        fig = plt.figure(figsize=(9, 4.8))
+        apply_paper_style()
+        fig = plt.figure(figsize=(8.6, 4.8))
         ax = fig.add_subplot(1, 1, 1)
-        bars = ax.bar(d["class_name"], y.fillna(0.0), color="#4C78A8", alpha=0.9)
-        ax.set_title(f"AOI {METRIC_LABELS.get(m, m)} by class")
+        bars = ax.bar(
+            d["class_name"],
+            y.fillna(0.0),
+            color=PALETTE["blue"],
+            alpha=0.82,
+            edgecolor="white",
+            linewidth=0.8,
+        )
+        ax.set_title(f"AOI {metric_label(m)} by class", pad=10)
         ax.set_xlabel("AOI class")
-        ax.set_ylabel(METRIC_LABELS.get(m, m))
-        ax.tick_params(axis='x', labelrotation=30)
+        ax.set_ylabel(metric_label(m))
+        ax.tick_params(axis='x', labelrotation=24)
+        soften_axes(ax)
 
         ymax = y.max(skipna=True)
         for rect, val in zip(bars, y.tolist()):
             if pd.isna(val):
                 continue
-            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=8)
+            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=7.5, color=PALETTE["ink"])
         if pd.notna(ymax):
             ax.set_ylim(top=float(ymax) * 1.12 if float(ymax) > 0 else 1.0)
 

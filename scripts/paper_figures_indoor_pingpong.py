@@ -10,7 +10,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-sns.set_theme(style='whitegrid')
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
 
 
 def main():
@@ -34,33 +34,60 @@ def main():
     if 'FC' not in df.columns and 'fixation_count' in df.columns:
         df['FC'] = pd.to_numeric(df['fixation_count'], errors='coerce')
 
+    apply_paper_style()
+
     # Figure 1: TFD by condition
     if 'condition' in df.columns and 'TFD' in df.columns:
-        plt.figure(figsize=(7, 4))
-        sns.boxplot(data=df, x='condition', y='TFD')
-        sns.stripplot(data=df, x='condition', y='TFD', color='black', alpha=0.45, size=3)
-        plt.title('Total Fixation Duration on Pingpong-Table AOI by Condition')
-        plt.tight_layout()
-        plt.savefig(os.path.join(args.outdir, 'fig1_tfd_by_condition.png'), dpi=300)
-        plt.close()
+        fig, ax = plt.subplots(figsize=(7.0, 4.2))
+        sns.boxplot(data=df, x='condition', y='TFD', ax=ax, color=PALETTE['blue'], width=0.55, fliersize=0, linewidth=1.0)
+        sns.stripplot(data=df, x='condition', y='TFD', ax=ax, color=PALETTE['ink'], alpha=0.35, size=3, jitter=0.18)
+        ax.set_title('Total Fixation Duration by Condition', pad=10)
+        ax.set_xlabel('Condition')
+        ax.set_ylabel(metric_label('TFD'))
+        soften_axes(ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(args.outdir, 'fig1_tfd_by_condition.png'), dpi=300)
+        plt.close(fig)
 
     # Figure 2: TFF vs table density
     if 'table_density' in df.columns and 'TFF' in df.columns:
-        plt.figure(figsize=(6, 4))
-        sns.regplot(data=df, x='table_density', y='TFF', scatter_kws={'alpha':0.6, 's':20})
-        plt.title('TFF vs Table Density')
-        plt.tight_layout()
-        plt.savefig(os.path.join(args.outdir, 'fig2_tff_vs_table_density.png'), dpi=300)
-        plt.close()
+        fig, ax = plt.subplots(figsize=(6.4, 4.2))
+        sns.regplot(
+            data=df,
+            x='table_density',
+            y='TFF',
+            ax=ax,
+            color=PALETTE['orange'],
+            scatter_kws={'alpha':0.55, 's':24, 'edgecolor':'white', 'linewidth':0.4},
+            line_kws={'linewidth':1.8}
+        )
+        ax.set_title('TFF vs Table Density', pad=10)
+        ax.set_xlabel('Table density')
+        ax.set_ylabel(metric_label('TFF'))
+        soften_axes(ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(args.outdir, 'fig2_tff_vs_table_density.png'), dpi=300)
+        plt.close(fig)
 
     # Figure 3: FC vs crowding
     if 'crowding_level' in df.columns and 'FC' in df.columns:
-        plt.figure(figsize=(6, 4))
-        sns.regplot(data=df, x='crowding_level', y='FC', scatter_kws={'alpha':0.6, 's':20})
-        plt.title('Fixation Count vs Crowding Level')
-        plt.tight_layout()
-        plt.savefig(os.path.join(args.outdir, 'fig3_fc_vs_crowding.png'), dpi=300)
-        plt.close()
+        fig, ax = plt.subplots(figsize=(6.4, 4.2))
+        sns.regplot(
+            data=df,
+            x='crowding_level',
+            y='FC',
+            ax=ax,
+            color=PALETTE['green'],
+            scatter_kws={'alpha':0.55, 's':24, 'edgecolor':'white', 'linewidth':0.4},
+            line_kws={'linewidth':1.8}
+        )
+        ax.set_title('Fixation Count vs Crowding Level', pad=10)
+        ax.set_xlabel('Crowding level')
+        ax.set_ylabel(metric_label('FC'))
+        soften_axes(ax)
+        fig.tight_layout()
+        fig.savefig(os.path.join(args.outdir, 'fig3_fc_vs_crowding.png'), dpi=300)
+        plt.close(fig)
 
     print('Saved figures to', args.outdir)
 
