@@ -3,7 +3,8 @@
 
 Inputs
 - --aoi_class_csv: outputs from batch_aoi_metrics.py (by class)
-  must include: participant_id, scene_id, class_name, visited, TTFF_ms, dwell_time_ms, fixation_count
+  must include: participant_id, scene_id, class_name, visited, TFF, TFD, FC
+  legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted
 - --group_manifest: group_manifest.csv with columns: name,SportFreq,Experience
 
 Outputs
@@ -192,10 +193,10 @@ def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame
         # conditional (visited==1)
         sub_v = sub[visited.astype(int) == 1]
 
-        ttff = _safe_num(sub_v.get("TTFF_ms", pd.Series([], dtype=float)))
-        dwell = _safe_num(sub.get("dwell_time_ms", pd.Series([], dtype=float)))
-        dwell_v = _safe_num(sub_v.get("dwell_time_ms", pd.Series([], dtype=float)))
-        fix = _safe_num(sub.get("fixation_count", pd.Series([], dtype=float)))
+        ttff = _safe_num(sub_v.get("TFF", sub_v.get("TTFF_ms", pd.Series([], dtype=float))))
+        dwell = _safe_num(sub.get("TFD", sub.get("dwell_time_ms", pd.Series([], dtype=float))))
+        dwell_v = _safe_num(sub_v.get("TFD", sub_v.get("dwell_time_ms", pd.Series([], dtype=float))))
+        fix = _safe_num(sub.get("FC", sub.get("fixation_count", pd.Series([], dtype=float))))
 
         row = {
             "scene_id": scene_id,
@@ -205,14 +206,14 @@ def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame
             "n_trials": n,
             "visited_rate": visited_rate,
             "n_visited": int(len(sub_v)),
-            "TTFF_mean_given_visited": float(ttff.mean()) if ttff.notna().any() else np.nan,
-            "TTFF_median_given_visited": float(ttff.median()) if ttff.notna().any() else np.nan,
-            "dwell_mean_all": float(dwell.mean()) if dwell.notna().any() else np.nan,
-            "dwell_median_all": float(dwell.median()) if dwell.notna().any() else np.nan,
-            "dwell_mean_given_visited": float(dwell_v.mean()) if dwell_v.notna().any() else np.nan,
-            "dwell_median_given_visited": float(dwell_v.median()) if dwell_v.notna().any() else np.nan,
-            "fixation_count_mean_all": float(fix.mean()) if fix.notna().any() else np.nan,
-            "fixation_count_median_all": float(fix.median()) if fix.notna().any() else np.nan,
+            "TFF_mean_given_visited": float(ttff.mean()) if ttff.notna().any() else np.nan,
+            "TFF_median_given_visited": float(ttff.median()) if ttff.notna().any() else np.nan,
+            "TFD_mean_all": float(dwell.mean()) if dwell.notna().any() else np.nan,
+            "TFD_median_all": float(dwell.median()) if dwell.notna().any() else np.nan,
+            "TFD_mean_given_visited": float(dwell_v.mean()) if dwell_v.notna().any() else np.nan,
+            "TFD_median_given_visited": float(dwell_v.median()) if dwell_v.notna().any() else np.nan,
+            "FC_mean_all": float(fix.mean()) if fix.notna().any() else np.nan,
+            "FC_median_all": float(fix.median()) if fix.notna().any() else np.nan,
         }
         out_rows.append(row)
 
@@ -324,10 +325,10 @@ def main():
         for gt, metric, ycol, title in [
             ("SportFreq", "visited_rate", "visited_rate", "Visited rate by SportFreq"),
             ("Experience", "visited_rate", "visited_rate", "Visited rate by Experience"),
-            ("SportFreq", "TTFF_median_given_visited", "TTFF_median_given_visited", "TTFF (median | visited) by SportFreq"),
-            ("Experience", "TTFF_median_given_visited", "TTFF_median_given_visited", "TTFF (median | visited) by Experience"),
-            ("SportFreq", "dwell_median_given_visited", "dwell_median_given_visited", "Dwell (median | visited) by SportFreq"),
-            ("Experience", "dwell_median_given_visited", "dwell_median_given_visited", "Dwell (median | visited) by Experience"),
+            ("SportFreq", "TFF_median_given_visited", "TFF_median_given_visited", "TFF (median | visited) by SportFreq"),
+            ("Experience", "TFF_median_given_visited", "TFF_median_given_visited", "TFF (median | visited) by Experience"),
+            ("SportFreq", "TFD_median_given_visited", "TFD_median_given_visited", "TFD (median | visited) by SportFreq"),
+            ("Experience", "TFD_median_given_visited", "TFD_median_given_visited", "TFD (median | visited) by Experience"),
         ]:
             sdf = out_df[out_df["group_type"] == gt].copy()
             if sdf.empty:

@@ -5,9 +5,11 @@ Part 1: whether the AOI was visited (binary)
 - visited ~ predictors + (1 | participant_id)   [approx GLMM]
 
 Part 2: conditional outcomes given visited==1
-- TTFF_ms (often skewed) -> optional log1p transform
-- dwell_time_ms -> optional log1p transform
-- fixation_count -> GEE Poisson/NB (clustered by participant)
+- TFF (Time to First Fixation; often skewed) -> optional log1p transform
+- TFD (Total Fixation Duration) -> optional log1p transform
+- FC (Fixation Count) -> GEE Poisson/NB (clustered by participant)
+
+Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
 
 This script is designed to provide reproducible, paper-friendly outputs.
 It is intentionally conservative: if a model cannot be fit reliably (small N, singularities),
@@ -44,19 +46,29 @@ def _safe_write(path: str, text: str):
 
 def main():
     ap = argparse.ArgumentParser(description="Two-part models for AOI metrics")
-    ap.add_argument("--analysis_csv", required=True, help="Merged analysis table (must include participant_id, visited, TTFF_ms, dwell_time_ms, fixation_count)")
+    ap.add_argument("--analysis_csv", required=True, help="Merged analysis table (must include participant_id, visited, TFF, TFD, FC; legacy aliases still accepted)")
     ap.add_argument("--outdir", default="outputs_models_two_part")
     ap.add_argument("--predictors", default=None, help="Comma-separated predictor columns. If omitted, use built-in heuristic.")
-    ap.add_argument("--log1p_ttff", action="store_true", help="Fit TTFF on log1p(TTFF_ms)")
-    ap.add_argument("--log1p_dwell", action="store_true", help="Fit dwell on log1p(dwell_time_ms)")
-    ap.add_argument("--count_family", default="nb", choices=["poisson", "nb"], help="Count model family for fixation_count (GEE)")
+    ap.add_argument("--log1p_tff", action="store_true", help="Fit TFF on log1p(TFF)")
+    ap.add_argument("--log1p_tfd", action="store_true", help="Fit TFD on log1p(TFD)")
+    ap.add_argument("--log1p_ttff", action="store_true", help="Legacy alias of --log1p_tff")
+    ap.add_argument("--log1p_dwell", action="store_true", help="Legacy alias of --log1p_tfd")
+    ap.add_argument("--count_family", default="nb", choices=["poisson", "nb"], help="Count model family for FC (GEE)")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
     df = pd.read_csv(args.analysis_csv)
 
+    # canonicalize metric columns
+    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
+        df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
+    if "FC" not in df.columns and "fixation_count" in df.columns:
+        df["FC"] = pd.to_numeric(df["fixation_count"], errors="coerce")
+
     # required columns
-    base_req = ["participant_id", "visited", "TTFF_ms", "dwell_time_ms", "fixation_count"]
+    base_req = ["participant_id", "visited", "TFF", "TFD", "FC"]
     miss = [c for c in base_req if c not in df.columns]
     if miss:
         raise ValueError(f"Missing required columns in analysis_csv: {miss}")
@@ -71,9 +83,12 @@ def main():
         raise ValueError("No predictors found. Pass --predictors colA,colB,... or include known scene feature columns.")
 
     # Coerce numerics
-    for c in predictors + ["visited", "TTFF_ms", "dwell_time_ms", "fixation_count"]:
+    for c in predictors + ["visited", "TFF", "TFD", "FC"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    log1p_tff = bool(args.log1p_tff or args.log1p_ttff)
+    log1p_tfd = bool(args.log1p_tfd or args.log1p_dwell)
 
     # ---------------- Part 1: visited (binary) ----------------
     try:
@@ -98,51 +113,51 @@ def main():
     except Exception as e:
         _safe_write(os.path.join(args.outdir, "model_visited_logit_glmm.txt"), f"FAILED to fit visited GLMM: {repr(e)}\n")
 
-    # ---------------- Part 2a: TTFF given visited ----------------
+    # ---------------- Part 2a: TFF given visited ----------------
     try:
         import statsmodels.formula.api as smf
 
         d2 = df[(df["visited"] == 1)].copy()
-        d2 = d2.dropna(subset=["TTFF_ms", "participant_id"] + predictors)
+        d2 = d2.dropna(subset=["TFF", "participant_id"] + predictors)
         if len(d2) < 8:
-            raise ValueError(f"Too few rows for TTFF model: n={len(d2)}")
+            raise ValueError(f"Too few rows for TFF model: n={len(d2)}")
 
-        if args.log1p_ttff:
-            d2["TTFF_y"] = np.log1p(d2["TTFF_ms"].clip(lower=0))
-            lhs = "TTFF_y"
+        if log1p_tff:
+            d2["tff_y"] = np.log1p(d2["TFF"].clip(lower=0))
+            lhs = "tff_y"
         else:
-            lhs = "TTFF_ms"
+            lhs = "TFF"
 
         formula = f"{lhs} ~ " + " + ".join(predictors)
         m = smf.mixedlm(formula, data=d2, groups=d2["participant_id"])
         r = m.fit(reml=False, method="lbfgs")
-        _safe_write(os.path.join(args.outdir, "model_TTFF_mixedlm.txt"), str(r.summary()))
+        _safe_write(os.path.join(args.outdir, "model_TFF_mixedlm.txt"), str(r.summary()))
     except Exception as e:
-        _safe_write(os.path.join(args.outdir, "model_TTFF_mixedlm.txt"), f"FAILED to fit TTFF model: {repr(e)}\n")
+        _safe_write(os.path.join(args.outdir, "model_TFF_mixedlm.txt"), f"FAILED to fit TFF model: {repr(e)}\n")
 
-    # ---------------- Part 2b: dwell given visited ----------------
+    # ---------------- Part 2b: TFD given visited ----------------
     try:
         import statsmodels.formula.api as smf
 
         d3 = df[(df["visited"] == 1)].copy()
-        d3 = d3.dropna(subset=["dwell_time_ms", "participant_id"] + predictors)
+        d3 = d3.dropna(subset=["TFD", "participant_id"] + predictors)
         if len(d3) < 8:
-            raise ValueError(f"Too few rows for dwell model: n={len(d3)}")
+            raise ValueError(f"Too few rows for TFD model: n={len(d3)}")
 
-        if args.log1p_dwell:
-            d3["dwell_y"] = np.log1p(d3["dwell_time_ms"].clip(lower=0))
-            lhs = "dwell_y"
+        if log1p_tfd:
+            d3["tfd_y"] = np.log1p(d3["TFD"].clip(lower=0))
+            lhs = "tfd_y"
         else:
-            lhs = "dwell_time_ms"
+            lhs = "TFD"
 
         formula = f"{lhs} ~ " + " + ".join(predictors)
         m = smf.mixedlm(formula, data=d3, groups=d3["participant_id"])
         r = m.fit(reml=False, method="lbfgs")
-        _safe_write(os.path.join(args.outdir, "model_dwell_mixedlm.txt"), str(r.summary()))
+        _safe_write(os.path.join(args.outdir, "model_TFD_mixedlm.txt"), str(r.summary()))
     except Exception as e:
-        _safe_write(os.path.join(args.outdir, "model_dwell_mixedlm.txt"), f"FAILED to fit dwell model: {repr(e)}\n")
+        _safe_write(os.path.join(args.outdir, "model_TFD_mixedlm.txt"), f"FAILED to fit TFD model: {repr(e)}\n")
 
-    # ---------------- Part 2c: fixation_count (count) ----------------
+    # ---------------- Part 2c: FC (count) ----------------
     try:
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
@@ -151,29 +166,29 @@ def main():
         from statsmodels.genmod.cov_struct import Exchangeable
 
         d4 = df[(df["visited"] == 1)].copy()
-        d4 = d4.dropna(subset=["fixation_count", "participant_id"] + predictors)
+        d4 = d4.dropna(subset=["FC", "participant_id"] + predictors)
         if len(d4) < 8:
-            raise ValueError(f"Too few rows for count model: n={len(d4)}")
+            raise ValueError(f"Too few rows for FC model: n={len(d4)}")
 
         fam = Poisson() if args.count_family == "poisson" else NegativeBinomial()
         # GEE with exchangeable correlation by participant
-        formula = "fixation_count ~ " + " + ".join(predictors)
+        formula = "FC ~ " + " + ".join(predictors)
         y, X = patsy.dmatrices(formula, d4, return_type="dataframe")
         gee = GEE(y, X, groups=d4["participant_id"], cov_struct=Exchangeable(), family=fam)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             res = gee.fit()
-        _safe_write(os.path.join(args.outdir, f"model_fixation_count_gee_{args.count_family}.txt"), str(res.summary()))
+        _safe_write(os.path.join(args.outdir, f"model_FC_gee_{args.count_family}.txt"), str(res.summary()))
     except Exception as e:
-        _safe_write(os.path.join(args.outdir, f"model_fixation_count_gee_{args.count_family}.txt"), f"FAILED to fit fixation_count model: {repr(e)}\n")
+        _safe_write(os.path.join(args.outdir, f"model_FC_gee_{args.count_family}.txt"), f"FAILED to fit FC model: {repr(e)}\n")
 
     # small manifest of what was done
     _safe_write(
         os.path.join(args.outdir, "RUNINFO.txt"),
         "Two-part AOI models\n"
         f"predictors: {predictors}\n"
-        f"log1p_ttff: {args.log1p_ttff}\n"
-        f"log1p_dwell: {args.log1p_dwell}\n"
+        f"log1p_tff: {log1p_tff}\n"
+        f"log1p_tfd: {log1p_tfd}\n"
         f"count_family: {args.count_family}\n",
     )
 

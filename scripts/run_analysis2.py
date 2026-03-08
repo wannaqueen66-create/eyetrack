@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Analysis-2 orchestrator for eyetrack.
+"""Research-bundle orchestrator for eyetrack.
 
 Goal
 ----
-Produce a stable, paper-oriented Analysis-2 bundle for the eye-tracking repo,
-aligned to the experiment structure already used in sibling projects.
+Produce a stable, paper-oriented research bundle for the eye-tracking repo,
+while preserving the content expectations that were previously associated with an `analysis-2` output folder.
 
 Pipeline
 --------
@@ -17,12 +17,13 @@ Pipeline
 
 Outputs
 -------
-results/research/analysis-2/
+results/research_bundle/
   task1/  grouped descriptive summaries + organized outputs
   task2/  LMM allocation models
   task3/  two-part models (if analysis table can be built)
   diagnostics/
   colab/
+  reports/
 """
 
 from __future__ import annotations
@@ -45,7 +46,7 @@ def run(cmd: list[str]):
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Run eyetrack analysis-2 bundle")
+    ap = argparse.ArgumentParser(description="Run eyetrack research bundle")
     ap.add_argument("--group_manifest", required=True)
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--scenes_root", help="Scene-root mode for fresh batch run")
@@ -58,7 +59,7 @@ def main():
     ap.add_argument("--screen_w", type=int, default=None)
     ap.add_argument("--screen_h", type=int, default=None)
     ap.add_argument("--min_valid_ratio", type=float, default=0.6)
-    ap.add_argument("--out_root", default="results/research/analysis-2")
+    ap.add_argument("--out_root", default="results/research_bundle")
     args = ap.parse_args()
 
     out_root = REPO_ROOT / args.out_root
@@ -67,7 +68,8 @@ def main():
     task3 = out_root / "task3"
     diag = out_root / "diagnostics"
     colab = out_root / "colab"
-    for p in [task1, task2, task3, diag, colab]:
+    reports = out_root / "reports"
+    for p in [task1, task2, task3, diag, colab, reports]:
         p.mkdir(parents=True, exist_ok=True)
 
     if args.scenes_root:
@@ -155,18 +157,24 @@ def main():
             str(SCRIPTS / "model_aoi_two_part.py"),
             "--analysis_csv", str(analysis_csv),
             "--outdir", str(task3 / "two_part_models"),
-            "--log1p_ttff",
-            "--log1p_dwell",
+            "--log1p_tff",
+            "--log1p_tfd",
         ])
+
+    (reports / "README.txt").write_text(
+        "Canonical research bundle for eyetrack.\n"
+        "Keeps the content expected from the former analysis-2 folder, but under a more generic bundle-oriented naming scheme.\n",
+        encoding="utf-8",
+    )
 
     # Colab helper note
     (colab / "README.txt").write_text(
         "Use scripts/run_colab_analysis2_pipeline.py in Colab for mixed-size scene folders.\n"
-        "This analysis-2 directory is the canonical eyetrack output bundle.\n",
+        "This research_bundle directory is the canonical eyetrack output bundle.\n",
         encoding="utf-8",
     )
 
-    print("Saved analysis-2 bundle to:", out_root)
+    print("Saved research bundle to:", out_root)
 
 
 if __name__ == "__main__":

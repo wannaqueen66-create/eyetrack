@@ -2,9 +2,10 @@
 """AOI distribution diagnostics (paper-friendly).
 
 This script generates quick diagnostics for common AOI outcomes:
-- dwell_time_ms (often right-skewed)
-- TTFF_ms (defined only when visited==1)
-- fixation_count (count; often overdispersed)
+- TFD (often right-skewed)
+- TFF (defined only when visited==1)
+- FC (count; often overdispersed)
+Legacy aliases (`dwell_time_ms`, `TTFF_ms`, `fixation_count`) are still accepted.
 
 It saves histograms (raw + log1p) and a small CSV summary including skewness.
 
@@ -60,11 +61,18 @@ def main():
 
     os.makedirs(args.outdir, exist_ok=True)
 
+    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
+        df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
+    if "FC" not in df.columns and "fixation_count" in df.columns:
+        df["FC"] = pd.to_numeric(df["fixation_count"], errors="coerce")
+
     rows = []
     targets = [
-        ("dwell_time_ms", None),
-        ("TTFF_ms", "visited"),
-        ("fixation_count", None),
+        ("TFD", None),
+        ("TFF", "visited"),
+        ("FC", None),
     ]
 
     for col, visit_col in targets:
@@ -104,9 +112,9 @@ def main():
         f.write(f"Input: `{path}`\n\n")
         f.write("Generated histograms (raw and log1p) and `aoi_distribution_summary.csv`.\n\n")
         f.write("Typical reporting guidance (align with this repo):\n")
-        f.write("- `TTFF_ms` is modeled on trials with `visited==1` (two-part approach).\n")
-        f.write("- `dwell_time_ms` is often right-skewed; log1p transform is commonly appropriate.\n")
-        f.write("- `fixation_count` is a count variable; consider Poisson/NB models (overdispersion check).\n")
+        f.write("- `TFF` is modeled on trials with `visited==1` (two-part approach).\n")
+        f.write("- `TFD` is often right-skewed; log1p transform is commonly appropriate.\n")
+        f.write("- `FC` is a count variable; consider Poisson/NB models (overdispersion check).\n")
 
     print("Saved to", args.outdir)
 

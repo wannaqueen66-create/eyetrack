@@ -3,15 +3,16 @@
 
 What this script adds compared with baseline scripts:
 - visited: logistic GLM (with participant fixed effect)
-- TTFF / dwell: MixedLM on visited==1 subset (optional log1p transform)
-- fixation_count: GEE Poisson/NB on visited==1 subset
+- TFF / TFD: MixedLM on visited==1 subset (optional log1p transform)
+- FC: GEE Poisson/NB on visited==1 subset
 - optional interaction terms
 - tidy coefficient table CSV + BH-FDR q-values
 - PNG coefficient forest plots per outcome + combined dominance chart
 
 Input expected columns (minimum):
-- participant_id, class_name, visited, TTFF_ms, dwell_time_ms, fixation_count
+- participant_id, class_name, visited, TFF, TFD, FC
 - predictor columns (numeric)
+Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
 """
 
 from __future__ import annotations
@@ -189,15 +190,24 @@ def main():
     ap.add_argument("--all_pairwise_interactions", action="store_true")
     ap.add_argument("--random_slope", default=None, help="One predictor to add random slope in MixedLM")
     ap.add_argument("--count_family", default="nb", choices=["nb", "poisson"])
-    ap.add_argument("--log1p_ttff", action="store_true")
-    ap.add_argument("--log1p_dwell", action="store_true")
+    ap.add_argument("--log1p_tff", action="store_true")
+    ap.add_argument("--log1p_tfd", action="store_true")
+    ap.add_argument("--log1p_ttff", action="store_true", help="Legacy alias of --log1p_tff")
+    ap.add_argument("--log1p_dwell", action="store_true", help="Legacy alias of --log1p_tfd")
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
 
     df = pd.read_csv(args.analysis_csv)
 
-    required = ["participant_id", "class_name", "visited", "TTFF_ms", "dwell_time_ms", "fixation_count"]
+    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
+        df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
+    if "FC" not in df.columns and "fixation_count" in df.columns:
+        df["FC"] = pd.to_numeric(df["fixation_count"], errors="coerce")
+
+    required = ["participant_id", "class_name", "visited", "TFF", "TFD", "FC"]
     miss = [c for c in required if c not in df.columns]
     if miss:
         raise ValueError(f"Missing required columns: {miss}")
@@ -215,9 +225,12 @@ def main():
     if not predictors:
         raise ValueError("No predictor columns found; pass --predictors")
 
-    for c in predictors + ["visited", "TTFF_ms", "dwell_time_ms", "fixation_count"]:
+    for c in predictors + ["visited", "TFF", "TFD", "FC"]:
         if c in df.columns:
             df[c] = pd.to_numeric(df[c], errors="coerce")
+
+    log1p_tff = bool(args.log1p_tff or args.log1p_ttff)
+    log1p_tfd = bool(args.log1p_tfd or args.log1p_dwell)
 
     # z-scored predictors for comparability
     pred_z = []
@@ -265,77 +278,77 @@ def main():
         with open(os.path.join(args.outdir, "model_visited_glm.txt"), "w", encoding="utf-8") as f:
             f.write(f"FAILED: {repr(e)}\n")
 
-    # -------- TTFF given visited --------
+    # -------- TFF given visited --------
     try:
         import statsmodels.formula.api as smf
 
         d2 = df[df["visited"] == 1].copy()
-        d2 = d2.dropna(subset=["TTFF_ms", "participant_id"] + pred_z)
-        if args.log1p_ttff:
-            d2["y"] = np.log1p(d2["TTFF_ms"].clip(lower=0))
+        d2 = d2.dropna(subset=["TFF", "participant_id"] + pred_z)
+        if log1p_tff:
+            d2["y"] = np.log1p(d2["TFF"].clip(lower=0))
         else:
-            d2["y"] = d2["TTFF_ms"]
+            d2["y"] = d2["TFF"]
         formula = "y ~ " + _make_formula(terms)
         re_formula = "~1"
         if args.random_slope and f"{args.random_slope}_z" in d2.columns:
             re_formula = f"~{args.random_slope}_z"
         m2 = smf.mixedlm(formula=formula, data=d2, groups=d2["participant_id"], re_formula=re_formula)
         r2 = m2.fit(reml=False, method="lbfgs")
-        with open(os.path.join(args.outdir, "model_ttff_mixedlm.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, "model_tff_mixedlm.txt"), "w", encoding="utf-8") as f:
             f.write(str(r2.summary()))
 
         keep_terms = [t for t in r2.params.index if t in terms]
-        all_rows.append(_coef_table(r2, "TTFF_ms|visited", "MixedLM", keep_terms, n=len(d2)))
+        all_rows.append(_coef_table(r2, "TFF|visited", "MixedLM", keep_terms, n=len(d2)))
     except Exception as e:
-        with open(os.path.join(args.outdir, "model_ttff_mixedlm.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, "model_tff_mixedlm.txt"), "w", encoding="utf-8") as f:
             f.write(f"FAILED: {repr(e)}\n")
 
-    # -------- dwell given visited --------
+    # -------- TFD given visited --------
     try:
         import statsmodels.formula.api as smf
 
         d3 = df[df["visited"] == 1].copy()
-        d3 = d3.dropna(subset=["dwell_time_ms", "participant_id"] + pred_z)
-        if args.log1p_dwell:
-            d3["y"] = np.log1p(d3["dwell_time_ms"].clip(lower=0))
+        d3 = d3.dropna(subset=["TFD", "participant_id"] + pred_z)
+        if log1p_tfd:
+            d3["y"] = np.log1p(d3["TFD"].clip(lower=0))
         else:
-            d3["y"] = d3["dwell_time_ms"]
+            d3["y"] = d3["TFD"]
         formula = "y ~ " + _make_formula(terms)
         re_formula = "~1"
         if args.random_slope and f"{args.random_slope}_z" in d3.columns:
             re_formula = f"~{args.random_slope}_z"
         m3 = smf.mixedlm(formula=formula, data=d3, groups=d3["participant_id"], re_formula=re_formula)
         r3 = m3.fit(reml=False, method="lbfgs")
-        with open(os.path.join(args.outdir, "model_dwell_mixedlm.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, "model_tfd_mixedlm.txt"), "w", encoding="utf-8") as f:
             f.write(str(r3.summary()))
 
         keep_terms = [t for t in r3.params.index if t in terms]
-        all_rows.append(_coef_table(r3, "dwell_time_ms|visited", "MixedLM", keep_terms, n=len(d3)))
+        all_rows.append(_coef_table(r3, "TFD|visited", "MixedLM", keep_terms, n=len(d3)))
     except Exception as e:
-        with open(os.path.join(args.outdir, "model_dwell_mixedlm.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, "model_tfd_mixedlm.txt"), "w", encoding="utf-8") as f:
             f.write(f"FAILED: {repr(e)}\n")
 
-    # -------- fixation_count given visited --------
+    # -------- FC given visited --------
     try:
         import statsmodels.api as sm
         import statsmodels.formula.api as smf
         from statsmodels.genmod.cov_struct import Exchangeable
 
         d4 = df[df["visited"] == 1].copy()
-        d4 = d4.dropna(subset=["fixation_count", "participant_id"] + pred_z)
-        d4["fixation_count"] = d4["fixation_count"].clip(lower=0)
+        d4 = d4.dropna(subset=["FC", "participant_id"] + pred_z)
+        d4["FC"] = d4["FC"].clip(lower=0)
 
         family = sm.families.NegativeBinomial() if args.count_family == "nb" else sm.families.Poisson()
-        formula = "fixation_count ~ " + _make_formula(terms)
+        formula = "FC ~ " + _make_formula(terms)
         m4 = smf.gee(formula=formula, groups="participant_id", data=d4, cov_struct=Exchangeable(), family=family)
         r4 = m4.fit()
-        with open(os.path.join(args.outdir, f"model_fixation_gee_{args.count_family}.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, f"model_fc_gee_{args.count_family}.txt"), "w", encoding="utf-8") as f:
             f.write(str(r4.summary()))
 
         keep_terms = [t for t in r4.params.index if t in terms]
-        all_rows.append(_coef_table(r4, "fixation_count|visited", f"GEE-{args.count_family}", keep_terms, n=len(d4)))
+        all_rows.append(_coef_table(r4, "FC|visited", f"GEE-{args.count_family}", keep_terms, n=len(d4)))
     except Exception as e:
-        with open(os.path.join(args.outdir, f"model_fixation_gee_{args.count_family}.txt"), "w", encoding="utf-8") as f:
+        with open(os.path.join(args.outdir, f"model_fc_gee_{args.count_family}.txt"), "w", encoding="utf-8") as f:
             f.write(f"FAILED: {repr(e)}\n")
 
     if all_rows:
@@ -370,8 +383,8 @@ def main():
         f.write(f"interactions={interactions}\n")
         f.write(f"random_slope={args.random_slope}\n")
         f.write(f"count_family={args.count_family}\n")
-        f.write(f"log1p_ttff={args.log1p_ttff}\n")
-        f.write(f"log1p_dwell={args.log1p_dwell}\n")
+        f.write(f"log1p_tff={log1p_tff}\n")
+        f.write(f"log1p_tfd={log1p_tfd}\n")
 
     print("Saved to", args.outdir)
 

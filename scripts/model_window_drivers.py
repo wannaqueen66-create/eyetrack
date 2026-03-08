@@ -9,16 +9,17 @@ standardized effect for each outcome.
 
 Outcomes:
 - visited (binary)
-- TTFF_ms (conditional on visited==1)
-- dwell_time_ms (conditional on visited==1)
-- fixation_count (conditional on visited==1; modeled on log1p scale)
+- TFF (conditional on visited==1)
+- TFD (conditional on visited==1)
+- FC (conditional on visited==1; modeled on log1p scale)
 
 Predictors:
 - WWR
 - Complexity
 
 Input columns expected (minimum):
-- participant_id, scene_id, class_name, visited, TTFF_ms, dwell_time_ms, fixation_count
+- participant_id, scene_id, class_name, visited, TFF, TFD, FC
+Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
 
 WWR/Complexity source priority:
 1) Existing numeric columns (--wwr_col / --complexity_col)
@@ -209,7 +210,14 @@ def main():
     df = pd.read_csv(args.analysis_csv)
 
     # Basic required columns
-    req = ["participant_id", "scene_id", "class_name", "visited", "TTFF_ms", "dwell_time_ms", "fixation_count"]
+    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
+        df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
+    if "FC" not in df.columns and "fixation_count" in df.columns:
+        df["FC"] = pd.to_numeric(df["fixation_count"], errors="coerce")
+
+    req = ["participant_id", "scene_id", "class_name", "visited", "TFF", "TFD", "FC"]
     miss = [c for c in req if c not in df.columns]
     if miss:
         raise ValueError(f"analysis_csv missing columns: {miss}")
@@ -243,7 +251,7 @@ def main():
     audit_cols = [
         "participant_id", "scene_id", "class_name",
         "WWR", "Complexity", "WWR_parsed", "Complexity_parsed",
-        "visited", "TTFF_ms", "dwell_time_ms", "fixation_count",
+        "visited", "TFF", "TFD", "FC",
     ]
     d[audit_cols].to_csv(os.path.join(args.outdir, "window_driver_input_audit.csv"), index=False)
 
@@ -280,9 +288,9 @@ def main():
     dc = d[pd.to_numeric(d["visited"], errors="coerce") > 0].copy()
 
     for outcome, y_col, transform in [
-        ("TTFF_ms_given_visited", "TTFF_ms", "none"),
-        ("dwell_time_ms_given_visited", "dwell_time_ms", "none"),
-        ("fixation_count_given_visited", "fixation_count", "log1p"),
+        ("TFF_given_visited", "TFF", "none"),
+        ("TFD_given_visited", "TFD", "none"),
+        ("FC_given_visited", "FC", "log1p"),
     ]:
         try:
             dm = dc.copy()

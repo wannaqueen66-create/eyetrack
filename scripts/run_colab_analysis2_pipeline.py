@@ -9,7 +9,7 @@ from datetime import datetime
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Colab-friendly analysis-2 pipeline for eyetrack")
+    ap = argparse.ArgumentParser(description="Colab-friendly research-bundle pipeline for eyetrack")
     ap.add_argument("--scenes_root_orig", default="/content/drive/MyDrive/映射")
     ap.add_argument("--group_manifest", default=None)
     ap.add_argument("--scene_features_csv", default=None)
@@ -24,7 +24,7 @@ def main():
     if not os.path.exists(args.repo_dir):
         raise SystemExit(f"Missing repo_dir: {args.repo_dir}")
 
-    run_tag = datetime.now().strftime("analysis2_%Y%m%d_%H%M%S")
+    run_tag = datetime.now().strftime("research_bundle_%Y%m%d_%H%M%S")
     out_root = os.path.join(args.scenes_root_orig, run_tag)
     os.makedirs(out_root, exist_ok=True)
 
