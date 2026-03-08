@@ -38,7 +38,14 @@ def main():
     else:
         dfm = df.copy()
 
-    required = ['participant_id', 'dwell_time_ms', 'TTFF_ms', 'fixation_count']
+    if 'TFD' not in dfm.columns and 'dwell_time_ms' in dfm.columns:
+        dfm['TFD'] = pd.to_numeric(dfm['dwell_time_ms'], errors='coerce')
+    if 'TFF' not in dfm.columns and 'TTFF_ms' in dfm.columns:
+        dfm['TFF'] = pd.to_numeric(dfm['TTFF_ms'], errors='coerce')
+    if 'FC' not in dfm.columns and 'fixation_count' in dfm.columns:
+        dfm['FC'] = pd.to_numeric(dfm['fixation_count'], errors='coerce')
+
+    required = ['participant_id', 'TFD', 'TFF', 'FC']
     for c in required:
         if c not in dfm.columns:
             raise ValueError(f'Missing required column: {c}')
@@ -50,17 +57,17 @@ def main():
 
     rhs = ' + '.join(predictors)
 
-    # Model 1: dwell time
-    formula1 = f'dwell_time_ms ~ {rhs}'
-    fit_and_save(dfm.dropna(subset=['dwell_time_ms'] + predictors + ['participant_id']), formula1, 'participant_id', os.path.join(args.outdir, 'model_dwell_time.txt'), 'MixedLM: dwell_time_ms')
+    # Model 1: TFD
+    formula1 = f'TFD ~ {rhs}'
+    fit_and_save(dfm.dropna(subset=['TFD'] + predictors + ['participant_id']), formula1, 'participant_id', os.path.join(args.outdir, 'model_tfd.txt'), 'MixedLM: TFD')
 
-    # Model 2: TTFF
-    formula2 = f'TTFF_ms ~ {rhs}'
-    fit_and_save(dfm.dropna(subset=['TTFF_ms'] + predictors + ['participant_id']), formula2, 'participant_id', os.path.join(args.outdir, 'model_ttff.txt'), 'MixedLM: TTFF_ms')
+    # Model 2: TFF
+    formula2 = f'TFF ~ {rhs}'
+    fit_and_save(dfm.dropna(subset=['TFF'] + predictors + ['participant_id']), formula2, 'participant_id', os.path.join(args.outdir, 'model_tff.txt'), 'MixedLM: TFF')
 
-    # Model 3: fixation count
-    formula3 = f'fixation_count ~ {rhs}'
-    fit_and_save(dfm.dropna(subset=['fixation_count'] + predictors + ['participant_id']), formula3, 'participant_id', os.path.join(args.outdir, 'model_fixation_count.txt'), 'MixedLM: fixation_count')
+    # Model 3: FC
+    formula3 = f'FC ~ {rhs}'
+    fit_and_save(dfm.dropna(subset=['FC'] + predictors + ['participant_id']), formula3, 'participant_id', os.path.join(args.outdir, 'model_fc.txt'), 'MixedLM: FC')
 
     print('Saved models to', args.outdir)
 

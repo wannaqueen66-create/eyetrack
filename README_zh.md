@@ -241,7 +241,7 @@ python scripts/summarize_aoi_groups.py \
 
 **`aoi_overlays/` 和 `plots/` 分别是什么？（快速说明）**
 - `outdir/aoi_overlays/<scene_id>.png`：AOI **定义审计图**。把 `aoi.json` 里的多边形叠加到场景底图上，用于核对 AOI 位置/形状/坐标系是否一致。该图**不包含** gaze/fixation 点，也**不表示**组间差异或显著性。
-- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TTFF` / `dwell` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
+- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TFF` / `TFD` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
 
 ### 步骤 E：看论文常用结果
 
@@ -386,7 +386,7 @@ pip install -r requirements.txt
 
 补充脚本（分布诊断 + 两部建模辅助）：
 - 分布诊断：`scripts/aoi_distribution_diagnostics.py`
-- 两部建模辅助（visited + 条件化 TTFF/dwell/count）：`scripts/model_aoi_two_part.py`
+- 两部建模辅助（visited + 条件化 TFF/TFD/FC）：`scripts/model_aoi_two_part.py`
 
 ---
 
@@ -455,20 +455,20 @@ outputs_organized/
    │  └─ summary_experience.csv
    └─ plots/
       ├─ sportfreq_visited_rate.png
-      ├─ sportfreq_TTFF.png
+      ├─ sportfreq_TFF.png
       ├─ sportfreq_TFD.png
       ├─ sportfreq_FC.png
       ├─ sportfreq_FFD.png
       ├─ sportfreq_MFD.png
-      ├─ sportfreq_RF.png
+      ├─ sportfreq_RFF.png
       ├─ sportfreq_MPD.png
       ├─ experience_visited_rate.png
-      ├─ experience_TTFF.png
+      ├─ experience_TFF.png
       ├─ experience_TFD.png
       ├─ experience_FC.png
       ├─ experience_FFD.png
       ├─ experience_MFD.png
-      ├─ experience_RF.png
+      ├─ experience_RFF.png
       └─ experience_MPD.png
 ```
 

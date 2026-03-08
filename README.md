@@ -392,7 +392,7 @@ python scripts/summarize_aoi_groups.py \
 ```
 
 Outputs:
-- `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TTFF/dwell summaries)
+- `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TFF/TFD summaries)
 - `outputs_aoi_groups/aoi_with_groups.csv` (analysis-ready merged long table)
 
 **What are `aoi_overlays/` and `plots/`? (quick)**
@@ -539,22 +539,22 @@ pip install -r requirements.txt
 - Verify AOIs are drawn on the exact mapping image
 - Check outlier gaze points (negative or huge values)
 
-### Q4. `TTFF_ms` is NaN
+### Q4. `TFF` is NaN
 No gaze entered that AOI class in that trial/scene (`visited==0`). This is expected behavior.
 
 Recommended reporting (paper-friendly):
-- Report both TTFF (conditioned on `visited==1`) AND the non-visit probability:
+- Report both TFF (conditioned on `visited==1`) AND the non-visit probability:
   - `p_not_visited = P(visited==0)` per condition × AOI
 - For inferential stats, use a two-part approach:
   1) Model `visited` (binary) with a logit model (preferably GLMM with participant random intercept)
-  2) Model `TTFF_ms` on the subset where `visited==1`
+  2) Model `TFF` on the subset where `visited==1`
 
 See: `scripts/summarize_aoi_visit_rate.py`
 
 ### (New) Diagnostics + two-part modeling helpers
 
 - Distribution diagnostics: `scripts/aoi_distribution_diagnostics.py`
-- Two-part modeling helper (visited + conditional TTFF/dwell/count): `scripts/model_aoi_two_part.py`
+- Two-part modeling helper (visited + conditional TFF/TFD/FC): `scripts/model_aoi_two_part.py`
 
 ---
 

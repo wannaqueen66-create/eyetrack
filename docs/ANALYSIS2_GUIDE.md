@@ -1,12 +1,12 @@
-# Analysis-2 Guide / eyetrack 主仓 analysis-2 说明
+# Research Bundle Guide / eyetrack 主仓正式研究输出说明
 
-`analysis-2` is the canonical research bundle for the eye-tracking repository.
-`analysis-2` 是 eyetrack 主仓的正式研究输出主线。
+`research_bundle` is the canonical research output bundle for the eye-tracking repository.
+`research_bundle` 是 eyetrack 主仓的正式研究输出主线。
 
 ## Target contents / 目标内容
 
-At minimum, analysis-2 should include:
-analysis-2 至少应包含：
+At minimum, the research bundle should include:
+正式研究输出包至少应包含：
 
 1. **Task1: descriptive AOI outputs**
    - organized outputs by scene / participant / group
@@ -29,7 +29,7 @@ analysis-2 至少应包含：
    - timestamp-segment diagnostics
 
 5. **Colab-compatible runner**
-   - a script that can run the analysis-2 bundle on Colab / Google Drive scene folders
+   - a script that can run the research bundle on Colab / Google Drive scene folders
 
 ## Official runners / 官方入口
 
@@ -63,5 +63,5 @@ Use canonical abbreviations:
 - TFD
 - TFF
 
-Avoid using legacy names like `TTFF` and `dwell_time_ms` in new outputs.
-新输出中避免继续使用 `TTFF` 与 `dwell_time_ms` 作为主列名。
+Avoid using legacy names like `TTFF`, `TTFF_ms`, and `dwell_time_ms` in new outputs.
+新输出中避免继续使用 `TTFF`、`TTFF_ms` 与 `dwell_time_ms` 作为主列名。
