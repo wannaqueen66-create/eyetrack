@@ -8,7 +8,8 @@ Inputs
 - --aoi_class_csv: batch_aoi_metrics_by_class.csv from scripts/batch_aoi_metrics.py
   Expected to include (after latest patch):
     participant_id, class_name, scene_id_raw, round, WWR, Complexity, condition_id
-  Plus AOI metrics columns like dwell_time_ms/TFD, TTFF_ms/TTFF, fixation_count/FC, visited, RF, MPD.
+  Plus AOI metrics columns like TFD, TFF, FC, FFD, MFD, RFF, MPD, visited.
+  Legacy aliases (dwell_time_ms, TTFF_ms, fixation_count, RF) are still accepted.
 
 - --group_manifest: group_manifest.csv with participant id column (default: name)
   and group columns SportFreq and/or Experience.
@@ -241,37 +242,37 @@ def main():
         df = df[df["trial_excluded"] == 0].copy()
 
     # outcomes
-    dwell_col = _pick_col(df, "dwell_time_ms", "TFD")
-    ttff_col = _pick_col(df, "TTFF_ms", "TTFF")
-    fc_col = _pick_col(df, "fixation_count", "FC")
+    dwell_col = _pick_col(df, "TFD", "dwell_time_ms")
+    ttff_col = _pick_col(df, "TFF", "TTFF_ms")
+    fc_col = _pick_col(df, "FC", "fixation_count")
 
     outcomes = []
     if dwell_col:
-        df["dwell_ms"] = _safe_num(df[dwell_col]).clip(lower=0)
-        df["dwell_y"] = np.log1p(df["dwell_ms"])
-        outcomes += [("dwell_ms", "dwell_time_ms"), ("dwell_y", "log1p(dwell)")]
+        df["TFD"] = _safe_num(df[dwell_col]).clip(lower=0)
+        df["tfd_y"] = np.log1p(df["TFD"])
+        outcomes += [("TFD", "Total Fixation Duration (TFD)"), ("tfd_y", "log1p(TFD)")]
 
         # share within participant x scene (raw)
         key_scene = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
         if key_scene:
-            df2 = _make_share(df, "dwell_ms", ["participant_id", key_scene])
+            df2 = _make_share(df, "TFD", ["participant_id", key_scene])
             df2["share_logit"] = np.log((df2["share"] + 1e-6) / (1 - df2["share"] + 1e-6))
             df_share = df2
-            outcomes += [("share", "share(dwell within trial)"), ("share_logit", "logit(share)")]
+            outcomes += [("share", "share(TFD within trial)"), ("share_logit", "logit(share)")]
         else:
             df_share = df
     else:
         df_share = df
 
     if ttff_col:
-        df["ttff_ms"] = _safe_num(df[ttff_col])
-        df["ttff_y"] = np.log1p(df["ttff_ms"].clip(lower=0))
-        outcomes += [("ttff_ms", "TTFF_ms"), ("ttff_y", "log1p(TTFF)")]
+        df["TFF"] = _safe_num(df[ttff_col])
+        df["tff_y"] = np.log1p(df["TFF"].clip(lower=0))
+        outcomes += [("TFF", "Time to First Fixation (TFF)"), ("tff_y", "log1p(TFF)")]
 
     if fc_col:
-        df["fc"] = _safe_num(df[fc_col]).clip(lower=0)
-        df["fc_y"] = np.log1p(df["fc"])
-        outcomes += [("fc", "fixation_count"), ("fc_y", "log1p(fix_count)")]
+        df["FC"] = _safe_num(df[fc_col]).clip(lower=0)
+        df["fc_y"] = np.log1p(df["FC"])
+        outcomes += [("FC", "Fixation Count (FC)"), ("fc_y", "log1p(FC)")]
 
     if "visited" in df.columns:
         df["visited"] = _safe_num(df["visited"]).fillna(0).astype(int)
@@ -295,7 +296,7 @@ def main():
 
             # For TTFF/fix_count: optional conditional on visited==1 for interpretability
             d = d0.copy()
-            if ycol.startswith("ttff") or ycol.startswith("fc"):
+            if ycol.startswith("tff") or ycol.startswith("fc"):
                 if "visited" in d.columns:
                     d = d[d["visited"] == 1].copy()
 

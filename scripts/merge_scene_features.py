@@ -19,7 +19,7 @@ def main():
     aoi = pd.read_csv(args.aoi_class_csv)
     feat = pd.read_csv(args.scene_features_csv)
 
-    req_aoi = {'participant_id', 'scene_id', 'class_name', 'dwell_time_ms', 'TTFF_ms', 'fixation_count'}
+    req_aoi = {'participant_id', 'scene_id', 'class_name', 'TFD', 'TFF', 'FC'}
     req_feat = {'participant_id', 'scene_id'}
 
     if not req_aoi.issubset(set(aoi.columns)):
@@ -28,6 +28,16 @@ def main():
         raise ValueError(f'scene feature csv missing columns: {sorted(req_feat - set(feat.columns))}')
 
     out = aoi.merge(feat, on=['participant_id', 'scene_id'], how='left')
+
+    # Keep canonical short names while preserving backward-compatible aliases if needed downstream.
+    if 'TTFF_ms' not in out.columns and 'TFF' in out.columns:
+        out['TTFF_ms'] = out['TFF']
+    if 'dwell_time_ms' not in out.columns and 'TFD' in out.columns:
+        out['dwell_time_ms'] = out['TFD']
+    if 'fixation_count' not in out.columns and 'FC' in out.columns:
+        out['fixation_count'] = out['FC']
+    if 'RF' not in out.columns and 'RFF' in out.columns:
+        out['RF'] = out['RFF']
     out.to_csv(args.out_csv, index=False)
     print('Saved:', args.out_csv)
 

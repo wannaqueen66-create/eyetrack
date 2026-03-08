@@ -22,10 +22,10 @@ For each group variable (Experience, SportFreq) and each outcome, export:
 
 Outcomes implemented
 -------------------
-1) dwell_y: log1p(dwell_time_ms)
-2) share_logit: logit( share_of_dwell_within_trial )  (exploratory allocation proxy)
-3) ttff_y: log1p(TTFF_ms) on visited==1
-4) fc_y: log1p(fixation_count) on visited==1 (approximate; count-GLMM is better but out of scope)
+1) tfd_y: log1p(TFD)
+2) share_logit: logit( share_of_total_fixation_duration_within_trial )  (exploratory allocation proxy)
+3) tff_y: log1p(TFF) on visited==1
+4) fc_y: log1p(FC) on visited==1 (approximate; count-GLMM is better but out of scope)
 
 Model form (statsmodels MixedLM)
 -------------------------------
@@ -182,9 +182,9 @@ def main():
         df = df.merge(gm[keep], on="participant_id", how="left")
 
     # pick metric columns
-    dwell_col = _pick_col(df, "dwell_time_ms", "TFD")
-    ttff_col = _pick_col(df, "TTFF_ms", "TTFF")
-    fc_col = _pick_col(df, "fixation_count", "FC")
+    dwell_col = _pick_col(df, "TFD", "dwell_time_ms")
+    ttff_col = _pick_col(df, "TFF", "TTFF_ms")
+    fc_col = _pick_col(df, "FC", "fixation_count")
 
     need = ["participant_id", "class_name"]
     for c in need:
@@ -222,26 +222,26 @@ def main():
 
     # Outcomes
     if dwell_col:
-        df["dwell_ms"] = _safe_num(df[dwell_col])
-        df["dwell_y"] = np.log1p(df["dwell_ms"].clip(lower=0))
+        df["TFD"] = _safe_num(df[dwell_col])
+        df["tfd_y"] = np.log1p(df["TFD"].clip(lower=0))
 
         # share within (participant, scene)
         if vc_scene_col:
             key_cols = ["participant_id", vc_scene_col]
-            tot = df.groupby(key_cols, dropna=False)["dwell_ms"].sum(min_count=1).rename("dwell_total_ms")
+            tot = df.groupby(key_cols, dropna=False)["TFD"].sum(min_count=1).rename("TFD_total_ms")
             df = df.merge(tot.reset_index(), on=key_cols, how="left")
             eps = 1e-6
-            df["share"] = df["dwell_ms"] / df["dwell_total_ms"]
+            df["share"] = df["TFD"] / df["TFD_total_ms"]
             df["share"] = df["share"].clip(lower=0, upper=1)
             df["share_logit"] = np.log((df["share"] + eps) / (1 - df["share"] + eps))
 
     if ttff_col:
-        df["ttff_ms"] = _safe_num(df[ttff_col])
-        df["ttff_y"] = np.log1p(df["ttff_ms"].clip(lower=0))
+        df["TFF"] = _safe_num(df[ttff_col])
+        df["tff_y"] = np.log1p(df["TFF"].clip(lower=0))
 
     if fc_col:
-        df["fc"] = _safe_num(df[fc_col])
-        df["fc_y"] = np.log1p(df["fc"].clip(lower=0))
+        df["FC"] = _safe_num(df[fc_col])
+        df["fc_y"] = np.log1p(df["FC"].clip(lower=0))
 
     # Run per group variable
     group_vars = []
@@ -253,9 +253,9 @@ def main():
         raise SystemExit("No group variables found (Experience/SportFreq). Pass --group_manifest or ensure columns exist.")
 
     outcomes = [
-        ("dwell_y", "All rows"),
+        ("tfd_y", "All rows"),
         ("share_logit", "All rows (allocation proxy)"),
-        ("ttff_y", "visited==1"),
+        ("tff_y", "visited==1"),
         ("fc_y", "visited==1"),
     ]
 

@@ -273,30 +273,41 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
     if len(fix_tbl):
         first_row = fix_tbl.loc[fix_tbl['first_ts'].idxmin()]
         ffd = float(first_row['duration_ms']) if pd.notna(first_row['duration_ms']) else np.nan
-        mfd = float(fix_tbl['duration_ms'].max()) if fix_tbl['duration_ms'].notna().any() else np.nan
+        mfd = float(fix_tbl['duration_ms'].mean()) if fix_tbl['duration_ms'].notna().any() else np.nan
     else:
         ffd = np.nan
         mfd = np.nan
 
-    rf = _compute_return_fixations(df, mask)
+    rff = _compute_return_fixations(df, mask)
     mpd = _compute_mpd(sub)
 
     out = {
         'samples': samples,
         'visited': visited,
         'FC': fc,
-        'TTFF': float(ttff) if pd.notna(ttff) else np.nan,
+        'TFF': float(ttff) if pd.notna(ttff) else np.nan,
         'FFD': float(ffd) if pd.notna(ffd) else np.nan,
         'TFD': float(tfd) if pd.notna(tfd) else np.nan,
         'MFD': float(mfd) if pd.notna(mfd) else np.nan,
-        'RF': int(rf),
+        'RFF': int(rff),
         'MPD': float(mpd) if pd.notna(mpd) else np.nan,
     }
 
-    # Backward-compatible aliases
+    # Long-name canonical aliases
+    out['Fixation Count'] = out['FC']
+    out['Time to First Fixation'] = out['TFF']
+    out['First Fixation Duration'] = out['FFD']
+    out['Total Fixation Duration'] = out['TFD']
+    out['Mean Fixation Duration'] = out['MFD']
+    out['Re-fixation Frequency'] = out['RFF']
+    out['Mean Pupil Diameter'] = out['MPD']
+
+    # Backward-compatible legacy aliases
     out['fixation_count'] = out['FC']
-    out['TTFF_ms'] = out['TTFF']
+    out['TTFF'] = out['TFF']
+    out['TTFF_ms'] = out['TFF']
     out['dwell_time_ms'] = out['TFD']
+    out['RF'] = out['RFF']
 
     return out
 
@@ -421,7 +432,16 @@ def compute_metrics(
         "trial_start_col": trial_start_col,
         "warn_class_overlap": bool(warn_class_overlap),
         "class_overlap": overlap_info,
-        "rf_definition": "RF = number of AOI re-entry episodes after first entry (based on fixation sequence).",
+        "rff_definition": "RFF = number of AOI re-entry episodes after first entry (based on fixation sequence).",
+        "metric_naming": {
+            "FC": "Fixation Count",
+            "TFF": "Time to First Fixation",
+            "FFD": "First Fixation Duration",
+            "MFD": "Mean Fixation Duration",
+            "MPD": "Mean Pupil Diameter",
+            "RFF": "Re-fixation Frequency",
+            "TFD": "Total Fixation Duration"
+        },
     }
 
     # attach to DataFrame attrs so callers can export to run_config.json

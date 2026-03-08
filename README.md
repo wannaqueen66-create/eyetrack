@@ -43,9 +43,13 @@ Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the t
 - AOI polygon labeling in browser
 - Multiple separated polygons under one AOI class
 - Metrics output by polygon and by class:
-  - dwell_time_ms
-  - TTFF_ms
-  - fixation_count
+  - TFD (Total Fixation Duration)
+  - TFF (Time to First Fixation)
+  - FC (Fixation Count)
+  - FFD (First Fixation Duration)
+  - MFD (Mean Fixation Duration)
+  - RFF (Re-fixation Frequency)
+  - MPD (Mean Pupil Diameter)
 
 **中文**
 
@@ -368,6 +372,9 @@ Output files / 输出文件：
 
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总，论文常用）
+
+Note: canonical metric columns now use `FC / FFD / MFD / MPD / RFF / TFD / TFF`.
+Legacy aliases such as `fixation_count / TTFF_ms / dwell_time_ms / RF` are still kept temporarily for backward compatibility.
 
 **Group summaries (SportFreq / Experience)**
 After you have `batch_aoi_metrics_by_class.csv`, you can summarize outcomes by groups (like heatmap grouping):

@@ -32,9 +32,13 @@
 - 在网页中画不规则 AOI（多边形）
 - 同一 AOI 类支持多个分离区域（如三张球桌同属 `pingpong_table`）
 - 输出 AOI 指标：
-  - 停留时长 `dwell_time_ms`
-  - 首次注视时间 `TTFF_ms`
-  - 注视次数 `fixation_count`
+  - 总注视时长 `TFD`（Total Fixation Duration）
+  - 首次注视时间 `TFF`（Time to First Fixation）
+  - 注视次数 `FC`（Fixation Count）
+  - 首次注视时长 `FFD`（First Fixation Duration）
+  - 平均注视时长 `MFD`（Mean Fixation Duration）
+  - 重注视频率 `RFF`（Re-fixation Frequency）
+  - 平均瞳孔直径 `MPD`（Mean Pupil Diameter）
 
 ---
 
@@ -216,6 +220,9 @@ python scripts/run_aoi_metrics.py \
 
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总）
+
+说明：主列名统一采用 `FC / FFD / MFD / MPD / RFF / TFD / TFF`。
+为兼容旧流程，结果中仍暂时保留 `fixation_count / TTFF_ms / dwell_time_ms / RF` 等旧别名列。
 
 **按组汇总（SportFreq / Experience）**
 当你已经得到 `batch_aoi_metrics_by_class.csv` 后，可以像热力图一样按组汇总：

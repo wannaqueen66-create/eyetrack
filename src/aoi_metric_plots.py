@@ -7,8 +7,19 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 
+METRIC_LABELS = {
+    "FC": "Fixation Count (FC)",
+    "TFF": "Time to First Fixation (TFF)",
+    "FFD": "First Fixation Duration (FFD)",
+    "TFD": "Total Fixation Duration (TFD)",
+    "MFD": "Mean Fixation Duration (MFD)",
+    "RFF": "Re-fixation Frequency (RFF)",
+    "MPD": "Mean Pupil Diameter (MPD)",
+}
+
+
 def _pick_metric_cols(df: pd.DataFrame) -> List[str]:
-    preferred = ["FC", "TTFF", "FFD", "TFD", "MFD", "RF", "MPD"]
+    preferred = ["FC", "TFF", "FFD", "TFD", "MFD", "RFF", "MPD"]
     out = [c for c in preferred if c in df.columns]
     return out
 
@@ -44,9 +55,9 @@ def export_metric_barplots(df: pd.DataFrame, outdir: str, prefix: str = "aoi_cla
         fig = plt.figure(figsize=(9, 4.8))
         ax = fig.add_subplot(1, 1, 1)
         bars = ax.bar(d["class_name"], y.fillna(0.0), color="#4C78A8", alpha=0.9)
-        ax.set_title(f"AOI {m} by class")
+        ax.set_title(f"AOI {METRIC_LABELS.get(m, m)} by class")
         ax.set_xlabel("AOI class")
-        ax.set_ylabel(m)
+        ax.set_ylabel(METRIC_LABELS.get(m, m))
         ax.tick_params(axis='x', labelrotation=30)
 
         ymax = y.max(skipna=True)
