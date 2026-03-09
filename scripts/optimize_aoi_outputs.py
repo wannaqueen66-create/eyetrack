@@ -30,6 +30,7 @@ import pandas as pd
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
 from src.aoi_metrics import normalize_aoi_class_series
+from src.manifest_scene_order import attach_manifest_trial_metadata, normalize_condition_token
 
 
 def _norm_group(x):
@@ -50,22 +51,7 @@ def _safe_num(s):
 
 
 def _normalize_scene_token(x) -> str | None:
-    if pd.isna(x):
-        return None
-    s = str(x).strip()
-    if not s:
-        return None
-    u = s.upper().replace(' ', '')
-    m = re.search(r'WWR?(15|45|75).*?C([01])', u)
-    if m:
-        return f"WWR{m.group(1)}_C{m.group(2)}"
-    m = re.search(r'C([01]).*?W(?:WR)?(15|45|75)', u)
-    if m:
-        return f"WWR{m.group(2)}_C{m.group(1)}"
-    m = re.search(r'W(?:WR)?(15|45|75).*?C([01])', u)
-    if m:
-        return f"WWR{m.group(1)}_C{m.group(2)}"
-    return None
+    return normalize_condition_token(x)
 
 
 def _parse_round_index(x) -> float:
@@ -456,7 +442,8 @@ def main():
             scene_meta = scene_meta.drop_duplicates(subset=["scene_id"], keep="first")
 
         d["scene_id"] = d["scene_id"].astype(str).str.strip()
-        if not scene_meta.empty:
+        d = attach_manifest_trial_metadata(d, gm, id_col=args.group_id_col, scene_col="scene_id")
+        if not scene_meta.empty and "scene_order" not in d.columns:
             d = d.merge(scene_meta, on="scene_id", how="left")
 
         fallback_scene = d.apply(
@@ -464,7 +451,7 @@ def main():
                 r.get("scene_id"),
                 scene_label=r.get("scene_label"),
                 scene_order=r.get("scene_order"),
-                round_index=r.get("round_index"),
+                round_index=r.get("round") if pd.notna(r.get("round")) else r.get("round_index"),
             ),
             axis=1,
             result_type="expand",
@@ -474,6 +461,14 @@ def main():
                 d[col] = fallback_scene[col]
             else:
                 d[col] = d[col].where(d[col].notna(), fallback_scene[col])
+
+        if "round" not in d.columns:
+            d["round"] = d["round_index"]
+        else:
+            round_num = _safe_num(d["round"])
+            round_idx_num = _safe_num(d["round_index"])
+            d["round"] = round_num.where(round_num.notna(), round_idx_num)
+        d["round_index"] = _safe_num(d["round_index"]).where(_safe_num(d["round_index"]).notna(), _safe_num(d["round"]))
 
         d["condition_label"] = d["condition_id"].fillna(d["scene_label"])
 

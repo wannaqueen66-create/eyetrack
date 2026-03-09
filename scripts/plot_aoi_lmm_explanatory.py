@@ -42,6 +42,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE
 from src.aoi_metrics import normalize_aoi_class_name
+from src.manifest_scene_order import attach_manifest_trial_metadata
 
 
 AOI_LABELS = {
@@ -153,22 +154,30 @@ def _ci95(x: pd.Series) -> tuple[float, float, float, int]:
 
 def _sort_scene_df(df: pd.DataFrame) -> pd.DataFrame:
     d = df.copy()
+    if "scene_order" in d.columns and d["scene_order"].notna().any():
+        d["scene_order_ord"] = _safe_num(d["scene_order"]).fillna(999)
+    else:
+        d["scene_order_ord"] = 999
     if "round" in d.columns:
         d["round_ord"] = _safe_num(d["round"]).fillna(99)
     else:
         d["round_ord"] = 99
     d["WWR_ord"] = _safe_num(d["WWR"]).fillna(999)
     d["Complexity_ord"] = d["Complexity"].map({"C0": 0, "C1": 1}).fillna(9)
-    return d.sort_values(["round_ord", "WWR_ord", "Complexity_ord", "scene_label"])
+    return d.sort_values(["scene_order_ord", "round_ord", "WWR_ord", "Complexity_ord", "scene_label"])
 
 
 def _build_scene_label(row: pd.Series) -> str:
+    if pd.notna(row.get("scene_display")) and str(row.get("scene_display")).strip():
+        return str(row.get("scene_display")).strip()
     wwr = row.get("WWR")
     comp = row.get("Complexity")
     rnd = row.get("round")
     base = None
     if pd.notna(wwr) and pd.notna(comp):
         base = f"WWR{int(wwr)}_{comp}"
+    elif pd.notna(row.get("scene_label")) and str(row.get("scene_label")).strip():
+        base = str(row.get("scene_label")).strip()
     elif pd.notna(row.get("scene_id")):
         base = str(row.get("scene_id"))
     else:
@@ -254,6 +263,13 @@ def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, ao
 
     scene_src = scene_col if scene_col else "class_name"
     df["scene_id"] = df[scene_src].astype(str)
+    df = attach_manifest_trial_metadata(df, gm, id_col=group_id_col, scene_col="scene_id")
+    if "round" in df.columns:
+        df["round"] = _safe_num(df["round"]).astype("Int64")
+    if "WWR" in df.columns:
+        df["WWR"] = _safe_num(df["WWR"]).astype("Int64")
+    if "Complexity" in df.columns:
+        df["Complexity"] = df["Complexity"].apply(_complexity_to_label)
     df["scene_label"] = df.apply(_build_scene_label, axis=1)
 
     group_vars = [g for g in ["Experience", "SportFreq"] if g in df.columns]
@@ -272,7 +288,9 @@ def _summarize(df: pd.DataFrame, metric: str, group_var: str, by_scene: bool) ->
 
     grp_cols = ["aoi_key", "aoi_label", group_var, "WWR", "Complexity"]
     if by_scene:
-        grp_cols += ["scene_label"]
+        for extra in ["scene_order", "scene_view_id", "scene_label"]:
+            if extra in d.columns:
+                grp_cols += [extra]
         if "round" in d.columns:
             grp_cols += ["round"]
     rows = []
@@ -296,6 +314,10 @@ def _summarize(df: pd.DataFrame, metric: str, group_var: str, by_scene: bool) ->
         }
         if by_scene:
             row["scene_label"] = key_map["scene_label"]
+            if "scene_order" in key_map:
+                row["scene_order"] = key_map["scene_order"]
+            if "scene_view_id" in key_map:
+                row["scene_view_id"] = key_map["scene_view_id"]
             if "round" in key_map and pd.notna(key_map["round"]):
                 row["round"] = int(key_map["round"])
         rows.append(row)

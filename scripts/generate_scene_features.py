@@ -14,6 +14,7 @@ import pandas as pd
 from PIL import Image
 
 from src.aoi_metrics import load_aoi_json, load_aoi_json_meta, normalize_aoi_class_name
+from src.manifest_scene_order import attach_manifest_trial_metadata
 
 
 IMG_EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
@@ -227,9 +228,10 @@ def main():
         if id_col:
             gm = gm.copy()
             gm['participant_id'] = gm[id_col].astype(str).str.strip()
-            keep = ['participant_id'] + [c for c in ['SportFreq', 'Experience', 'condition'] if c in gm.columns]
+            out = attach_manifest_trial_metadata(out, gm, id_col=id_col, scene_col='scene_id')
+            keep = ['participant_id'] + [c for c in ['SportFreq', 'Experience', 'condition', 'Order'] if c in gm.columns]
             for c in gm.columns:
-                if c.startswith('trial') and (c.endswith('_scene') or c.endswith('_Round') or c.endswith('_RoundLabel')):
+                if c.startswith('trial') and (c.endswith('_scene') or c.endswith('_Round') or c.endswith('_RoundLabel') or c.endswith('_Pos') or c.endswith('_key') or c.endswith('_label') or c.endswith('_Cond') or c.endswith('_Complexity') or c.endswith('_WWR')):
                     keep.append(c)
             keep = list(dict.fromkeys(keep))
             out = out.merge(gm[keep], on='participant_id', how='left')

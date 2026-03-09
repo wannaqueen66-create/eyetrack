@@ -28,6 +28,12 @@ import os
 import numpy as np
 import pandas as pd
 
+import os
+import sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.manifest_scene_order import attach_manifest_trial_metadata
+
 
 def _norm_group(x):
     if pd.isna(x):
@@ -182,7 +188,17 @@ def _save_bar(
 
 def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame:
     out_rows = []
-    for (scene_id, class_name, gval), sub in df.groupby(["scene_id", "class_name", group_col], dropna=False):
+    group_keys = ["scene_id", "class_name", group_col]
+    for extra in ["scene_order", "scene_label", "scene_display", "round", "scene_view_id"]:
+        if extra in df.columns:
+            group_keys.append(extra)
+    for keys, sub in df.groupby(group_keys, dropna=False):
+        if not isinstance(keys, tuple):
+            keys = (keys,)
+        key_map = dict(zip(group_keys, keys))
+        scene_id = key_map["scene_id"]
+        class_name = key_map["class_name"]
+        gval = key_map[group_col]
         if pd.isna(gval) or str(gval).strip() == "":
             continue
 
@@ -215,6 +231,9 @@ def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame
             "FC_mean_all": float(fix.mean()) if fix.notna().any() else np.nan,
             "FC_median_all": float(fix.median()) if fix.notna().any() else np.nan,
         }
+        for extra in ["scene_order", "scene_label", "scene_display", "round", "scene_view_id"]:
+            if extra in key_map:
+                row[extra] = key_map[extra]
         out_rows.append(row)
 
     return pd.DataFrame(out_rows)
@@ -260,6 +279,9 @@ def main():
     aoi = aoi.copy()
     aoi["participant_id"] = aoi["participant_id"].astype(str).str.strip()
     merged = aoi.merge(gm[["participant_id", "SportFreq", "Experience"]], on="participant_id", how="left")
+    if "scene_id" in merged.columns:
+        merged["scene_id"] = merged["scene_id"].astype(str).str.strip()
+        merged = attach_manifest_trial_metadata(merged, gm, id_col=args.id_col, scene_col="scene_id")
 
     # 4-way cross
     merged["SportFreq_x_Experience"] = merged["SportFreq"].astype(str) + "_" + merged["Experience"].astype(str)
@@ -300,14 +322,16 @@ def main():
     out_df = pd.concat(out, ignore_index=True) if out else pd.DataFrame()
 
     if not out_df.empty:
-        if scene_label_map is not None:
+        if "scene_label" in out_df.columns and out_df["scene_label"].notna().any():
+            out_df["scene_label"] = out_df["scene_label"].astype(str)
+        elif scene_label_map is not None:
             out_df["scene_label"] = out_df["scene_id"].astype(str).map(scene_label_map).fillna(out_df["scene_id"].astype(str))
         else:
             out_df["scene_label"] = out_df["scene_id"].astype(str).apply(_auto_scene_label)
 
-    if scene_order_map is not None and not out_df.empty:
+    if scene_order_map is not None and not out_df.empty and ("scene_order" not in out_df.columns or not out_df["scene_order"].notna().any()):
         out_df["scene_order"] = out_df["scene_id"].astype(str).map(scene_order_map)
-    else:
+    elif "scene_order" not in out_df.columns:
         out_df["scene_order"] = np.nan
 
     out_path = os.path.join(args.outdir, "aoi_group_summary.csv")

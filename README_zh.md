@@ -674,7 +674,11 @@ outputs_organized/
 >
 > 关键分组汇总 PNG 现在会直接在柱子上打印数值；若担心图太挤或 reviewer 需要逐项核对，对应数据也会同步导出为 `grouped/plots/<同名>_data.csv`。
 >
-> 若 `group_manifest.csv` 中包含类似 `trial01_scene` 的列，分组 PNG 会优先使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会把横轴命名成 `R1 WWR45_C1` / `R2 WWR45_C1` 这类形式，因此即便两轮条件名相同，也会作为两个独立场景位置显示，不会再错误地全部变成同一个名字。对于原始 scene_id 中类似 `C1W45` / `C0W15` 的命名，脚本也会尽量自动归一化为 `WWR45_C1` / `WWR15_C0`。
+> 如果 `group_manifest.csv` 提供了被试级 trial 信息（例如 `Order`、`trial01_Pos`、`trial01_scene`、`trial01_key`、`trial01_label`、`trial01_Round`、`trial01_Cond`、`trial01_Complexity`、`trial01_WWR` ... `trial12_*`），现在分组/scene-level 脚本会**优先使用 manifest 里每位被试的真实呈现顺序**，而不是再假定所有人都共享同一个固定的 1–12 场景模板。这一点在不同 `Order` 组采用不同呈现顺序时尤其重要。
+>
+> scene-level 结果现在代表的是**真实呈现顺序视图**：横轴会尽量保留 order / trial slot / round 的区分，因此即便两个 trial 最终对应同一个 WWR×Complexity 条件，只要它们来自不同 Order 组或不同真实呈现位置，也不会再被错误压成同一个静态场景位。
+>
+> `*_condition_*.png` 仍然保留，表示**条件视图**（按 WWR×Complexity 合并）；只有在你明确想跨轮次/跨场景位聚合条件时再看它。若提供了 manifest trial 元数据，scene-level 标签也会优先采用 manifest 中的 scene/label/pos 信息，必要时附带 order / trial / round 上下文，避免误读。
 
 ## 10. Building and Environment 图形规范参数表
 

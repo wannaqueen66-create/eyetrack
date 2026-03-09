@@ -880,8 +880,10 @@ Notes / 说明：
 - The optimizer now exports both **scene-level** and **condition-level** summaries/PNGs. Use `*_scene_*.png` when you need all 12 scene slots preserved; use `*_condition_*.png` when you intentionally want the repeated WWR×Complexity conditions collapsed across rounds.
 - Key grouped summary PNGs now print direct bar labels; the exact plotted values are also exported next to each figure as `grouped/plots/<same_stem>_data.csv`.
 - 优化脚本现在会同时导出 **scene-level** 与 **condition-level** 的表和 PNG。需要保留 12 个场景位置时请看 `*_scene_*.png`；如果你是有意把两轮重复的 WWR×Complexity 条件合并，再看 `*_condition_*.png`。
-- If `group_manifest.csv` contains columns like `trial01_scene`, grouped PNGs will prefer those scene labels (e.g. `WWR45_C1`) and plot by trial order. Scene-level plots prepend round tags such as `R1 WWR45_C1` / `R2 WWR45_C1`, so repeated conditions from round 1 vs round 2 are visually distinct and never collapsed into one x-axis slot.
-- 如果 `group_manifest.csv` 含有类似 `trial01_scene` 的列，分组 PNG 会优先使用这些场景标签（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会在标签前加上轮次前缀，如 `R1 WWR45_C1` / `R2 WWR45_C1`，从而明确区分第 1 轮与第 2 轮，避免在横轴上被错误合并。
+- If `group_manifest.csv` contains participant-specific trial columns such as `Order`, `trial01_Pos`, `trial01_scene`, `trial01_key`, `trial01_label`, `trial01_Round`, `trial01_Cond`, `trial01_Complexity`, `trial01_WWR` ... `trial12_*`, the grouped/scene-level scripts now **prefer the manifest's per-participant realized trial order** over any static `scene_id -> round/condition` guess. This matters when different `Order` groups use different 1–12 presentation schedules.
+- Scene-level views now preserve the **real presentation-order view** (participant/order/trial slot aware), so the x-axis can distinguish repeated conditions that occurred in different trial slots or order groups instead of silently collapsing them into one static 1–12 template.
+- Condition-level views still intentionally collapse to WWR × Complexity, but only after scene/order metadata has first been reconstructed from the manifest; use these `*_condition_*.png` files only when you explicitly want the condition view.
+- When manifest trial metadata is available, scene-level labels prefer manifest-derived labels/positions and will include order/trial/round context when needed, so different Order groups are not mistaken for the same slot.
 
 ## 11. Building and Environment Figure Style Parameters / B&E图形规范参数表
 

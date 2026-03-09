@@ -14,6 +14,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+from src.manifest_scene_order import attach_manifest_trial_metadata
 
 
 def _safe_num(s: pd.Series) -> pd.Series:
@@ -140,6 +141,16 @@ def main():
         if c in gm.columns: gm[c] = gm[c].apply(_norm_hilo)
     df["participant_id"] = df["participant_id"].astype(str).str.strip()
     df = df.merge(gm[[c for c in ["participant_id", "SportFreq", "Experience"] if c in gm.columns]], on="participant_id", how="left")
+    scene_src = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
+    if scene_src:
+        df["scene_id_match"] = df[scene_src].astype(str).str.strip()
+        df = attach_manifest_trial_metadata(df, gm, id_col=args.group_id_col, scene_col="scene_id_match")
+        if "round" in df.columns:
+            df["round"] = _safe_num(df["round"]).astype("Int64")
+        if "WWR" in df.columns:
+            df["WWR"] = _safe_num(df["WWR"]).astype("Int64")
+        if "Complexity" in df.columns:
+            df["Complexity"] = df["Complexity"].apply(_complexity_to_label)
     if "WWR" not in df.columns or "Complexity" not in df.columns:
         raise SystemExit("Missing WWR/Complexity columns. Re-run batch_aoi_metrics.py after latest patch.")
     df["WWR"] = _safe_num(df["WWR"]).astype("Int64"); df["Complexity"] = df["Complexity"].apply(_complexity_to_label)
