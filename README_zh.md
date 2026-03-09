@@ -512,6 +512,12 @@ python scripts/plot_aoi_lmm_explanatory.py \
 - `outputs_aoi_lmm_visuals/png/scene_group_profile_<GroupVar>_<metric>.png`
 - `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_condition.csv`
 - `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_scene.csv`
+- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_data.csv`
+- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_labels.csv`
+- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_data.csv`
+- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_labels.csv`
+
+这些 explanatory PNG 现在会直接在折线点旁标出数值；如果 reviewer 需要逐点核对，请到 `tables/` 目录读取同名 `_data.csv` / `_labels.csv`。
 
 怎么解读最有效：
 - **第一优先看** `condition_group_interaction_<GroupVar>_share_pct.png`
@@ -534,7 +540,8 @@ python scripts/plot_aoi_lmm_explanatory.py \
    - 围绕 `WWR × Complexity × Group` 导出的关键 simple effects / contrasts
 4. 再看 `ranef_<outcome>.csv`
    - 随机效应/方差分解：被试随机截距、scene 方差分量（若有）、残差方差
-5. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应
+5. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应（图上已带 `b [95% CI]` 数值标签）
+   - 若需逐项核对图中数值，对应查看同目录的 `forest_fixef_<outcome>_data.csv`
 
 当前脚本导出的 R² 定义为 Gaussian mixed model 下的 Nakagawa-style 近似：
 - `marginal R² = Var(Xβ) / [Var(Xβ) + ΣVar(random) + Var(residual)]`
@@ -633,6 +640,8 @@ outputs_organized/
 > 现在会同时输出 **scene-level** 与 **condition-level** 两套汇总/PNG：
 > - `*_scene_*.png`：保留 12 个场景位置，适合检查每一轮中的具体场景差异；
 > - `*_condition_*.png`：按 WWR×Complexity 条件汇总，适合在你明确希望跨轮次合并时使用。
+>
+> 关键分组汇总 PNG 现在会直接在柱子上打印数值；若担心图太挤或 reviewer 需要逐项核对，对应数据也会同步导出为 `grouped/plots/<同名>_data.csv`。
 >
 > 若 `group_manifest.csv` 中包含类似 `trial01_scene` 的列，分组 PNG 会优先使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会把横轴命名成 `R1 WWR45_C1` / `R2 WWR45_C1` 这类形式，因此即便两轮条件名相同，也会作为两个独立场景位置显示，不会再错误地全部变成同一个名字。对于原始 scene_id 中类似 `C1W45` / `C0W15` 的命名，脚本也会尽量自动归一化为 `WWR45_C1` / `WWR15_C0`。
 

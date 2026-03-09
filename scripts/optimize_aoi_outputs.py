@@ -260,6 +260,18 @@ def _group_summary(df: pd.DataFrame, group_col: str, level: str = "scene") -> pd
     return pd.DataFrame(rows)
 
 
+def _format_group_metric_label(metric: str, value: float) -> str:
+    if pd.isna(value):
+        return ""
+    if "visited_rate" in metric:
+        return f"{value * 100:.1f}%"
+    if any(tok in metric for tok in ["TTFF", "TFD", "FFD", "MFD", "MPD"]):
+        return f"{value:.0f}"
+    if any(tok in metric for tok in ["FC", "RFF"]):
+        return f"{value:.2f}"
+    return f"{value:.2f}"
+
+
 def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, title: str):
     if summary_df.empty or metric not in summary_df.columns:
         return
@@ -305,6 +317,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     palette_map = {"Low": PALETTE["blue"], "High": PALETTE["orange"]}
     fallback_palette = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"], PALETTE["purple"]]
 
+    plot_rows = []
     ymax_all = []
     for i, g in enumerate(groups):
         y = []
@@ -314,11 +327,20 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
         bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.84, edgecolor='white', linewidth=0.8)
-        for rect, val in zip(bars, y):
+        for rect, val, slot in zip(bars, y, plot_slots):
+            plot_rows.append({
+                "plot_order_key": slot,
+                "plot_label": slot_to_label.get(slot, slot),
+                "group_value": g,
+                "metric": metric,
+                "value": val,
+                "value_label": _format_group_metric_label(metric, val),
+                "out_png": out_png.name,
+            })
             if pd.isna(val):
                 continue
             ymax_all.append(val)
-            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), f"{val:.2f}", ha="center", va="bottom", fontsize=7)
+            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), _format_group_metric_label(metric, val), ha="center", va="bottom", fontsize=7)
 
     if round_boundaries is not None:
         for i in range(1, len(round_boundaries)):
@@ -338,6 +360,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300)
+    pd.DataFrame(plot_rows).to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
     plt.close(fig)
 
 

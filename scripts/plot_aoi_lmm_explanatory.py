@@ -307,6 +307,47 @@ def _ordered_aois(vals) -> list[str]:
     return out
 
 
+def _format_metric_value(metric: str, value: float) -> str:
+    if not np.isfinite(value):
+        return ""
+    if metric == "share_pct":
+        return f"{value:.1f}%"
+    if metric in {"TFD", "TTFF"}:
+        return f"{value:.0f}"
+    if metric == "FC":
+        return f"{value:.1f}"
+    return f"{value:.2f}"
+
+
+def _annotate_series(ax, xs, ys, metric: str, color: str):
+    points = [(float(x), float(y)) for x, y in zip(xs, ys) if np.isfinite(x) and np.isfinite(y)]
+    if not points:
+        return
+    for idx, (x, y) in enumerate(points):
+        dy = 6 if idx % 2 == 0 else -10
+        ax.annotate(
+            _format_metric_value(metric, y),
+            xy=(x, y),
+            xytext=(0, dy),
+            textcoords="offset points",
+            ha="center",
+            va="bottom" if dy >= 0 else "top",
+            fontsize=7,
+            color=color,
+            bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.75),
+        )
+
+
+def _export_plot_companion(summary: pd.DataFrame, outdir: Path, stem: str):
+    outdir.mkdir(parents=True, exist_ok=True)
+    data_path = outdir / f"{stem}_data.csv"
+    labels_path = outdir / f"{stem}_labels.csv"
+    summary.to_csv(data_path, index=False, encoding="utf-8-sig")
+    labels = summary.copy()
+    labels["value_label"] = labels["mean"].apply(lambda v: _format_metric_value(str(labels["metric"].iloc[0]) if len(labels) else "", float(v) if pd.notna(v) else np.nan))
+    labels.to_csv(labels_path, index=False, encoding="utf-8-sig")
+
+
 def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: str, metric: str):
     if summary.empty:
         return
@@ -341,8 +382,10 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
                 ys = s2["mean"].astype(float).tolist()
                 lo = s2["ci_low"].astype(float).tolist()
                 hi = s2["ci_high"].astype(float).tolist()
-                ax.plot(xs, ys, marker="o", color=COLOR_MAP.get(g, PALETTE["gray"]), label=GROUP_LABELS.get(g, g))
-                ax.fill_between(xs, lo, hi, color=COLOR_MAP.get(g, PALETTE["gray"]), alpha=0.16, linewidth=0)
+                color = COLOR_MAP.get(g, PALETTE["gray"])
+                ax.plot(xs, ys, marker="o", color=color, label=GROUP_LABELS.get(g, g))
+                ax.fill_between(xs, lo, hi, color=color, alpha=0.16, linewidth=0)
+                _annotate_series(ax, xs, ys, metric=metric, color=color)
             ax.set_xticks(SCENE_ORDER_DEFAULT)
             ax.set_xlabel("Window-to-wall ratio WWR (%)")
             if j == 0:
@@ -357,6 +400,7 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, metric: str):
@@ -387,8 +431,10 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
             s2 = sub[sub["group_value"].astype(str) == str(g)].copy()
             s2["x"] = s2["scene_label"].map(xpos)
             s2 = s2.sort_values("x")
-            ax.plot(s2["x"], s2["mean"], marker="o", color=COLOR_MAP.get(g, PALETTE["gray"]), label=GROUP_LABELS.get(g, g))
-            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=COLOR_MAP.get(g, PALETTE["gray"]), alpha=0.12, linewidth=0)
+            color = COLOR_MAP.get(g, PALETTE["gray"])
+            ax.plot(s2["x"], s2["mean"], marker="o", color=color, label=GROUP_LABELS.get(g, g))
+            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=color, alpha=0.12, linewidth=0)
+            _annotate_series(ax, s2["x"].tolist(), s2["mean"].tolist(), metric=metric, color=color)
         ax.set_title(_aoi_label(aoi), loc="left")
         ax.set_ylabel(METRIC_LABELS.get(metric, metric))
         soften_axes(ax)
@@ -403,6 +449,7 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    plt.close(fig)
 
 
 def main():
@@ -441,8 +488,10 @@ def main():
             if len(cond) == 0:
                 continue
             cond.to_csv(outdir / "tables" / f"summary_{gv}_{metric}_condition.csv", index=False, encoding="utf-8-sig")
+            _export_plot_companion(cond, outdir / "tables", f"condition_group_interaction_{gv}_{metric}")
             if len(scn):
                 scn.to_csv(outdir / "tables" / f"summary_{gv}_{metric}_scene.csv", index=False, encoding="utf-8-sig")
+                _export_plot_companion(scn, outdir / "tables", f"scene_group_profile_{gv}_{metric}")
             plot_condition_interaction(cond, outdir / "png" / f"condition_group_interaction_{gv}_{metric}.png", group_var=gv, metric=metric)
             if len(scn):
                 plot_scene_profile(scn, outdir / "png" / f"scene_group_profile_{gv}_{metric}.png", group_var=gv, metric=metric)

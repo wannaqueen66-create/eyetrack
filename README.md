@@ -678,7 +678,8 @@ Outputs (per group variable):
 - `ranef_*.csv` (random-effect variance components: participant intercept, scene variance component when available, residual variance)
 - `model_fit_*.csv` (AIC / BIC / logLik / nobs / convergence / approximate marginal+conditional R²)
 - `contrasts_*.csv` (key simple effects around WWR × Complexity × Group)
-- `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first)
+- `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first, now with inline `b [95% CI]` labels)
+- `forest_fixef_*_data.csv` (companion table for each forest plot, same term order as the PNG)
 - `README_LMM_report.txt` (how to read the folder)
 
 ### Explanatory PNGs for allocation interpretation / 面向“注意分配变化”解释的 PNG
@@ -708,6 +709,12 @@ Output files:
 - `outputs_aoi_lmm_visuals/png/scene_group_profile_<GroupVar>_<metric>.png`
 - `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_condition.csv`
 - `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_scene.csv`
+- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_data.csv`
+- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_labels.csv`
+- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_data.csv`
+- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_labels.csv`
+
+These explanatory PNGs now include direct value labels on the plotted points. If a reviewer needs the exact plotted numbers, use the same-stem `_data.csv` / `_labels.csv` files in the `tables/` folder.
 
 How to read them:
 - Start with `condition_group_interaction_<GroupVar>_share_pct.png`.
@@ -839,6 +846,7 @@ Notes / 说明：
 - Grouped output currently includes only `SportFreq` and `Experience` (no 2×2 cross-group export).
 - 当前分组仅输出 `SportFreq` 与 `Experience`，不导出 2×2 交叉分组。
 - The optimizer now exports both **scene-level** and **condition-level** summaries/PNGs. Use `*_scene_*.png` when you need all 12 scene slots preserved; use `*_condition_*.png` when you intentionally want the repeated WWR×Complexity conditions collapsed across rounds.
+- Key grouped summary PNGs now print direct bar labels; the exact plotted values are also exported next to each figure as `grouped/plots/<same_stem>_data.csv`.
 - 优化脚本现在会同时导出 **scene-level** 与 **condition-level** 的表和 PNG。需要保留 12 个场景位置时请看 `*_scene_*.png`；如果你是有意把两轮重复的 WWR×Complexity 条件合并，再看 `*_condition_*.png`。
 - If `group_manifest.csv` contains columns like `trial01_scene`, grouped PNGs will prefer those scene labels (e.g. `WWR45_C1`) and plot by trial order. Scene-level plots prepend round tags such as `R1 WWR45_C1` / `R2 WWR45_C1`, so repeated conditions from round 1 vs round 2 are visually distinct and never collapsed into one x-axis slot.
 - 如果 `group_manifest.csv` 含有类似 `trial01_scene` 的列，分组 PNG 会优先使用这些场景标签（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会在标签前加上轮次前缀，如 `R1 WWR45_C1` / `R2 WWR45_C1`，从而明确区分第 1 轮与第 2 轮，避免在横轴上被错误合并。

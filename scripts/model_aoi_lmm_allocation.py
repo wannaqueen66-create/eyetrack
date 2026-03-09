@@ -561,14 +561,26 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str):
         return
 
     dfp = fixef_df.copy()
-    dfp = dfp.sort_values(["abs_test", "p"], ascending=[False, True]).head(18).iloc[::-1]
-    fig_h = max(4.0, 0.38 * len(dfp) + 1.8)
-    fig, ax = plt.subplots(figsize=(9.0, fig_h))
+    dfp = dfp.sort_values(["abs_test", "p"], ascending=[False, True]).head(18).iloc[::-1].copy()
+    dfp["effect_ci_label"] = dfp.apply(
+        lambda r: f"b={float(r['coef']):.2f} [{float(r['ci_low']):.2f}, {float(r['ci_high']):.2f}]" if pd.notna(r['coef']) and pd.notna(r['ci_low']) and pd.notna(r['ci_high']) else "",
+        axis=1,
+    )
+    fig_h = max(4.0, 0.45 * len(dfp) + 1.8)
+    xmin = float(np.nanmin(dfp["ci_low"])) if dfp["ci_low"].notna().any() else -1.0
+    xmax = float(np.nanmax(dfp["ci_high"])) if dfp["ci_high"].notna().any() else 1.0
+    span = max(xmax - xmin, 1.0)
+    fig, ax = plt.subplots(figsize=(11.5, fig_h))
     ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
     y = np.arange(len(dfp))
     colors = np.where(dfp["p"].fillna(1.0) < 0.05, "#2C7FB8", "#9E9E9E")
     ax.hlines(y, dfp["ci_low"], dfp["ci_high"], color=colors, linewidth=2)
     ax.scatter(dfp["coef"], y, color=colors, s=30, zorder=3)
+    for yi, (_, row) in enumerate(dfp.iterrows()):
+        if row["effect_ci_label"]:
+            xpos = float(row["ci_high"]) + 0.03 * span
+            ax.text(xpos, yi, row["effect_ci_label"], va="center", ha="left", fontsize=7, color="#333333")
+    ax.set_xlim(xmin - 0.08 * span, xmax + 0.55 * span)
     ax.set_yticks(y)
     ax.set_yticklabels(dfp["term"])
     ax.set_xlabel("Coefficient estimate (95% CI)")
@@ -579,6 +591,7 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str):
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    dfp.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
     plt.close(fig)
 
 
@@ -598,7 +611,9 @@ Files in this folder
 - contrasts_<outcome>.csv
   Key simple effects around WWR × Complexity × {group_var}, exported as linear contrasts from the fixed-effect covariance matrix.
 - forest_fixef_<outcome>.png
-  Forest plot of the strongest fixed effects by |z|.
+  Forest plot of the strongest fixed effects by |z|, now with inline effect/CI labels.
+- forest_fixef_<outcome>_data.csv
+  Companion table for the forest plot (same terms/order and rendered labels).
 
 How to interpret
 ----------------
