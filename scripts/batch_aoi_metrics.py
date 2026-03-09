@@ -541,7 +541,7 @@ def main():
                 export_metric_barplots(g, subdir, prefix='aoi_class')
 
             # Overall mean by class across all rows
-            metric_cols = [c for c in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RF', 'MPD'] if c in class_all.columns]
+            metric_cols = [c for c in ['FC', 'FC_share', 'FC_rate', 'TTFF', 'FFD', 'TFD', 'share_pct', 'MFD', 'RFF', 'MPD'] if c in class_all.columns]
             if metric_cols:
                 gg = class_all.copy()
                 for c in metric_cols:

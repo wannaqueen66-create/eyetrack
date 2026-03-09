@@ -45,17 +45,30 @@ AOI 内唯一 fixation index 的数量。
 Duration of the first fixation that entered the AOI.
 首次进入 AOI 的 fixation 的持续时间。
 
+The first fixation is identified from the earliest fixation-level timestamp inside the AOI.
+这里的“首次 fixation”是按 AOI 内最早 fixation-level 时间戳确定的。
+
 ### MFD
 Mean fixation duration across unique fixations inside the AOI.
 AOI 内所有唯一 fixation 的平均注视时长。
+
+This is computed after deduplicating by fixation index rather than averaging raw rows.
+该指标以 fixation index 去重后的 fixation 为单位计算，而不是直接对原始行平均。
 
 ### MPD
 Mean pupil diameter in the AOI subset.
 AOI 子集中的平均瞳孔直径。
 
+Operationally, the pipeline averages left/right pupil diameter per row when available,
+and then averages across AOI rows. It prefers mm-based columns and falls back to px-based columns.
+实现上优先使用 mm 单位的左右眼瞳孔列，按行求左右眼均值后再在 AOI 子集内求平均；若 mm 列缺失，则回退到 px 列。
+
 ### RFF
 Number of AOI re-entry episodes after the first entry, based on fixation sequence.
 基于 fixation 序列，首次进入之后重新进入 AOI 的次数。
+
+This is a revisit / re-entry episode count, not a time-standardized frequency.
+该指标表示重返 episode 次数，并不是按时间标准化后的“频率率值”。
 
 ### TFD
 Total fixation duration in the AOI.

@@ -151,6 +151,101 @@ Start at:
 
 ---
 
+## AOI metrics now surfaced on `main`
+
+The current mainline bottom tables and descriptive outputs can expose the following AOI metrics when the source eye-tracking export contains the needed columns:
+
+- **FC** = Fixation Count
+- **FFD** = First Fixation Duration
+- **MFD** = Mean Fixation Duration
+- **MPD** = Mean Pupil Diameter
+- **RFF** = Re-fixation Frequency
+- **TFD** = Total Fixation Duration
+- **TTFF** = Time To First Fixation
+- **FC_share / FC_prop / FC_rate** = normalized FC companions
+- **share / share_pct** = normalized TFD companions
+
+### Which metrics are mainline-priority vs supplementary
+
+**Primary / recommended for main inferential reading on `main`:**
+- `share_pct` / `share_logit` (TFD allocation share)
+- `FC_share` / `fc_share_logit` (FC allocation share)
+- `FC_rate`
+- `TFD`
+- `TTFF`
+- `FC`
+
+These are the metrics most directly aligned with allocation / latency / absolute-attention questions in the current mainline significance workflow.
+
+**Secondary / exploratory / descriptive-first metrics:**
+- `FFD`
+- `MFD`
+- `RFF`
+- `MPD`
+
+These are now included in bottom tables and descriptive outputs, and are also wired into exploratory LMM-style outputs where data allow. But they should usually be treated as supportive or mechanism-oriented metrics rather than the first confirmatory headline.
+
+### Definitions and handling choices
+
+#### FC
+Raw AOI fixation count is retained as `FC`.
+Do **not** manually normalize it by group size.
+Instead, use:
+- `FC_share` / `FC_prop` for within-trial count allocation
+- `FC_rate` for per-second standardization
+
+#### TFD
+Raw AOI total fixation duration is retained as `TFD`.
+For allocation interpretation, continue to prefer:
+- `share`
+- `share_pct`
+
+#### TTFF
+`TTFF` keeps the existing segment-aware QC logic.
+If video time resets or large gaps are detected, TTFF is recomputed segment-wise and QC fields (`ttff_source`, `ttff_warning`, `ttff_qc_status`, etc.) mark the context.
+
+#### FFD
+Defined here as the **duration of the first unique fixation that entered the AOI**.
+Recommended use: early engagement / first-entry depth.
+Caution: interpret only on visited trials.
+
+#### MFD
+Defined here as the **mean duration across unique fixations inside the AOI**.
+Recommended use: sustained-processing style descriptor.
+Caution: sensitive to fixation parsing/export conventions; use mainly as descriptive or exploratory support.
+
+#### RFF
+Defined here as the **number of AOI re-entry episodes after the first entry, based on fixation sequence**.
+Recommended use: return / revisit tendency.
+Caution: this is a sequence-derived revisit index, not a standardized rate per minute; compare it carefully and preferably alongside FC / share metrics.
+
+#### MPD
+Defined here as the **mean pupil diameter over AOI rows**, averaging left/right pupils when available, and falling back to px-based columns if mm-based columns are unavailable.
+Recommended use: descriptive physiological context.
+Caution: MPD is especially sensitive to hardware/export conventions and lighting; keep it exploratory unless acquisition conditions are well controlled.
+
+### Where to look after rerunning
+
+After `python scripts/run_analysis2.py ...`, the new metrics are easiest to inspect in:
+
+**Bottom tables / raw AOI outputs**
+- `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_class.csv`
+- `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_polygon.csv`
+
+**Descriptive outputs**
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/`
+
+**Significance / exploratory inferential outputs**
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
+
+For canonical names and definitions, also see `docs/METRICS_SPEC.md`.
+
 ## Minimal setup
 
 ```bash

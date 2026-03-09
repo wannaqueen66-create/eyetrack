@@ -99,6 +99,28 @@ def test_ttff_trial_start_ms_override():
     assert poly.loc[0, 'ttff_source'] == 'explicit_trial_start_ms'
 
 
+def test_derived_fixation_metrics_ffd_mfd_rff_and_mpd():
+    df = pd.DataFrame({
+        'Recording Time Stamp[ms]': [0, 10, 20, 30, 40, 50],
+        'Video Time[ms]': [0, 10, 20, 30, 40, 50],
+        'Gaze Point X[px]': [5, 50, 50, 5, 5, 5],
+        'Gaze Point Y[px]': [5, 50, 50, 5, 5, 5],
+        'Fixation Index': [1, 2, 3, 4, 4, 5],
+        'Fixation Duration[ms]': [100, 120, 80, 200, 200, 50],
+        'Pupil Diameter Left[mm]': [3.0, 4.0, 4.2, 3.2, 3.4, 3.6],
+        'Pupil Diameter Right[mm]': [3.2, 4.2, 4.4, 3.0, 3.2, 3.8],
+    })
+    aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
+    poly, _ = compute_metrics(df, aoi, dwell_mode='fixation')
+    row = poly.loc[0]
+    assert int(row['FC']) == 3
+    assert abs(float(row['FFD']) - 100.0) < 1e-9
+    assert abs(float(row['MFD']) - ((100.0 + 200.0 + 50.0) / 3.0)) < 1e-9
+    assert int(row['RFF']) == 1
+    expected_mpd = np.mean([(3.0 + 3.2) / 2.0, (3.2 + 3.0) / 2.0, (3.4 + 3.2) / 2.0, (3.6 + 3.8) / 2.0])
+    assert abs(float(row['MPD']) - float(expected_mpd)) < 1e-9
+
+
 def test_fc_share_fc_rate_and_share_pct_are_trial_normalized():
     df = pd.DataFrame({
         'Recording Time Stamp[ms]': [0, 100, 200, 1000],

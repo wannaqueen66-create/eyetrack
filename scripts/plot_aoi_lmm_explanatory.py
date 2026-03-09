@@ -25,6 +25,10 @@ Default metrics
 - TFD         : total fixation duration (ms)
 - TTFF        : time to first fixation (ms), visited==1 only
 - FC          : fixation count, visited==1 only
+- FFD         : first fixation duration (ms), visited==1 only
+- MFD         : mean fixation duration (ms), visited==1 only
+- RFF         : re-fixation frequency
+- MPD         : mean pupil diameter, visited==1 only
 """
 
 from __future__ import annotations
@@ -73,6 +77,10 @@ METRIC_LABELS = {
     "TFD": "Total fixation duration TFD (ms)",
     "TTFF": "Time to first fixation TTFF (ms)",
     "FC": "Fixation count FC",
+    "FFD": "First fixation duration FFD (ms)",
+    "MFD": "Mean fixation duration MFD (ms)",
+    "RFF": "Re-fixation frequency RFF",
+    "MPD": "Mean pupil diameter MPD",
 }
 
 METRIC_TITLES = {
@@ -82,6 +90,10 @@ METRIC_TITLES = {
     "TFD": "total fixation duration",
     "TTFF": "time to first fixation",
     "FC": "fixation count",
+    "FFD": "first fixation duration",
+    "MFD": "mean fixation duration",
+    "RFF": "re-fixation frequency",
+    "MPD": "mean pupil diameter",
 }
 
 SCENE_ORDER_DEFAULT = [15, 45, 75]
@@ -238,6 +250,14 @@ def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, ao
         df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0, upper=1)
     if "FC_rate" in df.columns:
         df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
+    if "FFD" in df.columns:
+        df["FFD"] = _safe_num(df["FFD"]).clip(lower=0)
+    if "MFD" in df.columns:
+        df["MFD"] = _safe_num(df["MFD"]).clip(lower=0)
+    if "RFF" in df.columns:
+        df["RFF"] = _safe_num(df["RFF"]).clip(lower=0)
+    if "MPD" in df.columns:
+        df["MPD"] = _safe_num(df["MPD"])
 
     scene_col = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
     if scene_col:
@@ -280,7 +300,7 @@ def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, ao
 
 def _summarize(df: pd.DataFrame, metric: str, group_var: str, by_scene: bool) -> pd.DataFrame:
     d = df.copy()
-    if metric in ["TTFF", "FC"]:
+    if metric in ["TTFF", "FC", "FFD", "MFD", "MPD"]:
         d = d[d["visited"] == 1].copy()
     d = d.dropna(subset=[metric, group_var, "WWR", "Complexity", "aoi_key"])
     if d.empty:
@@ -494,7 +514,7 @@ def main():
     ap.add_argument("--group_id_col", default="name")
     ap.add_argument("--outdir", default="outputs_aoi_lmm_visuals")
     ap.add_argument("--aoi_classes", default="table,window,equipment", help="Comma-separated AOI classes to prioritize")
-    ap.add_argument("--metrics", default="share_pct,FC_share,FC_rate,TFD,TTFF,FC", help="Comma-separated metrics: share_pct,FC_share,FC_rate,TFD,TTFF,FC")
+    ap.add_argument("--metrics", default="share_pct,FC_share,FC_rate,TFD,TTFF,FC,FFD,MFD,RFF,MPD", help="Comma-separated metrics: share_pct,FC_share,FC_rate,TFD,TTFF,FC,FFD,MFD,RFF,MPD")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)

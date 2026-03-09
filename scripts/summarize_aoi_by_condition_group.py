@@ -173,12 +173,27 @@ def main():
     if fc_col:
         df["FC"] = _safe_num(df[fc_col]).clip(lower=0); df["fc_y"] = np.log1p(df["FC"]); outcomes += [("FC", "Fixation Count (FC)"), ("fc_y", "log1p(FC)")]
     if "FC_share" in df.columns:
-        df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0)
+        df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0, upper=1)
         outcomes += [("FC_share", "FC_share (AOI FC share within trial)"), ("FC_prop", "FC_prop (alias of FC_share)")]
         df["FC_prop"] = df["FC_share"]
     if "FC_rate" in df.columns:
         df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
         outcomes += [("FC_rate", "FC_rate (AOI FC per second)")]
+    if "FFD" in df.columns:
+        df["FFD"] = _safe_num(df["FFD"]).clip(lower=0)
+        df["ffd_y"] = np.log1p(df["FFD"])
+        outcomes += [("FFD", "First Fixation Duration (FFD)"), ("ffd_y", "log1p(FFD)")]
+    if "MFD" in df.columns:
+        df["MFD"] = _safe_num(df["MFD"]).clip(lower=0)
+        df["mfd_y"] = np.log1p(df["MFD"])
+        outcomes += [("MFD", "Mean Fixation Duration (MFD)"), ("mfd_y", "log1p(MFD)")]
+    if "RFF" in df.columns:
+        df["RFF"] = _safe_num(df["RFF"]).clip(lower=0)
+        df["rff_y"] = np.log1p(df["RFF"])
+        outcomes += [("RFF", "Re-fixation Frequency (RFF)"), ("rff_y", "log1p(RFF)")]
+    if "MPD" in df.columns:
+        df["MPD"] = _safe_num(df["MPD"])
+        outcomes += [("MPD", "Mean Pupil Diameter (MPD)")]
     if "visited" in df.columns: df["visited"] = _safe_num(df["visited"]).fillna(0).astype(int)
     group_vars = [g for g in ["Experience", "SportFreq"] if g in df.columns]
     if not group_vars:
@@ -191,7 +206,7 @@ def main():
             if ycol not in d0.columns:
                 continue
             d = d0.copy()
-            if ycol.startswith("ttff") or ycol.startswith("fc"):
+            if ycol in {"TTFF", "ttff_y", "FC", "fc_y", "FFD", "ffd_y", "MFD", "mfd_y", "MPD"}:
                 if "visited" in d.columns: d = d[d["visited"] == 1].copy()
             d = d.dropna(subset=[ycol, gv, "WWR", "Complexity", "class_name"])
             if d.empty:

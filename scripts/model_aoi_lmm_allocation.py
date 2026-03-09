@@ -96,6 +96,10 @@ OUTCOME_LABELS = {
     "share_pct": "attention share percentage (TFD-based)",
     "ttff_y": "log1p(TTFF), visited==1",
     "fc_y": "log1p(FC), visited==1",
+    "ffd_y": "log1p(FFD), visited==1",
+    "mfd_y": "log1p(MFD), visited==1",
+    "rff_y": "log1p(RFF)",
+    "MPD": "mean pupil diameter (MPD), visited==1",
     "fc_share_logit": "logit(FC_share within trial)",
     "FC_share": "FC share within trial",
     "FC_rate": "FC rate per second",
@@ -1229,6 +1233,17 @@ def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
         df["fc_share_logit"] = np.log((df["FC_share"] + eps) / (1 - df["FC_share"] + eps))
     if "FC_rate" in df.columns:
         df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
+    if "FFD" in df.columns:
+        df["FFD"] = _safe_num(df["FFD"]).clip(lower=0)
+        df["ffd_y"] = np.log1p(df["FFD"])
+    if "MFD" in df.columns:
+        df["MFD"] = _safe_num(df["MFD"]).clip(lower=0)
+        df["mfd_y"] = np.log1p(df["MFD"])
+    if "RFF" in df.columns:
+        df["RFF"] = _safe_num(df["RFF"]).clip(lower=0)
+        df["rff_y"] = np.log1p(df["RFF"])
+    if "MPD" in df.columns:
+        df["MPD"] = _safe_num(df["MPD"])
 
     group_vars = [gv for gv in ["Experience", "SportFreq"] if gv in df.columns]
     if not group_vars:
@@ -1257,6 +1272,10 @@ def main():
         ("tfd_y", "All rows"),
         ("ttff_y", "visited==1"),
         ("fc_y", "visited==1"),
+        ("ffd_y", "visited==1 exploratory"),
+        ("mfd_y", "visited==1 exploratory"),
+        ("rff_y", "All rows exploratory"),
+        ("MPD", "visited==1 exploratory"),
     ]
 
     runinfo = [
@@ -1285,7 +1304,7 @@ def main():
 
             d = df.copy()
             d = d.dropna(subset=[ycol, "WWR_z", "Complexity_z", "class_name", gv, "participant_id"])
-            if subset_note == "visited==1":
+            if "visited==1" in subset_note:
                 d = d[d["visited"] == 1].copy()
             d = d.copy()
             d[gv] = d[gv].apply(_norm_hilo)

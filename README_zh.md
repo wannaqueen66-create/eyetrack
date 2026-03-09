@@ -152,6 +152,101 @@ python scripts/run_colab_one_command.py \
 
 ---
 
+## main 主线目前可见的 AOI 指标
+
+当前 main 主线的底表与描述性输出，已经可以在源眼动导出列足够时暴露以下 AOI 指标：
+
+- **FC** = Fixation Count（注视次数）
+- **FFD** = First Fixation Duration（首次注视时长）
+- **MFD** = Mean Fixation Duration（平均注视时长）
+- **MPD** = Mean Pupil Diameter（平均瞳孔直径）
+- **RFF** = Re-fixation Frequency（重返/重新进入频次）
+- **TFD** = Total Fixation Duration（总注视时长）
+- **TTFF** = Time To First Fixation（首次进入时延）
+- **FC_share / FC_prop / FC_rate** = FC 的归一化伴随指标
+- **share / share_pct** = TFD 的归一化伴随指标
+
+### 哪些适合主显著性主线，哪些更适合描述/探索
+
+**当前 main 上更推荐作为主显著性阅读入口的指标：**
+- `share_pct` / `share_logit`（基于 TFD 的注意分配占比）
+- `FC_share` / `fc_share_logit`（基于 FC 的注意分配占比）
+- `FC_rate`
+- `TFD`
+- `TTFF`
+- `FC`
+
+这些指标最贴合当前主线里“分配 / 时延 / 绝对注意量”的问题。
+
+**当前更建议先作为描述性或探索性支持指标使用的：**
+- `FFD`
+- `MFD`
+- `RFF`
+- `MPD`
+
+它们现在已经进入底表和描述性输出，也接入了探索性的 LMM 风格输出；但一般不建议直接把它们当成第一主结论，除非你的研究问题本来就明确围绕这些机制指标展开。
+
+### 指标定义与处理口径
+
+#### FC
+原始 AOI fixation count 保留为 `FC`。
+**不要**再手工按组人数去“归一化”。
+需要标准化时优先看：
+- `FC_share` / `FC_prop`：trial 内次数占比
+- `FC_rate`：按 trial 时长折算的每秒速率
+
+#### TFD
+原始 AOI 总注视时长保留为 `TFD`。
+如果你关注“注意分配”，继续优先看：
+- `share`
+- `share_pct`
+
+#### TTFF
+`TTFF` 延续现有 segment-aware QC 逻辑。
+如果检测到 video time reset 或大 gap，会按 segment 重新计算 TTFF，并通过 `ttff_source`、`ttff_warning`、`ttff_qc_status` 等列标记上下文。
+
+#### FFD
+这里定义为：**首次进入 AOI 的那个唯一 fixation 的持续时间**。
+推荐用途：早期吸引/首次进入后的停留深度。
+注意：应只在 `visited==1` 的前提下解释。
+
+#### MFD
+这里定义为：**AOI 内所有唯一 fixation 的平均持续时间**。
+推荐用途：持续加工/停留深度的描述性指标。
+注意：它会受 fixation parser/export 规则影响，建议主要作为描述性或探索性支撑。
+
+#### RFF
+这里定义为：**基于 fixation 序列，首次进入后再次重新进入 AOI 的 episode 次数**。
+推荐用途：回看/重返倾向。
+注意：它不是“每分钟重返率”，而是序列派生的 revisit 指标；最好结合 FC / share 一起看。
+
+#### MPD
+这里定义为：**AOI 子集上的平均瞳孔直径**，优先平均左右眼 mm 列；若 mm 列缺失，则回退到 px 列。
+推荐用途：生理负荷或状态的描述性背景信息。
+注意：MPD 对设备、导出格式、光照条件都很敏感，除非采集条件控制得很好，否则建议保持探索性解释。
+
+### 重跑后去哪里看这些指标
+
+执行 `python scripts/run_analysis2.py ...` 后，最容易在下面这些位置看到新增指标：
+
+**底表 / 原始 AOI 输出**
+- `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_class.csv`
+- `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_polygon.csv`
+
+**描述性输出**
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/`
+
+**显著性 / 探索性推断输出**
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
+
+标准命名与定义也可参考：`docs/METRICS_SPEC.md`。
+
 ## 最小环境准备
 
 ```bash
