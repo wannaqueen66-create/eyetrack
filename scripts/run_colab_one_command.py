@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Simple Colab one-command entry for the eyetrack research bundle.
+"""Preferred Colab one-command entry for eyetrack.
 
-Alias of run_colab_analysis2_pipeline.py, kept to make README instructions obvious.
+This is the clean mainline alias. The underlying implementation remains in
+`run_colab_analysis2_pipeline.py` for compatibility.
 """
 
 from __future__ import annotations

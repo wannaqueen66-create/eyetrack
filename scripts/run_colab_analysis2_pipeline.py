@@ -11,7 +11,7 @@ from colab_scene_scan import print_scan_report
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Colab-friendly research-bundle pipeline for eyetrack")
+    ap = argparse.ArgumentParser(description="Colab-friendly mainline pipeline for eyetrack")
     ap.add_argument("--scenes_root_orig", default="/content/drive/MyDrive/映射")
     ap.add_argument("--group_manifest", default=None)
     ap.add_argument("--scene_features_csv", default=None, help="Optional; if omitted, run_analysis2.py will auto-generate scene_features.csv from scene folders + AOI JSON")
@@ -43,7 +43,7 @@ def main():
     if args.scene_features_csv:
         cmd += ["--scene_features_csv", args.scene_features_csv]
 
-    print("即将输出研究总目录 / OUT_ROOT:", out_root)
+    print("即将输出主线研究目录 / OUT_ROOT:", out_root)
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, cwd=args.repo_dir, check=True)
     print("DONE:", out_root)

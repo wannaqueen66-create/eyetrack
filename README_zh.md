@@ -1,792 +1,160 @@
-# eyetrack（纯中文说明）
+# eyetrack（主线精简版说明）
 
-这是一个面向**室内乒乓球空间场景**的眼动分析项目。  
-目标是：让你从 aseeStudio 导出的 CSV 出发，用 Python 完成数据清洗、可视化、AOI 标注与指标统计；并按 **Building and Environment（目标期刊）** 的论文规范组织结果。
+这个仓库的 `main` 分支现在只强调两大块输出主线：
 
+1. `01_描述性分析_Descriptive`
+2. `02_显著性分析_Significance`
 
-
-> 说明：这里的 **Building and Environment** 指你的目标投稿期刊名称，不是场景类型。
-
----
-
-## 目录
-
-- [1. 能做什么](#1-能做什么)
-- [2. 项目结构](#2-项目结构)
-- [3. 快速开始](#3-快速开始)
-- [4. 小白全流程](#4-小白全流程)
-- [5. AOI网页工具v3说明](#5-aoi网页工具v3说明)
-- [6. 输入数据要求](#6-输入数据要求)
-- [7. 常见问题](#7-常见问题)
-- [8. 论文向下一步](#8-论文向下一步)
-- [9. 优化后的输出流程（按场景/按人/按分组）](#9-优化后的输出流程按场景按人按分组)
-- [10. Building and Environment 图形规范参数表](#10-building-and-environment-图形规范参数表)
-- [11. 室内乒乓球场景：已补齐的进阶模块](#11-室内乒乓球场景已补齐的进阶模块)
+此前更复杂、更完整的历史状态已经保存在 **`raw` 分支**。
+如果你需要旧版 README、旧命名、旧目录层次，直接切到 `raw` 看。
 
 ---
 
-## 1. 能做什么
+## main 分支现在在讲什么
 
-- 清洗眼动 CSV 数据
-- 生成热图和 scanpath
-- 在网页中画不规则 AOI（多边形）
-- 同一 AOI 类支持多个分离区域（如三张球桌同属 `table`）
-- 输出 AOI 指标：
-  - 总注视时长 `TFD`（Total Fixation Duration）
-  - 首次注视时间 `TTFF`（Time to First Fixation）
-  - 注视次数 `FC`（Fixation Count）
-  - 注视次数占比 `FC_share / FC_prop`（该 AOI 的 FC 占同一 trial 总 FC 的比例）
-  - 注视次数率 `FC_rate`（该 AOI 每秒 fixation count）
-  - 时长占比 `share_pct`（该 AOI 的 TFD 占同一 trial 总 TFD 的百分比）
-  - 首次注视时长 `FFD`（First Fixation Duration）
-  - 平均注视时长 `MFD`（Mean Fixation Duration）
-  - 重注视频率 `RFF`（Re-fixation Frequency）
-  - 平均瞳孔直径 `MPD`（Mean Pupil Diameter）
+### 一、01_描述性分析_Descriptive
+这是现在的**描述性主线**。
 
----
+当前在 `main` 上优先突出：
+- overall（整体整理视图）
+- Experience 分组
 
-## 2. 项目结构
+当前被降级、不再作为首页主线强调的内容：
+- 旧的 analysis2 / research_bundle 叙事
+- 过多并列的历史目录命名
+- 对当前论文主叙事帮助不大的扩展展示层
 
-```text
-eyetrack/
-├─ data/
-│  ├─ raw/                原始数据
-│  └─ processed/          清洗后数据
-├─ figures/               导出图像
-├─ outputs/               脚本输出
-├─ scripts/
-│  ├─ run_pipeline.py     基础分析脚本
-│  └─ run_aoi_metrics.py  AOI指标统计脚本
-├─ src/
-│  ├─ pipeline.py
-│  └─ aoi_metrics.py
-└─ AOI网页工具（已拆分）
-   └─ https://github.com/wannaqueen66-create/eyetrack-aoi
-```
+### 二、02_显著性分析_Significance
+这是现在的**显著性分析主线**。
+
+主内容包括：
+- allocation LMM
+- 面向解释的 LMM 可视化
+- two-part models（当 scene features 可用时）
+
+### 三、附录 / 历史保留内容
+这些内容没有删除，但不再放在主舞台：
+- diagnostics
+- raw AOI batch outputs
+- Colab 说明与实现说明
+- 旧命名兼容入口脚本
 
 ---
 
-## 3. 快速开始
+## 分支说明
+
+### `main`
+用于当前更清爽、论文导向的主线版本。
+
+### `raw`
+用于保留整理前的复杂现状。
+适合在以下情况查看：
+- 想找旧版 README 结构
+- 想看旧输出命名方式
+- 想保留完整历史语境
+- 想直接对照整理前版本
+
+---
+
+## 当前推荐命令
+
+### 本地 / VPS
 
 ```bash
-cd /home/wannaqueen66/.openclaw/workspace/eyetrack
-python3 -m venv .venv
+cd /root/.openclaw/workspace/eyetrack
 source .venv/bin/activate
-pip install -r requirements.txt
-
-python scripts/run_pipeline.py \
-  --input /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
-  --outdir outputs
-```
-
-启动独立 AOI 网页工具（已对接 eyetrack-aoi）：
-
-- 仓库：`https://github.com/wannaqueen66-create/eyetrack-aoi`
-- 推荐：Cloudflare Pages 一键部署后直接访问线上 URL
-- 本地可选：
-
-```bash
-git clone https://github.com/wannaqueen66-create/eyetrack-aoi.git
-cd eyetrack-aoi/public
-python3 -m http.server 8080
-```
-
-浏览器打开：`http://<VPS-IP>:8080`
-
----
-
-
-## Colab 部署（推荐给快速试跑）
-
-- 直接打开：
-  `https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart.ipynb`
-- 纯中文逐 Cell 版 Notebook：`https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb`
-- 详细中文说明（含：**批处理只出热图**）：`docs/COLAB_ZH.md`
-
-### Colab 混合尺寸一键脚本（推荐）
-
-> 说明：如果日志提示 timestamp gaps / multiple time segments，这只是**提醒该 CSV 时间轴存在跳变**；当前工作流仍把**一个 CSV 当作一个完整 scene/view trial** 处理，不会按时间段自动切分。
->
-> 现在推荐直接使用研究输出总入口：如果没有手工准备 `scene_features.csv`，仓库会自动根据场景目录、AOI JSON 和底图生成它。
-
-```bash
-cd /content/eyetrack
-python scripts/run_colab_one_command.py \
-  --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
-```
-
-等价兼容入口：
-
-```bash
-cd /content/eyetrack
-python scripts/run_colab_analysis2_pipeline.py \
-  --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
-```
-
-如果你已经完成 mixed-size batch + merged，只想对 `按分辨率合并结果` 做后处理：
-
-```bash
-cd /content/eyetrack
-python scripts/optimize_merged_aoi_outputs.py \
-  --merged_outdir "/content/drive/MyDrive/映射/研究输出_AOI批处理_xxx/01_AOI原始结果/按分辨率合并结果" \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
-```
-
-## 4. 小白全流程
-
-### 一键运行（可选）
-
-#### 推荐 Colab 一条命令入口
-
-对于室内乒乓球 / 多场景 research bundle 链路，现在最简单的 Colab 命令是：
-
-```bash
-cd /content/eyetrack
-python scripts/run_colab_one_command.py \
-  --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
-```
-
-`--scenes_root_orig` 下推荐目录结构：
-- 每个场景一个文件夹
-- 每个场景文件夹内包含：场景底图、AOI JSON、该场景下所有被试 CSV
-- `group_manifest.csv` 至少包含 `name`（participant id），通常还包含 `SportFreq` / `Experience`
-
-运行时会先打印一段场景扫描预检播报，包括：
-- `group_manifest.csv` 是否找到
-- 扫描到多少候选目录
-- 识别出多少有效场景目录
-- 每个有效场景的背景图 / CSV / JSON 数量
-- 被跳过目录的 `[WARN]` 汇总（例如 `AOI输出_*`、`research_bundle_*`、`研究输出_*`、`输出结果` 会优先按非场景目录跳过）
-
-运行后会产出：
-- `研究输出_YYYYMMDD_HHMMSS/01_AOI与描述统计/`：AOI 结果整理 + 分组描述统计
-- `研究输出_YYYYMMDD_HHMMSS/02_LMM模型/`：allocation LMM 结果 + 面向解释的 LMM 可视化 PNG
-  - 其中 `allocation_lmm/groupvar_Experience/` 与 `allocation_lmm/groupvar_SportFreq/` 会额外包含：固定效应表、随机效应方差表、模型拟合信息表、关键 simple effects/contrasts、固定效应 forest plot，以及 reviewer-friendly 的证据型 PNG
-- `研究输出_YYYYMMDD_HHMMSS/03_TwoPart模型/`：合并分析表下游的 two-part model 结果
-- `研究输出_YYYYMMDD_HHMMSS/04_诊断信息/`：重叠 / 有效率 / 分布等诊断输出
-- `研究输出_YYYYMMDD_HHMMSS/00_AOI原始批处理/`：底层 AOI 批处理表格、overlay 与合并结果
-- 若未手工提供 `scene_features.csv`，还会自动生成 `scene_features_autogenerated.csv`
-- `研究输出_YYYYMMDD_HHMMSS/README_研究输出说明.txt`：告诉你先看哪个目录、每个目录是干什么的
-
-现在 `scene_features.csv` 的逻辑是：
-- 如果你传入 `--scene_features_csv`，流程直接使用你提供的文件。
-- 如果你不传，流程会自动生成 `scene_features_autogenerated.csv`。
-- 自动生成部分可覆盖：`scene_id`、`WWR`、`Complexity`、`round`、图像尺寸、AOI 覆盖率、`table_density`、`occlusion_ratio`、`crowding_level`、球台中心位置/偏移等。
-- 像 `illum_lux`、`noise_db`、真实米制距离这类信息，仍属于可选人工补充字段，不是默认一键跑通所必需。
-
-#### 最小四输入一键入口
-
-如果你的输入只有这 4 类：
-- 眼动 CSV 文件夹
-- `group_manifest.csv`
-- 场景底图
-- 场景 AOI JSON
-
-建议直接运行：
-
-```bash
-python scripts/run_minimal_aoi_bundle.py \
-  --csv_dir /path/to/csv_folder \
-  --group_manifest /path/to/group_manifest.csv \
-  --scene_image /path/to/scene.png \
-  --aoi_json /path/to/scene_aoi.json \
-  --scene_id WWR45_C1 \
-  --outdir outputs_minimal_bundle
-```
-
-该脚本会自动：
-- 从底图识别尺寸
-- 把单场景数据整理成批处理目录结构
-- 用 fixation 口径计算 AOI 指标
-- 导出时间段/重叠/排除日志
-- 生成 `optimized_outputs/` 便于后续整理与汇报
-
-当你**不希望依赖** `scene_features.csv` 时，优先使用这个入口。
-
-#### 单文件模式
-
-如果你已经有 `aoi.json` 和原始 CSV，可以用一个命令跑完整流程：
-
-```bash
-python scripts/run_all.py \
-  --input_csv your.csv \
-  --aoi_json aoi.json \
-  --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
-  --workdir outputs_run_all
-```
-
-`run_all.py` 更偏向旧版“论文全链条”入口；如果不跳过 merge/model/figure 阶段，它会要求 `scene_features_csv`。
-
-你也可以通过 `--skip_model` / `--skip_figures` 等参数跳过部分步骤。
-
-#### 批处理模式（manifest）
-
-如果你有多被试/多场景，请先按 `templates/batch_manifest_template.csv` 准备 manifest，然后运行：
-
-```bash
-python scripts/run_all.py \
-  --manifest templates/batch_manifest_template.csv \
-  --workdir outputs_run_all_batch \
-  --dwell_mode fixation
-```
-
-如需在批处理中也启用 screen/validity 过滤（可选）：
-
-```bash
-python scripts/run_all.py \
-  --manifest templates/batch_manifest_template.csv \
-  --workdir outputs_run_all_batch \
-  --batch_filter \
-  --screen_w 1280 --screen_h 1440
-```
-
-
-### 步骤 A：环境准备
-
-```bash
-cd /home/wannaqueen66/.openclaw/workspace/eyetrack
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 步骤 B：先跑基础分析
-
-```bash
-python scripts/run_pipeline.py \
-  --input /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
-  --outdir outputs
-```
-
-输出结果：
-
-- `outputs/quality_report.csv`
-- `outputs/heatmap.png`
-- `outputs/scanpath.png`
-- `outputs/aoi_metrics.csv`（室内乒乓球示例矩形AOI）
-
-### 步骤 C：在网页里标注 AOI
-
-AOI 标注网页已迁移到独立仓库：`eyetrack-aoi`
-- GitHub：`https://github.com/wannaqueen66-create/eyetrack-aoi`
-- 推荐使用 Cloudflare 部署后的线上地址
-
-1. 上传**场景底图**（必选，且与 gaze 坐标对应）
-2. 可选上传 CSV（叠加 gaze 点辅助定位）
-3. 输入 AOI 类名（如 `table`）
-4. 画一个或多个多边形
-5. 导出 `aoi.json`
-
-### 步骤 D：计算 AOI 指标
-
-```bash
-python scripts/run_aoi_metrics.py \
-  --csv /home/wannaqueen66/raw_User1_260128181841_0208103256.csv \
-  --aoi /path/to/aoi.json \
-  --outdir outputs \
-  --dwell_mode fixation \
-  --screen_w 1280 --screen_h 1440 --require_validity
-
-# 如果你的 CSV 已经是清洗后的（例如你自己预处理导出的 clean 数据），可以跳过过滤：
-python scripts/run_aoi_metrics.py \
-  --csv cleaned.csv \
-  --aoi aoi.json \
-  --outdir outputs \
-  --dwell_mode fixation \
-  --assume_clean
-```
-
-输出：
-
-- `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
-- `outputs/aoi_metrics_by_class.csv`（类别汇总）
-
-说明：主列名统一采用 `FC / FFD / MFD / MPD / RFF / TFD / TTFF`。
-结果中的首次注视时间列现统一为 `TTFF`；不再输出旧的首次注视时间列名，避免新旧并存造成歧义。
-
-**按组汇总（SportFreq / Experience）**
-当你已经得到 `batch_aoi_metrics_by_class.csv` 后，可以像热力图一样按组汇总：
-
-```bash
-python scripts/summarize_aoi_groups.py \
-  --aoi_class_csv outputs_aoi_all/batch_aoi_metrics_by_class.csv \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
-  --outdir outputs_aoi_groups \
-  --plots
-```
-
-输出：
-- `outputs_aoi_groups/aoi_group_summary.csv`（visited 访问率 + 条件化 TTFF/TFD 等汇总）
-- `outputs_aoi_groups/aoi_with_groups.csv`（用于建模的合并长表）
-
-**`aoi_overlays/` 和 `plots/` 分别是什么？（快速说明）**
-- `outdir/aoi_overlays/<scene_id>.png`：AOI **定义审计图**。把 `aoi.json` 里的多边形叠加到场景底图上，用于核对 AOI 位置/形状/坐标系是否一致。该图**不包含** gaze/fixation 点，也**不表示**组间差异或显著性。
-- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TTFF` / `TFD` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
-
-### 步骤 E：看论文常用结果
-
-重点看 `outputs/aoi_metrics_by_class.csv`：
-
-- `TFD`：该类 AOI 总注视时长（推荐按 fixation 去重聚合，避免重复累计）
-- `share_pct`：该 AOI 占同一 trial 总 TFD 的百分比；当组间样本量不平衡时，更推荐用它看“注意分配”
-- `TTFF`：首次注视时间
-- `FC`：注视次数
-- `FC_share` / `FC_prop`：该 AOI 占同一 trial 总 FC 的比例；若研究问题更偏“注视次数如何在 AOI 间分配”，优先看它而不是原始 FC
-- `FC_rate`：该 AOI 每秒的 fixation count；如果要把 FC 做率化，推荐按时长率化，而不是按组人数手工归一化
-- `FFD`：首次注视时长
-- `MFD`：平均注视时长
-- `RFF`：重注视频率
-- `MPD`：平均瞳孔直径
-- `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF` 按定义为 NaN。
-- `polygon_count`：该类包含的区域数量
-- `ttff_source`：TTFF 实际采用的时间轴/基线来源（优先为按 segment 处理后的 `Video Time`）
-- `segment_count`：该 CSV 检测出的时间段数量
-- `ttff_warning`：TTFF 相关 QC 警告（如 reset / gap / 缺少时间列）
-- `ttff_qc_status`：TTFF 质控状态（`ok` / `warning` / `error`）
-
-**新增选项（推荐）**
-- `--point_source fixation`：用 `Fixation Point X/Y` 做 AOI 命中判定（与 fixation-based 指标更一致）
-- `--dwell_empty_as_zero`：当 `visited==0` 时将 `TFD` 记为 0.0（`TTFF` 仍为 NaN）
-- `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
-- `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选覆盖；否则优先按 `Video Time` 的 segment 起点计算）
-- `--ttff_segment_gap_ms`：用 `Video Time` / `Time of Day` 做 TTFF 分段检测时的 gap 阈值
-- `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
-- `--report_time_segments`：导出 `timestamp_segments_summary.csv`（单文件=每个 CSV 一行；批处理=每个 participant×scene 一行）
-- `--min_valid_ratio`：trial-level 追踪率阈值；设置后会输出 `exclusion_log.csv` / `batch_exclusion_log.csv`
-- `--warn_class_overlap`（默认开启）：若不同 AOI 类在屏幕空间重叠，会输出警告提示
-- `--report_class_overlap`：导出 overlap 表（`aoi_class_overlap.csv` 或 `batch_aoi_class_overlap.csv`，包含 overlap ratio）
-
-**论文写法模板（可直接改动使用）**
-- *AOI 尺寸一致性*：我们要求 AOI 标注所用底图的像素尺寸与眼动坐标系一致（aoi.json 记录的 image 宽高与 screen_w/screen_h 不一致时按错误处理）。
-- *TTFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
-- *追踪率纳入规则*：基于越界与（可选）Validity 字段计算 trial-level 的 valid_ratio，并在 valid_ratio 低于阈值时落盘 exclusion log（避免不同条件下追踪丢失造成系统性偏倚）。
-- *多段记录保护*：通过检测时间戳断点（负跳变或大间隔）标记潜在多段/多 trial 的 CSV，并输出 segment 汇总表供排查。
-- *AOI 重叠*：对不同 AOI 类在屏幕空间的重叠进行检测，并在存在时报告重叠的数量/比例。
-
-为便于复现，AOI 脚本会在输出目录写入 `run_config.json`。
-
-**AOI 可视化图（推荐用于审计/论文附录）**
-- `--export_aoi_overlay`：导出 AOI overlay PNG（单文件输出 `aoi_overlay.png`；批处理输出到 `outdir/aoi_overlays/<scene_id>.png`）。
-
----
-
-## 5. AOI网页工具v3说明
-
-> 工具仓库：`https://github.com/wannaqueen66-create/eyetrack-aoi`
-
-
-目前支持：
-
-- 不规则多边形 AOI
-- 同类多区域
-- 顶点拖拽编辑
-- `Shift + 拖动` 整体移动选中 polygon
-- 顶点插入/删除
-- 滚轮缩放 + `Alt+拖动`/中键拖动画布平移
-- 点击首点附近自动闭合
-- AOI 导入/导出 JSON
-- gaze 点叠加显示开关
-
----
-
-## 6. 输入数据要求
-
-建议 CSV 至少有以下字段（列名尽量一致）：
-
-- `Recording Time Stamp[ms]`
-- `Gaze Point X[px]`
-- `Gaze Point Y[px]`
-- `Fixation Index`
-- `Fixation Duration[ms]`
-
-推荐再有：
-
-- `Validity Left`
-- `Validity Right`
-
-如果你的列名不同，你有两种方式适配：
-
-1）**推荐**：修改列名映射文件：
-- `configs/columns_default.json`
-- 把你导出 CSV 的列名追加到对应字段的候选列表里
-
-2）（旧方式）直接在代码里改字段名：
-- `src/pipeline.py`
-- `src/aoi_metrics.py`
-
-示例：
-
-```json
-{
-  "Gaze Point X[px]": ["Gaze Point X[px]", "x"],
-  "Gaze Point Y[px]": ["Gaze Point Y[px]", "y"]
-}
-```
-
-也支持运行时指定自定义映射文件：
-
-```bash
-python scripts/run_aoi_metrics.py --csv your.csv --aoi aoi.json --columns_map /path/to/columns.json
-```
-
-### 什么时候需要 screen/validity 过滤？
-
-- 如果你的 CSV 有很多超出屏幕范围的 gaze 坐标，建议加：
-  - `--screen_w` / `--screen_h`
-- 如果你的数据有 validity 标记并且你想严格过滤，建议加：
-  - `--require_validity`
-
-如果你已经用 `scripts/run_pipeline.py` 做过清洗，那么 AOI 指标统计这一步通常可以不再重复过滤。
-
----
-
-## 7. 常见问题
-
-### 1）报错 `ModuleNotFoundError: pandas`
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-### 2）VPS 上网页打不开
-
-- 确认在 `webapp` 目录启动了 `python3 -m http.server 8080`
-- 确认防火墙/安全组已放行 8080
-
-### 3）AOI 统计不合理
-
-- 检查映射图片分辨率是否和 gaze 坐标系一致
-- 确认 AOI 是在正确的映射底图上画的
-- 检查 gaze 坐标是否有大量异常值
-
-### 4）`TTFF` 为 NaN
-
-- 原因：该试次/场景中该 AOI 没有被注视到（`visited==0`），这是**预期行为**；当然数据质量或 AOI 标注偏移也可能导致“看起来不合理的未注视”。
-- 建议论文报告方式（更强、更可解释）：
-  1) 在 `visited==1` 的子样本上报告/建模 `TTFF`
-  2) 同时报告“未进入比例”`p_not_visited = P(visited==0)`（每个条件×AOI）
-  3) 推断统计建议用“两部模型”：
-     - 第一步：对 `visited` 做二项 logit（最好用 GLMM：被试随机截距）
-     - 第二步：对 `TTFF`（仅 visited==1）做线性混合/或 log 变换后建模
-
-可用脚本：`scripts/summarize_aoi_visit_rate.py`
-
-补充脚本（分布诊断 + 两部建模辅助）：
-- 分布诊断：`scripts/aoi_distribution_diagnostics.py`
-- 两部建模辅助（visited + 条件化 TTFF/TFD/FC）：`scripts/model_aoi_two_part.py`
-
----
-
-## 8. 论文向下一步
-
-### 样本量不一样时怎么比较才合理
-
-如果不同人群的样本量不一样，**不要**把原始 `FC` 直接再除以组人数做“手工归一化”。
-更稳妥的做法是：
-- 保留 trial-level 的原始长表；
-- 用混合效应模型（被试随机截距）直接比较组别；
-- 优先查看 trial 内比例化/率化指标，如 `share_pct`、`FC_share` / `FC_prop`、`FC_rate`。
-
-原因是：
-- 混合模型本来就可以处理不平衡样本量；
-- 原始 `FC` 是绝对次数，按组人数硬除会改变指标含义；
-- `share_pct` 更偏**时长分配**，`FC_share` 更偏**次数分配**，`FC_rate` 更偏**单位时间率化**；
-- `TTFF` 回答的是“多久第一次看过去”，和 share/rate 不是同一个问题，适合联合解释而不是互相替代。
-
-为帮助解释不平衡设计，LMM 输出目录现在也会额外导出 `group_size_summary_<GroupVar>.csv`。
-
-### 面向“不同人群是否改变视觉注意分配”的 LMM 可视化
-
-如果你已经得到 `batch_aoi_metrics_by_class.csv`，并且希望直接回答：
-**“不同人群在不同 `WWR × Complexity` 场景下，是否把注意力重新分配到不同 AOI（如乒乓球桌 / 窗户 / 器材）上？”**
-
-推荐运行：
-
-```bash
-python scripts/plot_aoi_lmm_explanatory.py \
-  --aoi_class_csv <OUT_MERGED>/batch_aoi_metrics_by_class.csv \
-  --group_manifest <scenes_root>/group_manifest.csv \
-  --outdir <OUT_MERGED>/outputs_aoi_lmm_visuals
-```
-
-默认优先输出的 AOI：
-- `table`（乒乓球桌）
-- `window`（窗户）
-- `equipment`（器材）
-
-当前 LMM 固定效应结构：
-- `C(class_name) * WWR_z * Complexity_z * C(GroupVar) + C(round)`
-- 随机项：`participant_id` 随机截距
-- 若有 `scene_id_raw` / `scene_id`，再加一个 scene-level variance component
-
-默认输出的指标：
-- `share_pct`（**主推荐**）：每个 trial 内该 AOI 占总 TFD 的百分比，可直接看作“注意分配占比”
-- `FC_share`（推荐辅图）：每个 trial 内该 AOI 占总 FC 的比例
-- `FC_rate`（推荐辅图）：该 AOI 每秒 fixation count
-- `TFD`
-- `TTFF`（仅 `visited==1`）
-- `FC`（仅 `visited==1`）
-
-输出文件名模式：
-- `outputs_aoi_lmm_visuals/png/condition_group_interaction_<GroupVar>_<metric>.png`
-- `outputs_aoi_lmm_visuals/png/scene_group_profile_<GroupVar>_<metric>.png`
-- `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_condition.csv`
-- `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_scene.csv`
-- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_data.csv`
-- `outputs_aoi_lmm_visuals/tables/condition_group_interaction_<GroupVar>_<metric>_labels.csv`
-- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_data.csv`
-- `outputs_aoi_lmm_visuals/tables/scene_group_profile_<GroupVar>_<metric>_labels.csv`
-
-这些 explanatory PNG 现在会直接在折线点旁标出数值；如果 reviewer 需要逐点核对，请到 `tables/` 目录读取同名 `_data.csv` / `_labels.csv`。
-
-建议把 `02_LMM模型/` 理解成两层：
-- **主图层**：`allocation_lmm_visuals/`，回答“模式长什么样”
-- **证据层**：`allocation_lmm/groupvar_<GroupVar>/evidence_*.png`，回答“这些模式背后有哪些统计支撑”
-
-怎么解读最有效：
-- **第一优先看** `condition_group_interaction_<GroupVar>_share_pct.png`
-  - 这是最直接回答“是否改变视觉注意分配”的图。
-  - 每一列是一个 AOI（球桌 / 窗户 / 器材），每一行是一个 Complexity 水平（C0 / C1），两条颜色线代表两个人群组别。
-  - 如果两组线条在不同 WWR 下出现**分离、交叉、斜率不同**，就说明不同人群在该 AOI 上的注意分配随场景条件变化而变化，具有明显的 condition × group interaction 含义。
-- **第二优先看** `scene_group_profile_<GroupVar>_share_pct.png`
-  - 这张图把 `R1/R2` 具体场景位置也保留下来，可检查上面的差异是否稳定，还是只是在把轮次合并后才看起来明显。
-- `TFD / TTFF / FC` 图建议作为辅助解释：
-  - `TFD`：看绝对停留量是否同步变化；
-  - `TTFF`：看差异是否来自“更早看过去”；
-  - `FC`：看差异是否来自“更频繁回看”。
-
-统计报告建议阅读顺序：
-1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/evidence_stability_overview_<GroupVar>.png` + `model_stability_summary.csv`
-   - 这是**主稳定性入口**；优先把 `stable` 当作主结果候选，`caution` 需带警示语，`unstable` 更适合作为补充/诊断结果
-2. 再看 `evidence_model_fit_overview_<GroupVar>.png` + `model_fit_<outcome>.csv`
-   - 用一张图先总览 `marginal R² / conditional R² / AIC / BIC`，再回到单个 outcome 的 csv 核对细节
-3. 再看 `evidence_fixef_key_terms_<outcome>.png` + `fixef_<outcome>.csv`
-   - 先抓重点固定效应，再回到完整表格核对 `coef / SE / Wald z / p / 95% CI`
-4. 再看 `evidence_contrasts_<outcome>.png` + `contrasts_<outcome>.csv`
-   - 围绕 `WWR × Complexity × Group` 导出的关键 simple effects / contrasts
-5. 再看 `ranef_<outcome>.csv`
-   - 随机效应/方差分解：被试随机截距、scene 方差分量（若有）、残差方差
-6. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应（图标题会带 stability 标签，图上已带 `b [95% CI]` 数值标签）
-   - 若需逐项核对图中数值，对应查看同目录的 `forest_fixef_<outcome>_data.csv`
-
-当前脚本额外会自动做稳定性分级：
-- `stable`：已收敛，且未见明显 Hessian / 奇异拟合 / SE-CI 异常
-- `caution`：已收敛，但存在 boundary/singular、随机效应方差接近 0、或较轻的优化 warning
-- `unstable`：未收敛，或 Hessian 非正定，或固定效应 SE/CI 明显异常
-
-当前脚本导出的 R² 定义为 Gaussian mixed model 下的 Nakagawa-style 近似：
-- `marginal R² = Var(Xβ) / [Var(Xβ) + ΣVar(random) + Var(residual)]`
-- `conditional R² = [Var(Xβ) + ΣVar(random)] / [Var(Xβ) + ΣVar(random) + Var(residual)]`
-
-建议按 B&E 论文标准继续：
-
-1. AOI 语义化：天空/绿化/立面/道路/入口/标识等
-2. 多被试批处理
-3. 合并环境解释变量（绿视率、开敞度、立面复杂度等）
-4. 构建混合效应模型（被试随机效应）
-5. 生成投稿图表模板
-
----
-
-## 9. 优化后的输出流程（按场景/按人/按分组）
-
-如果你的数据是**单一场景**：一张底图 + 一份 AOI JSON + 一个参与者 CSV 文件夹，优先用 `scripts/run_minimal_aoi_bundle.py`。
-
-新增脚本：`scripts/optimize_aoi_outputs.py`
-
-用于把 `batch_aoi_metrics.py` 的输出重组为更好管理的结构：
-- 按场景（`by_scene/`）
-- 按被试（`by_participant/`）
-- 按分组汇总（`grouped/`，仅保留 `SportFreq` 与 `Experience`）
-
-### 一键命令
-
-方案 A（分两步，后处理独立执行）：
-
-```bash
-python scripts/optimize_aoi_outputs.py \
-  --aoi_class_csv /path/to/batch_aoi_metrics_by_class.csv \
-  --aoi_polygon_csv /path/to/batch_aoi_metrics_by_polygon.csv \
-  --group_manifest /path/to/group_manifest.csv \
-  --group_id_col name \
-  --outdir outputs_organized
-```
-
-方案 B（直接在 batch 命令里一并完成）：
-
-```bash
-python scripts/batch_aoi_metrics.py \
-  --group_manifest /path/to/group_manifest.csv \
-  --scenes_root /path/to/scenes_root \
-  --outdir outputs_batch \
-  --dwell_mode fixation --point_source fixation \
-  --optimize_outputs
-```
-
-`--optimize_outputs` 会在 `--outdir` 下自动生成 `optimized_outputs/`。
-
-### 输出结构
-
-```text
-outputs_organized/
-├─ by_scene/
-│  └─ <scene_id>/participants/
-│     ├─ <participant>_class.csv
-│     └─ <participant>_polygon.csv
-├─ by_participant/
-│  └─ <participant_id>/
-│     ├─ <scene_id>_class.csv
-│     └─ <scene_id>_polygon.csv
-└─ grouped/
-   ├─ tables/
-   │  ├─ summary_sportfreq_scene.csv
-   │  ├─ summary_sportfreq_condition.csv
-   │  ├─ summary_experience_scene.csv
-   │  └─ summary_experience_condition.csv
-   └─ plots/
-      ├─ sportfreq_scene_visited_rate.png
-      ├─ sportfreq_scene_TTFF.png
-      ├─ sportfreq_scene_TFD.png
-      ├─ sportfreq_scene_FC.png
-      ├─ sportfreq_scene_FFD.png
-      ├─ sportfreq_scene_MFD.png
-      ├─ sportfreq_scene_RFF.png
-      ├─ sportfreq_scene_MPD.png
-      ├─ sportfreq_condition_visited_rate.png
-      ├─ sportfreq_condition_TTFF.png
-      ├─ sportfreq_condition_TFD.png
-      ├─ sportfreq_condition_FC.png
-      ├─ experience_scene_visited_rate.png
-      ├─ experience_scene_TTFF.png
-      ├─ experience_scene_TFD.png
-      ├─ experience_scene_FC.png
-      ├─ experience_condition_visited_rate.png
-      ├─ experience_condition_TTFF.png
-      ├─ experience_condition_TFD.png
-      └─ experience_condition_FC.png
-```
-
-> 说明：不再输出 2×2 交叉分组（SportFreq×Experience）。
->
-> 现在会同时输出 **scene-level** 与 **condition-level** 两套汇总/PNG：
-> - `*_scene_*.png`：保留 12 个场景位置，适合检查每一轮中的具体场景差异；
-> - `*_condition_*.png`：按 WWR×Complexity 条件汇总，适合在你明确希望跨轮次合并时使用。
->
-> 关键分组汇总 PNG 现在会直接在柱子上打印数值；若担心图太挤或 reviewer 需要逐项核对，对应数据也会同步导出为 `grouped/plots/<同名>_data.csv`。
->
-> 如果 `group_manifest.csv` 提供了被试级 trial 信息（例如 `Order`、`trial01_Pos`、`trial01_scene`、`trial01_key`、`trial01_label`、`trial01_Round`、`trial01_Cond`、`trial01_Complexity`、`trial01_WWR` ... `trial12_*`），现在分组/scene-level 脚本会**优先使用 manifest 里每位被试的真实呈现顺序**，而不是再假定所有人都共享同一个固定的 1–12 场景模板。这一点在不同 `Order` 组采用不同呈现顺序时尤其重要。
->
-> scene-level 结果现在代表的是**真实呈现顺序视图**：横轴会尽量保留 order / trial slot / round 的区分，因此即便两个 trial 最终对应同一个 WWR×Complexity 条件，只要它们来自不同 Order 组或不同真实呈现位置，也不会再被错误压成同一个静态场景位。
->
-> `*_condition_*.png` 仍然保留，表示**条件视图**（按 WWR×Complexity 合并）；只有在你明确想跨轮次/跨场景位聚合条件时再看它。若提供了 manifest trial 元数据，scene-level 标签也会优先采用 manifest 中的 scene/label/pos 信息，必要时附带 order / trial / round 上下文，避免误读。
-
-## 10. Building and Environment 图形规范参数表
-
-为保证投稿图风格统一，建议在绘图脚本中固定如下参数：
-
-- 背景：白底（figure/axes facecolor = white）
-- 轴样式：去掉上/右边框（top/right spines off）
-- 网格：仅 y 轴浅灰网格（alpha≈0.2）
-- 配色：低饱和且色盲友好（例如 `#4C78A8`、`#F58518`、`#54A24B`、`#B279A2`）
-- 字体：9–11 pt（轴标签 10 pt，刻度/图例 9 pt）
-- 线宽：1.0–1.5
-- 柱状图透明度：0.9–0.95
-- 导出分辨率：300 dpi
-- 图宽（单栏）：约 3.3–3.6 inch
-- 图宽（双栏）：约 7.0–7.2 inch
-- 标注规则：仅保留必要数值标注，避免视觉噪声
-
-实操建议：
-- 坐标轴必须显式单位（如 `ms`、`%`）。
-- 可比较面板尽量统一 y 轴范围。
-- 避免装饰性效果，优先可读性与可复现性。
-
-## 11. 室内乒乓球场景：已补齐的进阶模块
-
-你本次项目是室内乒乓球空间，已新增以下脚本（就是之前 roadmap 里没做完的部分）：
-
-1. **多被试批处理 AOI 指标**：`scripts/batch_aoi_metrics.py`
-2. **场景变量合并**：`scripts/merge_scene_features.py`
-3. **混合效应模型（被试随机效应）**：`scripts/mixed_effects_indoor_pingpong.py`
-4. **论文图表导出**：`scripts/paper_figures_indoor_pingpong.py`
-5. **自动生成 scene_features.csv**：`scripts/generate_scene_features.py`
-
-新增模板：
-- `templates/batch_manifest_template.csv`
-- `templates/indoor_pingpong_scene_features_template.csv`
-- `configs/indoor_pingpong_aoi_classes.json`
-
-### 现在最短推荐路径
-
-```bash
-# 本地 / VPS
 python scripts/run_analysis2.py \
   --group_manifest /path/to/group_manifest.csv \
   --scenes_root /path/to/scenes_root
 ```
 
+### Colab
+
 ```bash
-# Colab
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \
   --scenes_root_orig /content/drive/MyDrive/映射 \
   --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
 ```
 
-现在默认会自动完成：
-- 批量 AOI 指标计算
-- 结果整理 + 分组描述统计
-- allocation LMM
-- `02_LMM模型` 中额外生成一组**面向解释的 AOI 注意分配 PNG**（按 `WWR × Complexity × Group` 展示）
-- 若未提供 `scene_features.csv`，自动生成 `scene_features_autogenerated.csv`
-- 自动合并为 `analysis2_analysis_table.csv`
-- 从合并表继续跑 `03_TwoPart模型` 下的 two-part models
+---
 
-如果你希望手工传入更丰富的场景协变量，也仍然支持：
+## main 分支下的输出结构
 
-```bash
-python scripts/run_analysis2.py \
-  --group_manifest /path/to/group_manifest.csv \
-  --scenes_root /path/to/scenes_root \
-  --scene_features_csv /path/to/scene_features.csv
+```text
+研究输出_YYYYMMDD_HHMMSS/
+├─ 01_描述性分析_Descriptive/
+│  ├─ organized_outputs/
+│  ├─ grouped_overall/
+│  └─ grouped_experience/
+├─ 02_显著性分析_Significance/
+│  ├─ allocation_lmm/
+│  ├─ allocation_lmm_visuals/
+│  └─ two_part_models/
+└─ 98_附录_Appendix/
+   ├─ diagnostics/
+   ├─ raw_batch_outputs/
+   ├─ notes/
+   └─ colab_notes/
 ```
 
-### scene_features.csv 字段说明
+---
 
-`merge_scene_features.py` 的最低要求只有两列：
-- `participant_id`
-- `scene_id`
+## 现在什么是主线，什么被降级了
 
-当前 downstream LMM / two-part 链路会优先使用、存在则生效的字段：
-- `table_density`
-- `distance_to_table_center_m`（人工可选）
-- `table_center_offset_ratio`
-- `illum_lux`（人工可选）
-- `crowding_level`
-- `occlusion_ratio`
-- `aoi_coverage_ratio`
-- `non_table_aoi_coverage_ratio`
-- `WWR`
-- `Complexity`
-- `round`
+### 主线内容
+- `01_描述性分析_Descriptive/organized_outputs`
+- `01_描述性分析_Descriptive/grouped_overall`
+- `01_描述性分析_Descriptive/grouped_experience`
+- `02_显著性分析_Significance/allocation_lmm`
+- `02_显著性分析_Significance/allocation_lmm_visuals`
+- `02_显著性分析_Significance/two_part_models`
 
-使用 `generate_scene_features.py` 时，可自动生成的字段包括：
-- `participant_id`, `scene_id`
-- `scene_folder`, `background_image`, `aoi_json`
-- `image_width_px`, `image_height_px`, `image_area_px`
-- `aoi_class_count`, `aoi_polygon_count`, `aoi_total_area_px`, `aoi_coverage_ratio`
-- `table_polygon_count`, `table_area_px`, `table_density`, `table_area_ratio`
-- `table_center_x_px`, `table_center_y_px`, `table_center_offset_ratio`
-- `non_table_aoi_area_px`, `non_table_aoi_coverage_ratio`, `occlusion_ratio`
-- `crowding_level`, `non_table_class_count`, `has_table`
-- `WWR`, `Complexity`, `condition_id`, `round`, `round_label`
-- 若 `group_manifest.csv` 内有，还会复制 `SportFreq` / `Experience`
+### 已降级但保留
+- “research bundle” 这套旧说法
+- “analysis2” 作为对外主叙事
+- 原始 AOI 批处理导出
+- 诊断信息和实现说明
+- 老的兼容别名脚本
 
-当前仍无法可靠自动推断、需用户手工补充的字段：
-- 真实物理距离，如 `distance_to_table_center_m`
-- 仪器实测环境变量，如 `illum_lux`, `noise_db`
-- 任何未编码在场景命名、AOI 多边形或底图中的业务注释字段
+原则是不删有用内容，只把它们从主线移开：
+- 要么放到附录/兼容层
+- 要么保留在 `raw` 分支
+
+---
+
+## 最小环境准备
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+---
+
+## 现在优先看的入口脚本
+
+- `scripts/run_analysis2.py`：当前主线总入口
+- `scripts/run_colab_one_command.py`：当前 Colab 主入口
+- `scripts/run_aoi_metrics.py`：单次 AOI 指标计算
+- `scripts/run_minimal_aoi_bundle.py`：最小四输入入口
+
+仓库里仍保留一些旧别名脚本，但它们不再是 `main` 分支想强调的主路径。
+
+---
+
+## 兼容与历史说明
+
+仓库中仍可能看到这些旧词：
+- `research_bundle`
+- `analysis2`
+- `03_TwoPart模型`
+- `00_AOI原始批处理`
+
+这些名称现在主要用于：
+- 兼容旧脚本
+- 保持历史连续性
+- 方便从 `raw` 分支迁移
+
+如果你只想抓当前主线，请直接按“描述性分析 + 显著性分析”这两大块理解整个仓库。

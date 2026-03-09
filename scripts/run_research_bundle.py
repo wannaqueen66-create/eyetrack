@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Preferred alias entry for the canonical eyetrack research bundle.
+"""Legacy alias for the older research-bundle naming.
 
-This wrapper preserves compatibility while exposing a clearer name than the
-legacy `run_analysis2.py` entry.
+Main branch keeps this wrapper only for compatibility.
+Prefer `run_analysis2.py` or the clearer `run_colab_one_command.py` path documented in README.
 """
 
 from __future__ import annotations
