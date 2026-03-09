@@ -40,8 +40,8 @@ Auto columns:
 - scene files: `scene_folder`, `background_image`, `aoi_json`
 - image geometry: `image_width_px`, `image_height_px`, `image_area_px`
 - AOI geometry: `aoi_class_count`, `aoi_polygon_count`, `aoi_total_area_px`, `aoi_coverage_ratio`
-- pingpong-table geometry: `pingpong_table_polygon_count`, `pingpong_table_area_px`, `table_density`, `table_area_ratio`, `table_center_x_px`, `table_center_y_px`, `table_center_offset_ratio`
-- non-table AOI structure: `non_table_aoi_area_px`, `non_table_aoi_coverage_ratio`, `occlusion_ratio`, `crowding_level`, `non_table_class_count`, `has_pingpong_table`
+- table geometry: `table_polygon_count`, `table_area_px`, `table_density`, `table_area_ratio`, `table_center_x_px`, `table_center_y_px`, `table_center_offset_ratio`
+- non-table AOI structure: `non_table_aoi_area_px`, `non_table_aoi_coverage_ratio`, `occlusion_ratio`, `crowding_level`, `non_table_class_count`, `has_table`
 - parsed condition labels: `WWR`, `Complexity`, `condition_id`, `round`, `round_label`
 - copied participant grouping fields when available: `SportFreq`, `Experience`
 

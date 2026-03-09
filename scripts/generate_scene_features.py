@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 from PIL import Image
 
-from src.aoi_metrics import load_aoi_json, load_aoi_json_meta
+from src.aoi_metrics import load_aoi_json, load_aoi_json_meta, normalize_aoi_class_name
 
 
 IMG_EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
@@ -136,7 +136,7 @@ def build_scene_feature_row(scene_id: str, scene_dir: Path, aoi_json_mode: str) 
             s["cy_num"] += area * (sum(ys) / len(ys))
 
     class_count = len(class_stats)
-    table = class_stats.get('pingpong_table', {"polygon_count": 0, "area_px": 0.0, "cx_num": 0.0, "cy_num": 0.0})
+    table = class_stats.get(normalize_aoi_class_name('table'), {"polygon_count": 0, "area_px": 0.0, "cx_num": 0.0, "cy_num": 0.0})
     table_area_px = float(table["area_px"])
     table_polygon_count = int(table["polygon_count"])
     non_table_area_px = float(max(total_area - table_area_px, 0.0))
@@ -170,8 +170,8 @@ def build_scene_feature_row(scene_id: str, scene_dir: Path, aoi_json_mode: str) 
         "aoi_polygon_count": total_polygons,
         "aoi_total_area_px": total_area,
         "aoi_coverage_ratio": (total_area / image_area_px) if image_area_px else None,
-        "pingpong_table_polygon_count": table_polygon_count,
-        "pingpong_table_area_px": table_area_px,
+        "table_polygon_count": table_polygon_count,
+        "table_area_px": table_area_px,
         "table_density": (table_area_px / image_area_px) if image_area_px else None,
         "table_area_ratio": (table_area_px / image_area_px) if image_area_px else None,
         "table_center_x_px": table_center_x_px,
@@ -182,7 +182,7 @@ def build_scene_feature_row(scene_id: str, scene_dir: Path, aoi_json_mode: str) 
         "occlusion_ratio": (non_table_area_px / image_area_px) if image_area_px else None,
         "crowding_level": clamp((non_table_class_count / max(class_count, 1)) if class_count else None),
         "non_table_class_count": non_table_class_count,
-        "has_pingpong_table": int(table_polygon_count > 0),
+        "has_table": int(table_polygon_count > 0),
         **parsed,
     }
     return row

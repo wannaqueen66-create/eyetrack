@@ -8,6 +8,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import statsmodels.formula.api as smf
 
+from src.aoi_metrics import normalize_aoi_class_series
+
 
 def fit_and_save(df, formula, group_col, out_txt, title):
     model = smf.mixedlm(formula, data=df, groups=df[group_col])
@@ -28,7 +30,8 @@ def main():
     df = pd.read_csv(args.analysis_csv)
 
     if 'class_name' in df.columns:
-        table_df = df[df['class_name'] == 'pingpong_table'].copy()
+        df['class_name'] = normalize_aoi_class_series(df['class_name'])
+        table_df = df[df['class_name'] == 'table'].copy()
         dfm = table_df if len(table_df) >= 8 else df.copy()
     else:
         dfm = df.copy()

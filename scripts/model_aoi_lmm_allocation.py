@@ -45,11 +45,16 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
 import warnings
 
 import numpy as np
 import pandas as pd
 import statsmodels.formula.api as smf
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from src.aoi_metrics import normalize_aoi_class_series
 
 
 def _safe_num(s: pd.Series) -> pd.Series:
@@ -180,6 +185,9 @@ def main():
         keep = [c for c in ["participant_id", "SportFreq", "Experience"] if c in gm.columns]
         df["participant_id"] = df["participant_id"].astype(str).str.strip()
         df = df.merge(gm[keep], on="participant_id", how="left")
+
+    if 'class_name' in df.columns:
+        df['class_name'] = normalize_aoi_class_series(df['class_name'])
 
     # pick metric columns
     dwell_col = _pick_col(df, "TFD", "dwell_time_ms")

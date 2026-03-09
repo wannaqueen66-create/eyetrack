@@ -30,7 +30,7 @@
 - 清洗眼动 CSV 数据
 - 生成热图和 scanpath
 - 在网页中画不规则 AOI（多边形）
-- 同一 AOI 类支持多个分离区域（如三张球桌同属 `pingpong_table`）
+- 同一 AOI 类支持多个分离区域（如三张球桌同属 `table`）
 - 输出 AOI 指标：
   - 总注视时长 `TFD`（Total Fixation Duration）
   - 首次注视时间 `TTFF`（Time to First Fixation）
@@ -272,7 +272,7 @@ AOI 标注网页已迁移到独立仓库：`eyetrack-aoi`
 
 1. 上传**场景底图**（必选，且与 gaze 坐标对应）
 2. 可选上传 CSV（叠加 gaze 点辅助定位）
-3. 输入 AOI 类名（如 `pingpong_table`）
+3. 输入 AOI 类名（如 `table`）
 4. 画一个或多个多边形
 5. 导出 `aoi.json`
 
@@ -491,7 +491,7 @@ python scripts/plot_aoi_lmm_explanatory.py \
 ```
 
 默认优先输出的 AOI：
-- `pingpong_table`（乒乓球桌）
+- `table`（乒乓球桌）
 - `window`（窗户）
 - `equipment`（器材）
 
@@ -710,10 +710,10 @@ python scripts/run_analysis2.py \
 - `scene_folder`, `background_image`, `aoi_json`
 - `image_width_px`, `image_height_px`, `image_area_px`
 - `aoi_class_count`, `aoi_polygon_count`, `aoi_total_area_px`, `aoi_coverage_ratio`
-- `pingpong_table_polygon_count`, `pingpong_table_area_px`, `table_density`, `table_area_ratio`
+- `table_polygon_count`, `table_area_px`, `table_density`, `table_area_ratio`
 - `table_center_x_px`, `table_center_y_px`, `table_center_offset_ratio`
 - `non_table_aoi_area_px`, `non_table_aoi_coverage_ratio`, `occlusion_ratio`
-- `crowding_level`, `non_table_class_count`, `has_pingpong_table`
+- `crowding_level`, `non_table_class_count`, `has_table`
 - `WWR`, `Complexity`, `condition_id`, `round`, `round_label`
 - 若 `group_manifest.csv` 内有，还会复制 `SportFreq` / `Experience`
 

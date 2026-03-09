@@ -6,6 +6,39 @@ import numpy as np
 import pandas as pd
 
 
+AOI_CLASS_ALIASES = {
+    'pingpong_table': 'table',
+    'ping pong table': 'table',
+    'table': 'table',
+    'tables': 'table',
+    'window': 'window',
+    'windows': 'window',
+    'equipment': 'equipment',
+    'apparatus': 'equipment',
+    'device': 'equipment',
+    'facility': 'equipment',
+    'instrument': 'equipment',
+}
+
+
+def normalize_aoi_class_name(name: str) -> str:
+    s = '' if name is None else str(name).strip()
+    low = s.lower()
+    if low in AOI_CLASS_ALIASES:
+        return AOI_CLASS_ALIASES[low]
+    if 'pingpong_table' in low or low == 'table' or low == 'tables':
+        return 'table'
+    if 'window' in low:
+        return 'window'
+    if any(k in low for k in ['equipment', 'apparatus', 'device', 'facility', 'instrument']):
+        return 'equipment'
+    return low or s
+
+
+def normalize_aoi_class_series(series: pd.Series) -> pd.Series:
+    return series.map(normalize_aoi_class_name)
+
+
 @dataclass
 class PolygonAOI:
     class_name: str
@@ -20,9 +53,10 @@ def load_aoi_json(path: str) -> List[PolygonAOI]:
     out = []
     classes = d.get('aoi_classes', {})
     for cls, polys in classes.items():
+        cls_norm = normalize_aoi_class_name(cls)
         for i, p in enumerate(polys, start=1):
             pts = p.get('points', [])
-            out.append(PolygonAOI(cls, i, [(float(x), float(y)) for x, y in pts]))
+            out.append(PolygonAOI(cls_norm, i, [(float(x), float(y)) for x, y in pts]))
     return out
 
 

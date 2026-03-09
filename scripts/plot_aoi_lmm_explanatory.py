@@ -39,10 +39,10 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE
+from src.aoi_metrics import normalize_aoi_class_name
 
 
 AOI_LABELS = {
-    "pingpong_table": "Pingpong table",
     "table": "Pingpong table",
     "window": "Window",
     "windows": "Window",
@@ -122,15 +122,9 @@ def _pick_col(df: pd.DataFrame, primary: str, fallback: str | None = None) -> st
 
 def _alias_aoi(name: str) -> str:
     s = str(name).strip()
-    low = s.lower()
+    low = normalize_aoi_class_name(s)
     if low in AOI_LABELS:
         return low
-    if any(k in low for k in ["pingpong_table", "table"]):
-        return "pingpong_table"
-    if "window" in low:
-        return "window"
-    if any(k in low for k in ["equipment", "apparatus", "device", "facility", "instrument"]):
-        return "equipment"
     return low
 
 
@@ -238,7 +232,7 @@ def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, ao
     df["aoi_key"] = df["class_name"].map(_alias_aoi)
     df["aoi_label"] = df["class_name"].map(_aoi_label)
 
-    wanted = [_alias_aoi(x) for x in (aoi_classes or ["pingpong_table", "window", "equipment"])]
+    wanted = [_alias_aoi(x) for x in (aoi_classes or ["table", "window", "equipment"])]
     keep = [x for x in wanted if x in set(df["aoi_key"])]
     if not keep:
         top = (df["aoi_key"].value_counts().head(3).index.tolist())
@@ -306,7 +300,7 @@ def _ordered_groups(vals) -> list[str]:
 
 
 def _ordered_aois(vals) -> list[str]:
-    order = ["pingpong_table", "window", "equipment"]
+    order = ["table", "window", "equipment"]
     vals = [str(v) for v in pd.Series(vals).dropna().unique().tolist()]
     out = [a for a in order if a in vals]
     out += [a for a in vals if a not in out]
@@ -417,7 +411,7 @@ def main():
     ap.add_argument("--group_manifest", required=True)
     ap.add_argument("--group_id_col", default="name")
     ap.add_argument("--outdir", default="outputs_aoi_lmm_visuals")
-    ap.add_argument("--aoi_classes", default="pingpong_table,window,equipment", help="Comma-separated AOI classes to prioritize")
+    ap.add_argument("--aoi_classes", default="table,window,equipment", help="Comma-separated AOI classes to prioritize")
     ap.add_argument("--metrics", default="share_pct,TFD,TTFF,FC", help="Comma-separated metrics: share_pct,TFD,TTFF,FC")
     args = ap.parse_args()
 

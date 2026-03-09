@@ -29,6 +29,7 @@ import numpy as np
 import pandas as pd
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+from src.aoi_metrics import normalize_aoi_class_series
 
 
 def _norm_group(x):
@@ -362,6 +363,10 @@ def main():
     for c in ["participant_id", "scene_id", "class_name"]:
         if c not in df_class.columns:
             raise SystemExit(f"aoi_class_csv missing required column: {c}")
+
+    df_class['class_name'] = normalize_aoi_class_series(df_class['class_name'])
+    if df_poly is not None and 'class_name' in df_poly.columns:
+        df_poly['class_name'] = normalize_aoi_class_series(df_poly['class_name'])
 
     _write_views(df_class, df_poly, outdir)
 

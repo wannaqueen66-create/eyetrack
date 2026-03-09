@@ -430,7 +430,7 @@ Workflow / 操作流程：
 
 1. Upload **background scene image** (required) / 上传**场景底图**（必选）
 2. (Optional) Upload gaze CSV overlay / 可选上传 gaze CSV 叠加点
-3. Input AOI class name / 输入 AOI 类名（如 `pingpong_table`）
+3. Input AOI class name / 输入 AOI 类名（如 `table`）
 4. Draw one or more polygons for that class / 为该类绘制一个或多个多边形
 5. Export `aoi.json` / 导出 `aoi.json`
 
@@ -681,7 +681,7 @@ python scripts/plot_aoi_lmm_explanatory.py \
 ```
 
 Default focus AOIs:
-- `pingpong_table`
+- `table`
 - `window`
 - `equipment`
 
@@ -700,7 +700,7 @@ Output files:
 How to read them:
 - Start with `condition_group_interaction_<GroupVar>_share_pct.png`.
   This is the clearest figure for the question: **do different groups reallocate visual attention across AOIs when WWR / Complexity changes?**
-- Each column is one AOI (`pingpong_table`, `window`, `equipment`), each row is one Complexity level (`C0`, `C1`), and the two colored lines are the two group levels.
+- Each column is one AOI (`table`, `window`, `equipment`), each row is one Complexity level (`C0`, `C1`), and the two colored lines are the two group levels.
 - If the two group lines separate, cross, or change slope differently across WWR, that visually supports a condition × group interaction in attention allocation.
 - Then inspect `scene_group_profile_<GroupVar>_share_pct.png` to see whether the same pattern is stable across round-specific scene slots (`R1/R2`), rather than only after collapsing conditions.
 - Use `TFD`, `TTFF`, and `FC` PNGs as supporting figures: `TFD` shows absolute dwell, while `TTFF` and `FC` help explain whether a redistribution pattern is driven by earlier entry or more repeated fixations.

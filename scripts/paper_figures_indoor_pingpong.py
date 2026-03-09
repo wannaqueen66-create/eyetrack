@@ -10,6 +10,7 @@ import pandas as pd
 import seaborn as sns
 
 from src.figure_style import PALETTE, apply_paper_style, metric_label, soften_axes
+from src.aoi_metrics import normalize_aoi_class_series
 
 
 def main():
@@ -22,7 +23,8 @@ def main():
     df = pd.read_csv(args.analysis_csv)
 
     if 'class_name' in df.columns:
-        p = df[df['class_name'] == 'pingpong_table'].copy()
+        df['class_name'] = normalize_aoi_class_series(df['class_name'])
+        p = df[df['class_name'] == 'table'].copy()
         if len(p) >= 3:
             df = p
 
