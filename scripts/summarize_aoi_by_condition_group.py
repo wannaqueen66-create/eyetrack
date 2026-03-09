@@ -6,9 +6,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import os
+import sys
 
 import numpy as np
 import pandas as pd
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
 

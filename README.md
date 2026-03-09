@@ -660,6 +660,42 @@ Outputs (per group variable):
 - `model_*.txt` (model summaries)
 - `fixef_*.csv` (tidy fixed-effect tables)
 
+### Explanatory PNGs for allocation interpretation / 面向“注意分配变化”解释的 PNG
+
+To directly visualize whether different groups redistribute attention across AOIs under `WWR × Complexity`, run:
+
+```bash
+python scripts/plot_aoi_lmm_explanatory.py \
+  --aoi_class_csv <OUT_MERGED>/batch_aoi_metrics_by_class.csv \
+  --group_manifest <scenes_root>/group_manifest.csv \
+  --outdir <OUT_MERGED>/outputs_aoi_lmm_visuals
+```
+
+Default focus AOIs:
+- `pingpong_table`
+- `window`
+- `equipment`
+
+Default exported metrics:
+- `share_pct` (**recommended primary figure**): percentage of trial-level TFD allocated to each AOI
+- `TFD`
+- `TTFF` (`visited==1` only)
+- `FC` (`visited==1` only)
+
+Output files:
+- `outputs_aoi_lmm_visuals/png/condition_group_interaction_<GroupVar>_<metric>.png`
+- `outputs_aoi_lmm_visuals/png/scene_group_profile_<GroupVar>_<metric>.png`
+- `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_condition.csv`
+- `outputs_aoi_lmm_visuals/tables/summary_<GroupVar>_<metric>_scene.csv`
+
+How to read them:
+- Start with `condition_group_interaction_<GroupVar>_share_pct.png`.
+  This is the clearest figure for the question: **do different groups reallocate visual attention across AOIs when WWR / Complexity changes?**
+- Each column is one AOI (`pingpong_table`, `window`, `equipment`), each row is one Complexity level (`C0`, `C1`), and the two colored lines are the two group levels.
+- If the two group lines separate, cross, or change slope differently across WWR, that visually supports a condition × group interaction in attention allocation.
+- Then inspect `scene_group_profile_<GroupVar>_share_pct.png` to see whether the same pattern is stable across round-specific scene slots (`R1/R2`), rather than only after collapsing conditions.
+- Use `TFD`, `TTFF`, and `FC` PNGs as supporting figures: `TFD` shows absolute dwell, while `TTFF` and `FC` help explain whether a redistribution pattern is driven by earlier entry or more repeated fixations.
+
 #### Descriptive tables + interaction PNGs / 描述性汇总表 + 交互图
 
 To get the journal-friendly "means by (WWR×Complexity) × Group × AOI" tables and interaction plots:

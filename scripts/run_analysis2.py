@@ -134,6 +134,15 @@ def main():
         "--outdir", str(task2 / "allocation_lmm"),
     ])
 
+    run([
+        sys.executable,
+        str(SCRIPTS / "plot_aoi_lmm_explanatory.py"),
+        "--aoi_class_csv", str(class_csv),
+        "--group_manifest", args.group_manifest,
+        "--group_id_col", args.group_id_col,
+        "--outdir", str(task2 / "allocation_lmm_visuals"),
+    ])
+
     # Diagnostics
     run([
         sys.executable,
