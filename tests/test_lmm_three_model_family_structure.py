@@ -23,20 +23,22 @@ def test_model_family_specs_experience():
 def test_write_model_family_index_and_packet_summary(tmp_path):
     gdir = tmp_path / 'groupvar_Experience'
     gdir.mkdir(parents=True)
+    (gdir / 'tables').mkdir(parents=True, exist_ok=True)
     mod._write_model_family_index(gdir, 'Experience')
-    assert (gdir / 'model_family_index.csv').exists()
+    assert (gdir / 'tables' / 'model_family_index.csv').exists()
 
     for family_dir in ['01_main_effects', '02_two_way_interactions', '03_three_way_interaction']:
         fdir = gdir / family_dir
         fdir.mkdir(parents=True, exist_ok=True)
-        (fdir / 'model_stability_summary.csv').write_text(
+        (fdir / 'tables').mkdir(parents=True, exist_ok=True)
+        (fdir / 'tables' / 'model_stability_summary.csv').write_text(
             'group_var,outcome,outcome_label,subset,n,formula,stability_grade,stability_grade_rank,stability_reasons,warning_count,aic,bic,logLik\n'
             f'Experience,share_pct,share_pct,All rows,120,y~x,stable,1,,0,10,12,-3\n',
             encoding='utf-8',
         )
 
     mod._write_three_model_packet_summary(gdir, 'Experience')
-    out = gdir / 'three_model_packet_summary.csv'
+    out = gdir / 'tables' / 'three_model_packet_summary.csv'
     assert out.exists()
     txt = out.read_text(encoding='utf-8-sig')
     assert 'main_effects' in txt

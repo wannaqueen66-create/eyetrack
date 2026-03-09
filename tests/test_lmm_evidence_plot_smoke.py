@@ -127,16 +127,18 @@ def test_evidence_plot_smoke(tmp_path):
     contrasts['model_family'] = 'two_way_interactions'
     fixef['model_family'] = 'two_way_interactions'
 
-    mod._plot_stability_overview(stab, tmp_path / 'evidence_stability_overview_Experience.png', 'Experience')
-    mod._plot_model_fit_overview(fit, tmp_path / 'evidence_model_fit_overview_Experience.png', 'Experience')
-    mod._plot_contrasts_overview(contrasts, tmp_path / 'evidence_contrasts_share_pct.png', 'Experience', 'share_pct')
-    mod._plot_fixef_terms_overview(fixef, tmp_path / 'evidence_fixef_key_terms_share_pct.png', 'Experience', 'share_pct')
+    png_dir = tmp_path / 'png'
+    data_dir = tmp_path / 'data'
+    mod._plot_stability_overview(stab, png_dir / 'evidence_stability_overview_Experience.png', 'Experience')
+    mod._plot_model_fit_overview(fit, png_dir / 'evidence_model_fit_overview_Experience.png', 'Experience')
+    mod._plot_contrasts_overview(contrasts, png_dir / 'evidence_contrasts_share_pct.png', 'Experience', 'share_pct')
+    mod._plot_fixef_terms_overview(fixef, png_dir / 'evidence_fixef_key_terms_share_pct.png', 'Experience', 'share_pct')
 
-    assert (tmp_path / 'evidence_stability_overview_Experience.png').exists()
-    assert (tmp_path / 'evidence_stability_overview_Experience_data.csv').exists()
-    assert (tmp_path / 'evidence_model_fit_overview_Experience.png').exists()
-    assert (tmp_path / 'evidence_model_fit_overview_Experience_data.csv').exists()
-    assert (tmp_path / 'evidence_contrasts_share_pct.png').exists()
-    assert (tmp_path / 'evidence_contrasts_share_pct_data.csv').exists()
-    assert (tmp_path / 'evidence_fixef_key_terms_share_pct.png').exists()
-    assert (tmp_path / 'evidence_fixef_key_terms_share_pct_data.csv').exists()
+    assert (png_dir / 'evidence_stability_overview_Experience.png').exists()
+    assert (data_dir / 'evidence_stability_overview_Experience_data.csv').exists()
+    assert (png_dir / 'evidence_model_fit_overview_Experience.png').exists()
+    assert (data_dir / 'evidence_model_fit_overview_Experience_data.csv').exists()
+    assert (png_dir / 'evidence_contrasts_share_pct.png').exists()
+    assert (data_dir / 'evidence_contrasts_share_pct_data.csv').exists()
+    assert (png_dir / 'evidence_fixef_key_terms_share_pct.png').exists()
+    assert (data_dir / 'evidence_fixef_key_terms_share_pct_data.csv').exists()

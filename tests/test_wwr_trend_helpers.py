@@ -47,7 +47,9 @@ def test_wwr_trend_shape_plot_smoke(tmp_path):
         {'trend_component': 'linear', 'trend_component_label': 'Linear trend', 'coef': 0.0, 'p': 0.8, 'ci_low': -0.2, 'ci_high': 0.2, 'trend_direction': 'mid_point_peak'},
         {'trend_component': 'quadratic', 'trend_component_label': 'Quadratic trend', 'coef': -1.0, 'p': 0.01, 'ci_low': -1.5, 'ci_high': -0.5, 'trend_direction': 'mid_point_peak'},
     ])
-    out_png = tmp_path / 'evidence_wwr_trend_shape_share_pct.png'
+    png_dir = tmp_path / 'png'
+    data_dir = tmp_path / 'data'
+    out_png = png_dir / 'evidence_wwr_trend_shape_share_pct.png'
     mod._plot_wwr_trend_shape(coding, trend, out_png, 'Experience', 'share_pct', 'Main effects')
     assert out_png.exists()
-    assert (tmp_path / 'evidence_wwr_trend_shape_share_pct_data.csv').exists()
+    assert (data_dir / 'evidence_wwr_trend_shape_share_pct_data.csv').exists()

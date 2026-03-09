@@ -16,6 +16,9 @@ Outputs
   png/
     condition_group_interaction_<GroupVar>_<metric>.png
     scene_group_profile_<GroupVar>_<metric>.png
+  data/
+    condition_group_interaction_<GroupVar>_<metric>_data.csv
+    scene_group_profile_<GroupVar>_<metric>_data.csv
 
 Default metrics
 ---------------
@@ -200,8 +203,9 @@ def _build_scene_label(row: pd.Series) -> str:
 
 
 def _ensure_dirs(outdir: Path):
-    (outdir / "tables").mkdir(parents=True, exist_ok=True)
-    (outdir / "png").mkdir(parents=True, exist_ok=True)
+    (outdir / 'tables').mkdir(parents=True, exist_ok=True)
+    (outdir / 'png').mkdir(parents=True, exist_ok=True)
+    (outdir / 'data').mkdir(parents=True, exist_ok=True)
 
 
 def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, aoi_classes: list[str] | None):
@@ -372,8 +376,10 @@ def _annotate_series(ax, xs, ys, metric: str, color: str):
 
 def _export_plot_companion(summary: pd.DataFrame, outdir: Path, stem: str):
     outdir.mkdir(parents=True, exist_ok=True)
-    data_path = outdir / f"{stem}_data.csv"
-    labels_path = outdir / f"{stem}_labels.csv"
+    data_root = outdir.parent / 'data' if outdir.name == 'tables' else outdir
+    data_root.mkdir(parents=True, exist_ok=True)
+    data_path = data_root / f"{stem}_data.csv"
+    labels_path = data_root / f"{stem}_labels.csv"
     summary.to_csv(data_path, index=False, encoding="utf-8-sig")
     labels = summary.copy()
     labels["value_label"] = labels["mean"].apply(lambda v: _format_metric_value(str(labels["metric"].iloc[0]) if len(labels) else "", float(v) if pd.notna(v) else np.nan))

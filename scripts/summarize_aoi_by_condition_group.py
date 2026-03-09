@@ -53,8 +53,9 @@ def _complexity_to_label(x) -> str | None:
 
 
 def _ensure_dirs(outdir: Path):
-    (outdir / "tables").mkdir(parents=True, exist_ok=True)
-    (outdir / "plots").mkdir(parents=True, exist_ok=True)
+    (outdir / 'tables').mkdir(parents=True, exist_ok=True)
+    (outdir / 'png').mkdir(parents=True, exist_ok=True)
+    (outdir / 'data').mkdir(parents=True, exist_ok=True)
 
 
 def _ci95(x: pd.Series) -> tuple[float, float, float, int]:
@@ -80,10 +81,12 @@ def _export_plot_companion(summary: pd.DataFrame, out_png: Path, outcome: str):
     if summary is None or summary.empty:
         return
     data_df = summary.copy()
-    data_df["value_label"] = data_df["mean"].apply(
-        lambda v: metric_value_label(outcome, float(v)) if pd.notna(v) else ""
+    data_df['value_label'] = data_df['mean'].apply(
+        lambda v: metric_value_label(outcome, float(v)) if pd.notna(v) else ''
     )
-    data_df.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+    target = (out_png.parent.parent / 'data' / f"{out_png.stem}_data.csv") if out_png.parent.name == 'png' else out_png.with_name(out_png.stem + '_data.csv')
+    target.parent.mkdir(parents=True, exist_ok=True)
+    data_df.to_csv(target, index=False, encoding='utf-8-sig')
 
 
 def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str, title: str):
@@ -236,7 +239,7 @@ def main():
                 rows.append(row)
             summ = pd.DataFrame(rows); summ["group_value"] = summ["group_value"].apply(_norm_hilo)
             summ.to_csv(outdir / "tables" / f"summary_{gv}_{ycol}.csv", index=False, encoding="utf-8-sig")
-            plot_grid(summ, outdir / "plots" / f"plot_{gv}_{ycol}.png", outcome=yname, group_var=gv, title=f"AOI outcome by WWR×Complexity×{gv} ({yname})")
+            plot_grid(summ, outdir / 'png' / f"plot_{gv}_{ycol}.png", outcome=yname, group_var=gv, title=f"AOI outcome by WWR×Complexity×{gv} ({yname})")
     (outdir / "RUNINFO.txt").write_text("AOI summary by condition/group\n" + f"aoi_class_csv: {args.aoi_class_csv}\n" + f"group_manifest: {args.group_manifest}\n", encoding="utf-8")
     print("Saved:", str(outdir))
 

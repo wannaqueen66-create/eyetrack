@@ -769,7 +769,7 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str, stability_gr
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
-    dfp.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+    dfp.to_csv(_companion_data_path(out_png), index=False, encoding="utf-8-sig")
     plt.close(fig)
 
 
@@ -782,11 +782,19 @@ def _outcome_sort_key(name: str) -> tuple[int, str]:
     return (order.index(name), name) if name in order else (999, str(name))
 
 
+def _companion_data_path(out_png: Path, suffix: str = '_data.csv') -> Path:
+    if out_png.parent.name in {'png', 'plots'}:
+        target_dir = out_png.parent.parent / 'data'
+        target_dir.mkdir(parents=True, exist_ok=True)
+        return target_dir / f"{out_png.stem}{suffix}"
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    return out_png.with_name(out_png.stem + suffix)
+
+
 def _export_png_data(df: pd.DataFrame, out_png: Path):
     if df is None or df.empty:
         return
-    out_png.with_name(out_png.stem + "_data.csv").parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+    df.to_csv(_companion_data_path(out_png), index=False, encoding='utf-8-sig')
 
 
 def _plot_stability_overview(stab_df: pd.DataFrame, out_png: Path, group_var: str):
@@ -1409,7 +1417,7 @@ def _write_group_size_summary(df: pd.DataFrame, outdir: Path, group_var: str):
     gdf = pd.DataFrame(rows).merge(pdf, left_on='group_value', right_on=group_var, how='left')
     if group_var in gdf.columns:
         gdf = gdf.drop(columns=[group_var])
-    gdf.to_csv(outdir / f'group_size_summary_{group_var}.csv', index=False, encoding='utf-8-sig')
+    gdf.to_csv((outdir / 'tables' / f'group_size_summary_{group_var}.csv') if (outdir / 'tables').exists() else (outdir / f'group_size_summary_{group_var}.csv'), index=False, encoding='utf-8-sig')
 
 def _write_model_family_index(gdir: Path, group_var: str):
     rows = []
@@ -1426,7 +1434,7 @@ def _write_model_family_index(gdir: Path, group_var: str):
                 "contrasts_exported": bool(spec.get("export_contrasts", False)),
             }
         )
-    pd.DataFrame(rows).to_csv(gdir / "model_family_index.csv", index=False, encoding="utf-8-sig")
+    pd.DataFrame(rows).to_csv((gdir / 'tables' / "model_family_index.csv") if (gdir / 'tables').exists() else (gdir / "model_family_index.csv"), index=False, encoding="utf-8-sig")
 
 
 def _collect_packet_summary_rows(group_dir: Path, group_var: str) -> list[dict]:
@@ -1435,7 +1443,7 @@ def _collect_packet_summary_rows(group_dir: Path, group_var: str) -> list[dict]:
         fdir = group_dir / spec["family_key"]
         if not fdir.exists():
             continue
-        stab_fp = fdir / "model_stability_summary.csv"
+        stab_fp = (fdir / 'tables' / "model_stability_summary.csv") if (fdir / 'tables').exists() else (fdir / "model_stability_summary.csv")
         if not stab_fp.exists():
             continue
         try:
@@ -1462,7 +1470,7 @@ def _write_three_model_packet_summary(gdir: Path, group_var: str):
     df = pd.DataFrame(rows)
     if "stability_grade_rank" in df.columns:
         df = df.sort_values(["outcome", "stability_grade_rank", "family_dir"], ascending=[True, True, True])
-    df.to_csv(gdir / "three_model_packet_summary.csv", index=False, encoding="utf-8-sig")
+    df.to_csv((gdir / 'tables' / "three_model_packet_summary.csv") if (gdir / 'tables').exists() else (gdir / "three_model_packet_summary.csv"), index=False, encoding="utf-8-sig")
 
 
 
@@ -1622,8 +1630,12 @@ def main():
         _write_model_family_index(gdir, gv)
 
         family_specs = _model_family_specs(gv)
+        tables_root = _ensure_dir(gdir / "tables")
         for spec in family_specs:
             fam_dir = _ensure_dir(gdir / spec["family_key"])
+            tables_dir = _ensure_dir(fam_dir / "tables")
+            png_dir = _ensure_dir(fam_dir / "png")
+            data_dir = _ensure_dir(fam_dir / "data")
             stability_rows: list[dict] = []
 
             for ycol, subset_note in outcomes:
@@ -1723,20 +1735,20 @@ def main():
                     fixef.insert(0, "group_var", gv)
                     fixef.insert(0, "outcome", ycol)
                     fixef.insert(0, "n", int(len(d)))
-                    fixef.to_csv(fam_dir / f"fixef_{ycol}.csv", index=False, encoding="utf-8-sig")
+                    fixef.to_csv(tables_dir / f"fixef_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                     ranef.insert(0, "model_family", spec["family_slug"])
                     ranef.insert(0, "family_title", spec["family_title"])
                     ranef.insert(0, "stability_grade", stability["stability_grade"])
                     ranef.insert(0, "group_var", gv)
                     ranef.insert(0, "outcome", ycol)
-                    ranef.to_csv(fam_dir / f"ranef_{ycol}.csv", index=False, encoding="utf-8-sig")
+                    ranef.to_csv(tables_dir / f"ranef_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                     fitdf = _model_fit_table(res, d, formula, ycol, gv, subset_note, ranef, stability=stability)
                     fitdf.insert(1, "model_family", spec["family_slug"])
                     fitdf.insert(2, "family_title", spec["family_title"])
                     fitdf.insert(3, "family_terms", spec["family_terms_label"])
-                    fitdf.to_csv(fam_dir / f"model_fit_{ycol}.csv", index=False, encoding="utf-8-sig")
+                    fitdf.to_csv(tables_dir / f"model_fit_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                     if spec.get("export_contrasts", False):
                         contrasts = _build_contrasts(res, d, ycol, gv)
@@ -1744,7 +1756,7 @@ def main():
                             contrasts.insert(0, "model_family", spec["family_slug"])
                             contrasts.insert(0, "family_title", spec["family_title"])
                             contrasts.insert(0, "stability_grade", stability["stability_grade"])
-                            contrasts.to_csv(fam_dir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
+                            contrasts.to_csv(tables_dir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                     if trend_formula is not None and {"WWR_linear", "WWR_quadratic"}.issubset(set(d.columns)):
                         try:
@@ -1753,8 +1765,8 @@ def main():
                             trend_tests = _extract_wwr_trend_tests(trend_fixef, ycol, gv, spec["family_slug"], spec["family_title"], subset_note)
                             if len(trend_tests):
                                 trend_tests.insert(0, "stability_grade", _collect_stability_signals(trend_res, trend_fixef, _extract_random_effects(trend_res, d, group_col="participant_id", vc_scene_col=vc_scene_col), trend_warnings)["stability_grade"])
-                                trend_tests.to_csv(fam_dir / f"wwr_trend_tests_{ycol}.csv", index=False, encoding="utf-8-sig")
-                                trend_map_df.to_csv(fam_dir / f"wwr_trend_coding_{ycol}.csv", index=False, encoding="utf-8-sig")
+                                trend_tests.to_csv(tables_dir / f"wwr_trend_tests_{ycol}.csv", index=False, encoding="utf-8-sig")
+                                trend_map_df.to_csv(data_dir / f"wwr_trend_coding_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                         except Exception as trend_e:
                             (fam_dir / f"wwr_trend_{ycol}.txt").write_text(
@@ -1771,7 +1783,7 @@ def main():
 
                     _forest_plot(
                         fixef,
-                        fam_dir / f"forest_fixef_{ycol}.png",
+                        png_dir / f"forest_fixef_{ycol}.png",
                         f"{gv} | {spec['family_title']} | {ycol} fixed effects",
                         stability_grade=stability["stability_grade"],
                     )
@@ -1818,10 +1830,10 @@ def main():
                 sort_cols = [c for c in ["stability_grade_rank", "outcome"] if c in stab_df.columns]
                 if sort_cols:
                     stab_df = stab_df.sort_values(sort_cols, ascending=[True] * len(sort_cols))
-                stab_df.to_csv(fam_dir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
-                _plot_stability_overview(stab_df, fam_dir / f"evidence_stability_overview_{gv}.png", gv)
+                stab_df.to_csv(tables_dir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
+                _plot_stability_overview(stab_df, png_dir / f"evidence_stability_overview_{gv}.png", gv)
 
-            fit_files = sorted(fam_dir.glob("model_fit_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("model_fit_", "")))
+            fit_files = sorted(tables_dir.glob("model_fit_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("model_fit_", "")))
             fit_parts = []
             for fp in fit_files:
                 try:
@@ -1830,38 +1842,38 @@ def main():
                     continue
             if fit_parts:
                 fit_df = pd.concat(fit_parts, ignore_index=True)
-                _plot_model_fit_overview(fit_df, fam_dir / f"evidence_model_fit_overview_{gv}.png", gv)
+                _plot_model_fit_overview(fit_df, png_dir / f"evidence_model_fit_overview_{gv}.png", gv)
 
-            for fx in sorted(fam_dir.glob("fixef_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("fixef_", ""))):
+            for fx in sorted(tables_dir.glob("fixef_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("fixef_", ""))):
                 outcome = fx.stem.replace("fixef_", "")
                 try:
                     fixef_df = pd.read_csv(fx, encoding="utf-8-sig")
                 except Exception:
                     continue
-                _plot_fixef_terms_overview(fixef_df, fam_dir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
+                _plot_fixef_terms_overview(fixef_df, png_dir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
 
-            for tp in sorted(fam_dir.glob("wwr_trend_tests_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("wwr_trend_tests_", ""))):
+            for tp in sorted(tables_dir.glob("wwr_trend_tests_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("wwr_trend_tests_", ""))):
                 outcome = tp.stem.replace("wwr_trend_tests_", "")
-                coding_fp = fam_dir / f"wwr_trend_coding_{outcome}.csv"
+                coding_fp = data_dir / f"wwr_trend_coding_{outcome}.csv"
                 try:
                     trend_df = pd.read_csv(tp, encoding="utf-8-sig")
                 except Exception:
                     continue
-                _plot_wwr_trend_terms(trend_df, fam_dir / f"evidence_wwr_trend_terms_{outcome}.png", gv, outcome, spec["family_title"])
+                _plot_wwr_trend_terms(trend_df, png_dir / f"evidence_wwr_trend_terms_{outcome}.png", gv, outcome, spec["family_title"])
                 if coding_fp.exists():
                     try:
                         coding_df = pd.read_csv(coding_fp, encoding="utf-8-sig")
-                        _plot_wwr_trend_shape(coding_df, trend_df, fam_dir / f"evidence_wwr_trend_shape_{outcome}.png", gv, outcome, spec["family_title"])
+                        _plot_wwr_trend_shape(coding_df, trend_df, png_dir / f"evidence_wwr_trend_shape_{outcome}.png", gv, outcome, spec["family_title"])
                     except Exception:
                         pass
 
-            for cp in sorted(fam_dir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
+            for cp in sorted(tables_dir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
                 outcome = cp.stem.replace("contrasts_", "")
                 try:
                     contrasts_df = pd.read_csv(cp, encoding="utf-8-sig")
                 except Exception:
                     continue
-                _plot_contrasts_overview(contrasts_df, fam_dir / f"evidence_contrasts_{outcome}.png", gv, outcome)
+                _plot_contrasts_overview(contrasts_df, png_dir / f"evidence_contrasts_{outcome}.png", gv, outcome)
 
         _write_three_model_packet_summary(gdir, gv)
 

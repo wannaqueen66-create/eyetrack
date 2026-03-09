@@ -159,9 +159,9 @@ python scripts/run_colab_one_command.py \
 ### 每套 `02_显著性分析_Significance` 内部建议阅读顺序
 全样本与 QC 后两套结果，建议都按同一顺序读：
 
-1. `allocation_lmm/groupvar_Experience/model_family_index.csv`  
+1. `allocation_lmm/groupvar_Experience/tables/model_family_index.csv`  
    先看三套 LMM 家族的索引：main effects / two-way interactions / three-way interaction。
-2. `allocation_lmm/groupvar_Experience/three_model_packet_summary.csv`  
+2. `allocation_lmm/groupvar_Experience/tables/three_model_packet_summary.csv`  
    这是最快的一张三模型总览表，用来判断哪些 outcome × family 足够稳定，可以进入主结果。
 3. 然后按 `01_main_effects` → `02_two_way_interactions` → `03_three_way_interaction` 的顺序进入各模型家族文件夹。
 4. 先只看主显著性指标：`share_pct`、`share_logit`、`FC_share`、`fc_share_logit`、`FC_rate`、`tfd_y`、`ttff_y`、`fc_y`。
@@ -284,20 +284,26 @@ python scripts/run_colab_one_command.py \
 
 **描述性输出**
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*_data.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`  
-  这里是 Experience 描述性主线的便捷镜像，尽量保持 CSV + PNG 成套出现。
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/png/plot_Experience_*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/data/plot_Experience_*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/tables/`  
+  这里是 Experience 描述性主线的便捷镜像，按表 / 图 / data 分开。
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/png/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/data/`
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/png/*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/data/*_data.csv`
 
 **显著性 / 探索性推断输出**
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`  
-  这里的主结果包现在尽量按“表 + PNG + `_data.csv`”的对应关系组织 reviewer-facing 输出。
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/tables/`  
+  这里先看主线索引表与三模型总览表。
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/01_main_effects/{tables,png,data}/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/02_two_way_interactions/{tables,png,data}/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/03_three_way_interaction/{tables,png,data}/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/*_data.csv`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/data/`
 
 标准命名与定义也可参考：`docs/METRICS_SPEC.md`。
 显著性主线的固定阅读顺序可参考：`docs/SIGNIFICANCE_MAINLINE.md`。

@@ -157,14 +157,14 @@ def write_track_readme(
         "主线子目录说明:",
         f"- {task1.name}/organized_outputs/: optimize_aoi_outputs.py 整理后的 AOI 结果",
         f"- {task1.name}/grouped_overall/: 不分组或全样本层面的描述性整理（描述性主线，不直接承担主显著性结论）",
-        f"- {task1.name}/grouped_experience/: Experience 分组描述性汇总（描述性主入口）",
+        f"- {task1.name}/grouped_experience/: Experience 分组描述性汇总（按 tables/png/data 分层，描述性主入口）",
         f"- {task2.name}/allocation_lmm/: allocation LMM 模型输出（现按 01_main_effects / 02_two_way_interactions / 03_three_way_interaction 三套模型组织，含 stability / fixef / ranef / model_fit / contrasts / evidence PNGs）",
         f"- {task2.name}/allocation_lmm_visuals/: 面向解释的显著性分析图形（辅图，不替代核心统计表）",
         f"- {task2.name}/two_part_models/: two-part 模型结果（若已生成；更适合作为 scene-feature 扩展线或补充）",
         "",
         "显著性主线建议阅读顺序（全样本 / QC后完全一致）:",
-        f"1. {task2.name}/allocation_lmm/groupvar_Experience/model_family_index.csv",
-        f"2. {task2.name}/allocation_lmm/groupvar_Experience/three_model_packet_summary.csv",
+        f"1. {task2.name}/allocation_lmm/groupvar_Experience/tables/model_family_index.csv",
+        f"2. {task2.name}/allocation_lmm/groupvar_Experience/tables/three_model_packet_summary.csv",
         f"3. 再按 01_main_effects -> 02_two_way_interactions -> 03_three_way_interaction 的顺序进入各模型家族文件夹",
         "4. 先看主显著性指标: share_pct / share_logit / FC_share / fc_share_logit / FC_rate / tfd_y / ttff_y / fc_y",
         "5. 对每个主指标，在各模型家族内固定按 model_fit -> fixef -> contrasts(若有) -> evidence PNG 的顺序读取",
@@ -299,13 +299,22 @@ def build_single_track(
     experience_dir = task1 / "grouped_experience"
     experience_dir.mkdir(parents=True, exist_ok=True)
     overall_tables = summary_root / "tables"
-    overall_plots = summary_root / "plots"
+    overall_plots = summary_root / 'png'
+    experience_tables = experience_dir / 'tables'
+    experience_png = experience_dir / 'png'
+    experience_data = experience_dir / 'data'
+    for p in [experience_tables, experience_png, experience_data]:
+        p.mkdir(parents=True, exist_ok=True)
     if overall_tables.exists():
-        for path in overall_tables.glob("summary_Experience_*.csv"):
-            shutil.copy2(path, experience_dir / path.name)
+        for path in overall_tables.glob('summary_Experience_*.csv'):
+            shutil.copy2(path, experience_tables / path.name)
     if overall_plots.exists():
-        for path in overall_plots.glob("plot_Experience_*.png"):
-            shutil.copy2(path, experience_dir / path.name)
+        for path in overall_plots.glob('plot_Experience_*.png'):
+            shutil.copy2(path, experience_png / path.name)
+    overall_data = summary_root / 'data'
+    if overall_data.exists():
+        for path in overall_data.glob('plot_Experience_*_data.csv'):
+            shutil.copy2(path, experience_data / path.name)
 
     run([
         sys.executable,

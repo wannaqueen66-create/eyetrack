@@ -158,9 +158,9 @@ Start at:
 ### Recommended inferential reading order inside each `02_显著性分析_Significance`
 Use the same reading order for both full-sample and after-QC tracks:
 
-1. `allocation_lmm/groupvar_Experience/model_family_index.csv`  
+1. `allocation_lmm/groupvar_Experience/tables/model_family_index.csv`  
    First map of the three LMM families: main effects / two-way interactions / three-way interaction.
-2. `allocation_lmm/groupvar_Experience/three_model_packet_summary.csv`  
+2. `allocation_lmm/groupvar_Experience/tables/three_model_packet_summary.csv`  
    Fast reviewer-facing summary of which outcomes/families are stable enough as main-result candidates.
 3. Then enter the three family folders in order: `01_main_effects` → `02_two_way_interactions` → `03_three_way_interaction`.
 4. Primary outcomes only: `share_pct`, `share_logit`, `FC_share`, `fc_share_logit`, `FC_rate`, `tfd_y`, `ttff_y`, `fc_y`  
@@ -285,20 +285,26 @@ After `python scripts/run_analysis2.py ...`, the new metrics are easiest to insp
 
 **Descriptive outputs**
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*_data.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`  
-  Main-track convenience mirror for Experience-focused descriptive CSV + PNG pairs.
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/png/plot_Experience_*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/data/plot_Experience_*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/tables/`  
+  Main-track convenience mirror for Experience-focused descriptive tables.
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/png/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/data/`
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/png/*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/data/*_data.csv`
 
 **Significance / exploratory inferential outputs**
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`  
-  Core packet now follows a table + PNG + `_data.csv` pattern wherever a reviewer-facing PNG is exported.
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/tables/`  
+  Entry tables for the inferential mainline index and packet summary.
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/01_main_effects/{tables,png,data}/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/02_two_way_interactions/{tables,png,data}/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/03_three_way_interaction/{tables,png,data}/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/*_data.csv`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/data/`
 
 For canonical names and definitions, also see `docs/METRICS_SPEC.md`.
 For the fixed inferential reading order on `main`, also see `docs/SIGNIFICANCE_MAINLINE.md`.

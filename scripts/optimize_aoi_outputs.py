@@ -10,7 +10,8 @@ Output structure
 - outdir/by_scene/<scene_id>/participants/*.csv
 - outdir/by_participant/<participant_id>/*.csv
 - outdir/grouped/tables/*.csv
-- outdir/grouped/plots/*.png
+- outdir/grouped/png/*.png
+- outdir/grouped/data/*_data.csv
 """
 
 from __future__ import annotations
@@ -129,10 +130,11 @@ def _metric_col(df: pd.DataFrame, primary: str, fallback: str | None = None) -> 
 
 
 def _ensure_dirs(base: Path):
-    (base / "by_scene").mkdir(parents=True, exist_ok=True)
-    (base / "by_participant").mkdir(parents=True, exist_ok=True)
-    (base / "grouped" / "tables").mkdir(parents=True, exist_ok=True)
-    (base / "grouped" / "plots").mkdir(parents=True, exist_ok=True)
+    (base / 'by_scene').mkdir(parents=True, exist_ok=True)
+    (base / 'by_participant').mkdir(parents=True, exist_ok=True)
+    (base / 'grouped' / 'tables').mkdir(parents=True, exist_ok=True)
+    (base / 'grouped' / 'png').mkdir(parents=True, exist_ok=True)
+    (base / 'grouped' / 'data').mkdir(parents=True, exist_ok=True)
 
 
 def _write_views(df_class: pd.DataFrame, df_poly: pd.DataFrame | None, outdir: Path):
@@ -362,7 +364,9 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300)
-    pd.DataFrame(plot_rows).to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+    target = (out_png.parent.parent / 'data' / f"{out_png.stem}_data.csv") if out_png.parent.name == 'png' else out_png.with_name(out_png.stem + '_data.csv')
+    target.parent.mkdir(parents=True, exist_ok=True)
+    pd.DataFrame(plot_rows).to_csv(target, index=False, encoding='utf-8-sig')
     plt.close(fig)
 
 
@@ -497,14 +501,14 @@ def main():
             scene_summary = _group_summary(d, gv, level="scene")
             scene_summary.to_csv(outdir / "grouped" / "tables" / f"summary_{stem}_scene.csv", index=False)
             for metric, title_base in metrics:
-                _plot_group_metric(scene_summary, metric, outdir / "grouped" / "plots" / f"{stem}_scene_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", f"{title_base} by {gv} (scene-level)")
+                _plot_group_metric(scene_summary, metric, outdir / 'grouped' / 'png' / f"{stem}_scene_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", f"{title_base} by {gv} (scene-level)")
 
             condition_df = d[d["condition_id"].notna()].copy()
             if not condition_df.empty:
                 condition_summary = _group_summary(condition_df, gv, level="condition")
                 condition_summary.to_csv(outdir / "grouped" / "tables" / f"summary_{stem}_condition.csv", index=False)
                 for metric, title_base in metrics:
-                    _plot_group_metric(condition_summary, metric, outdir / "grouped" / "plots" / f"{stem}_condition_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", f"{title_base} by {gv} (condition-level)")
+                    _plot_group_metric(condition_summary, metric, outdir / 'grouped' / 'png' / f"{stem}_condition_{metric.replace('_mean_given_visited','').replace('_mean_all','')}.png", f"{title_base} by {gv} (condition-level)")
 
     print("Saved organized outputs to:", outdir)
 
