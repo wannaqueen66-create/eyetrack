@@ -46,6 +46,9 @@ Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the t
   - TFD (Total Fixation Duration)
   - TTFF (Time to First Fixation)
   - FC (Fixation Count)
+  - FC_share / FC_prop (AOI FC share within trial)
+  - FC_rate (AOI FC per second)
+  - share_pct (AOI TFD share within trial, %)
   - FFD (First Fixation Duration)
   - MFD (Mean Fixation Duration)
   - RFF (Re-fixation Frequency)
@@ -486,8 +489,11 @@ Outputs:
 ### Step E. Read Results / 解读结果
 
 - `TFD`: total fixation duration in AOI (recommended: aggregate by fixation) / AOI 总注视时长（推荐按 fixation 去重聚合）
+- `share_pct`: percentage of trial-level TFD allocated to this AOI; preferred for attention-allocation comparison under unbalanced group sizes / 该 AOI 占同一 trial 总 TFD 的百分比；面对样本量不平衡时，更适合做注意分配比较
 - `TTFF`: time to first fixation / 首次注视时间
 - `FC`: fixation count / 注视次数
+- `FC_share` / `FC_prop`: proportion of trial-level FC allocated to this AOI; recommended when comparing attention allocation via fixation episodes rather than raw counts / 该 AOI 占同一 trial 总 FC 的比例；若关心“注视次数分配”而非原始次数，更推荐看它
+- `FC_rate`: fixation count per second of trial duration; recommended when standardizing FC by exposure time rather than by group size / 单位 trial 时长（秒）的 fixation count；若想率化 FC，应按时长率化而不是按组人数硬除
 - `FFD`: first fixation duration / 首次注视时长
 - `MFD`: mean fixation duration / 平均注视时长
 - `RFF`: re-fixation frequency / 重注视频率
@@ -649,6 +655,22 @@ See: `scripts/summarize_aoi_visit_rate.py`
 
 ## 9. Paper-Oriented Next Steps / 论文向下一步
 
+### Unbalanced group sizes / 不平衡样本量怎么处理
+
+When group sizes differ, do **not** manually divide raw `FC` by the number of participants in that group.
+Instead:
+- keep trial-level rows as the modeling unit,
+- use mixed-effects models with participant random intercepts,
+- prefer within-trial allocation / rate metrics such as `share_pct`, `FC_share` / `FC_prop`, and `FC_rate`.
+
+Why:
+- mixed models can validly compare groups with different sample sizes as long as the design and missingness are reported clearly;
+- raw `FC` is an absolute count and manual group-size normalization distorts the estimand;
+- `share_pct` focuses on **time allocation**, `FC_share` on **fixation-count allocation**, and `FC_rate` on **per-time fixation rate**.
+- `TTFF` answers a different question (entry latency), so it should be interpreted alongside allocation metrics rather than replacing them.
+
+To help explain imbalance, the LMM output folder now also exports `group_size_summary_<GroupVar>.csv`.
+
 ### Mixed-effects (LMM-style) modeling for AOI allocation / AOI 注意分配的混合效应建模
 
 After you generate merged AOI outputs (especially `batch_aoi_metrics_by_class.csv`), you can run an LMM-style exploratory model to answer:
@@ -702,6 +724,8 @@ Default focus AOIs:
 
 Default exported metrics:
 - `share_pct` (**recommended primary figure**): percentage of trial-level TFD allocated to each AOI
+- `FC_share` (recommended companion figure): proportion of trial-level FC allocated to each AOI
+- `FC_rate` (recommended companion figure): AOI FC per second of trial duration
 - `TFD`
 - `TTFF` (`visited==1` only)
 - `FC` (`visited==1` only)

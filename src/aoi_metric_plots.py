@@ -10,7 +10,7 @@ from .figure_style import apply_paper_style, soften_axes, metric_label, PALETTE
 
 
 def _pick_metric_cols(df: pd.DataFrame) -> List[str]:
-    preferred = ["FC", "TTFF", "FFD", "TFD", "MFD", "RFF", "MPD"]
+    preferred = ["FC", "FC_share", "FC_rate", "TTFF", "FFD", "TFD", "share_pct", "MFD", "RFF", "MPD"]
     out = [c for c in preferred if c in df.columns]
     return out
 

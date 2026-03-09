@@ -241,6 +241,21 @@ def _group_summary(df: pd.DataFrame, group_col: str, level: str = "scene") -> pd
             row["FC_mean_all"] = float(fc.mean()) if fc.notna().any() else np.nan
             fcv = _safe_num(sub_v.get(fc_col))
             row["FC_mean_given_visited"] = float(fcv.mean()) if fcv.notna().any() else np.nan
+        if "FC_share" in sub.columns:
+            fcs = _safe_num(sub.get("FC_share"))
+            row["FC_share_mean_all"] = float(fcs.mean()) if fcs.notna().any() else np.nan
+            fcsv = _safe_num(sub_v.get("FC_share"))
+            row["FC_share_mean_given_visited"] = float(fcsv.mean()) if fcsv.notna().any() else np.nan
+        if "FC_rate" in sub.columns:
+            fcr = _safe_num(sub.get("FC_rate"))
+            row["FC_rate_mean_all"] = float(fcr.mean()) if fcr.notna().any() else np.nan
+            fcrv = _safe_num(sub_v.get("FC_rate"))
+            row["FC_rate_mean_given_visited"] = float(fcrv.mean()) if fcrv.notna().any() else np.nan
+        if "share_pct" in sub.columns:
+            shp = _safe_num(sub.get("share_pct"))
+            row["share_pct_mean_all"] = float(shp.mean()) if shp.notna().any() else np.nan
+            shpv = _safe_num(sub_v.get("share_pct"))
+            row["share_pct_mean_given_visited"] = float(shpv.mean()) if shpv.notna().any() else np.nan
         if ffd_col:
             ffd = _safe_num(sub_v.get(ffd_col))
             row["FFD_mean_given_visited"] = float(ffd.mean()) if ffd.notna().any() else np.nan
@@ -470,8 +485,11 @@ def main():
 
         metrics = [
             ("visited_rate", "Visited rate"),
+            ("share_pct_mean_all", "share_pct (all trials)"),
             ("TTFF_mean_given_visited", "TTFF (visited trials)"),
             ("TFD_mean_given_visited", "TFD (visited trials)"),
+            ("FC_share_mean_all", "FC_share (all trials)"),
+            ("FC_rate_mean_all", "FC_rate (all trials)"),
             ("FC_mean_given_visited", "FC (visited trials)"),
             ("FFD_mean_given_visited", "FFD (visited trials)"),
             ("MFD_mean_given_visited", "MFD (visited trials)"),

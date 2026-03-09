@@ -20,6 +20,8 @@ Outputs
 Default metrics
 ---------------
 - share_pct   : primary recommended metric, % of TFD within each trial allocated to each AOI
+- FC_share    : fixation-count share within each trial allocated to each AOI
+- FC_rate     : fixation-count rate per second
 - TFD         : total fixation duration (ms)
 - TTFF        : time to first fixation (ms), visited==1 only
 - FC          : fixation count, visited==1 only
@@ -65,6 +67,8 @@ GROUPVAR_LABELS = {
 
 METRIC_LABELS = {
     "share_pct": "Attention allocation share (%)",
+    "FC_share": "Fixation-count share within trial",
+    "FC_rate": "Fixation-count rate (FC/s)",
     "TFD": "Total fixation duration TFD (ms)",
     "TTFF": "Time to first fixation TTFF (ms)",
     "FC": "Fixation count FC",
@@ -72,6 +76,8 @@ METRIC_LABELS = {
 
 METRIC_TITLES = {
     "share_pct": "attention allocation share",
+    "FC_share": "fixation-count allocation share",
+    "FC_rate": "fixation-count rate",
     "TFD": "total fixation duration",
     "TTFF": "time to first fixation",
     "FC": "fixation count",
@@ -219,13 +225,20 @@ def _prepare_data(aoi_class_csv: str, group_manifest: str, group_id_col: str, ao
         df["TTFF"] = _safe_num(df[ttff_col]).clip(lower=0)
     if fc_col:
         df["FC"] = _safe_num(df[fc_col]).clip(lower=0)
+    if "FC_share" in df.columns:
+        df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0, upper=1)
+    if "FC_rate" in df.columns:
+        df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
 
     scene_col = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
     if scene_col:
-        tot = df.groupby(["participant_id", scene_col], dropna=False)["TFD"].sum(min_count=1).rename("TFD_total")
-        df = df.merge(tot.reset_index(), on=["participant_id", scene_col], how="left")
-        df["share_pct"] = 100.0 * df["TFD"] / df["TFD_total"]
-        df.loc[~np.isfinite(df["share_pct"]), "share_pct"] = np.nan
+        if "share_pct" in df.columns:
+            df["share_pct"] = _safe_num(df["share_pct"]).clip(lower=0, upper=100)
+        else:
+            tot = df.groupby(["participant_id", scene_col], dropna=False)["TFD"].sum(min_count=1).rename("TFD_total")
+            df = df.merge(tot.reset_index(), on=["participant_id", scene_col], how="left")
+            df["share_pct"] = 100.0 * df["TFD"] / df["TFD_total"]
+            df.loc[~np.isfinite(df["share_pct"]), "share_pct"] = np.nan
     else:
         df["share_pct"] = np.nan
 
@@ -459,7 +472,7 @@ def main():
     ap.add_argument("--group_id_col", default="name")
     ap.add_argument("--outdir", default="outputs_aoi_lmm_visuals")
     ap.add_argument("--aoi_classes", default="table,window,equipment", help="Comma-separated AOI classes to prioritize")
-    ap.add_argument("--metrics", default="share_pct,TFD,TTFF,FC", help="Comma-separated metrics: share_pct,TFD,TTFF,FC")
+    ap.add_argument("--metrics", default="share_pct,FC_share,FC_rate,TFD,TTFF,FC", help="Comma-separated metrics: share_pct,FC_share,FC_rate,TFD,TTFF,FC")
     args = ap.parse_args()
 
     outdir = Path(args.outdir)

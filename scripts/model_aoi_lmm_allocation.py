@@ -79,9 +79,13 @@ from src.aoi_metrics import normalize_aoi_class_series, normalize_aoi_class_name
 AOI_PRIORITY = ["table", "window", "equipment"]
 OUTCOME_LABELS = {
     "tfd_y": "log1p(TFD)",
-    "share_logit": "logit(attention share)",
+    "share_logit": "logit(attention share from TFD share)",
+    "share_pct": "attention share percentage (TFD-based)",
     "ttff_y": "log1p(TTFF), visited==1",
     "fc_y": "log1p(FC), visited==1",
+    "fc_share_logit": "logit(FC_share within trial)",
+    "FC_share": "FC share within trial",
+    "FC_rate": "FC rate per second",
 }
 CI_ALPHA_DEFAULT = 0.05
 RANDOM_VAR_TOL = 1e-8
@@ -739,6 +743,8 @@ Files in this folder
 --------------------
 - model_stability_summary.csv
   One-row-per-model stability triage table. Read this first.
+- group_size_summary_{group_var}.csv
+  Sample-size summary by group (participants / rows / scenes). Use this to explain unbalanced designs.
 - README_model_stability.txt
   Explains the grading rules and the recommended reading order.
 - model_<outcome>.txt
@@ -829,6 +835,42 @@ For visited / count-like outcomes, a GLMM in R (e.g. lme4/glmmTMB) is still pref
     (outdir / "README_model_stability.txt").write_text(text, encoding="utf-8")
 
 
+def _write_group_size_summary(df: pd.DataFrame, outdir: Path, group_var: str):
+    rows = []
+    d = df.copy()
+    d[group_var] = d[group_var].apply(_norm_hilo)
+    d = d.dropna(subset=[group_var])
+    if len(d) == 0:
+        return
+
+    for gv, sub in d.groupby(group_var, dropna=False):
+        row = {
+            'group_var': group_var,
+            'group_value': gv,
+            'n_rows': int(len(sub)),
+            'n_participants': int(sub['participant_id'].nunique(dropna=True)),
+            'n_scenes': int(sub['scene_id_model'].nunique(dropna=True)) if 'scene_id_model' in sub.columns else np.nan,
+            'n_aoi_classes': int(sub['class_name'].nunique(dropna=True)),
+        }
+        if 'visited' in sub.columns:
+            row['visited_rate_over_rows'] = float(pd.to_numeric(sub['visited'], errors='coerce').fillna(0).mean())
+        rows.append(row)
+
+    pdf = (
+        d[['participant_id', group_var]]
+        .dropna()
+        .drop_duplicates()
+        .groupby(group_var, dropna=False)
+        .size()
+        .rename('participant_count')
+        .reset_index()
+    )
+    gdf = pd.DataFrame(rows).merge(pdf, left_on='group_value', right_on=group_var, how='left')
+    if group_var in gdf.columns:
+        gdf = gdf.drop(columns=[group_var])
+    gdf.to_csv(outdir / f'group_size_summary_{group_var}.csv', index=False, encoding='utf-8-sig')
+
+
 def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
     df = pd.read_csv(args.aoi_class_csv, encoding="utf-8-sig")
 
@@ -909,6 +951,15 @@ def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
         df["FC"] = _safe_num(df[fc_col])
         df["fc_y"] = np.log1p(df["FC"].clip(lower=0))
 
+    if "share_pct" in df.columns:
+        df["share_pct"] = _safe_num(df["share_pct"]).clip(lower=0, upper=100)
+    if "FC_share" in df.columns:
+        df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0, upper=1)
+        eps = 1e-6
+        df["fc_share_logit"] = np.log((df["FC_share"] + eps) / (1 - df["FC_share"] + eps))
+    if "FC_rate" in df.columns:
+        df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
+
     group_vars = [gv for gv in ["Experience", "SportFreq"] if gv in df.columns]
     if not group_vars:
         raise SystemExit("No group variables found (Experience/SportFreq). Pass --group_manifest or ensure columns exist.")
@@ -928,8 +979,12 @@ def main():
     df, group_vars, vc_scene_col = _prepare_data(args)
 
     outcomes = [
+        ("share_logit", "All rows (allocation proxy, TFD share)"),
+        ("share_pct", "All rows (allocation share %, TFD-based)"),
+        ("fc_share_logit", "All rows (allocation proxy, FC share)"),
+        ("FC_share", "All rows (FC share within trial)"),
+        ("FC_rate", "All rows (FC per second)"),
         ("tfd_y", "All rows"),
-        ("share_logit", "All rows (allocation proxy)"),
         ("ttff_y", "visited==1"),
         ("fc_y", "visited==1"),
     ]
@@ -951,6 +1006,7 @@ def main():
         gdir = _ensure_dir(outdir / f"groupvar_{gv}")
         _write_group_readme(gdir, gv)
         _write_stability_readme(gdir)
+        _write_group_size_summary(df, gdir, gv)
         stability_rows: list[dict] = []
 
         for ycol, subset_note in outcomes:

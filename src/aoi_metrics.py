@@ -329,7 +329,51 @@ def _derive_ttff_context(df: pd.DataFrame, explicit_trial_start_ms: float | None
     }
 
 
-def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, ttff_ctx: dict, dwell_mode: str, dwell_empty_as_zero: bool) -> dict:
+def _compute_trial_totals(df: pd.DataFrame, dwell_mode: str, dwell_empty_as_zero: bool, ttff_ctx: dict) -> dict:
+    tfd_total = _dwell_time(df, mode=dwell_mode)
+    if (not np.isfinite(tfd_total)) and dwell_empty_as_zero and len(df) == 0:
+        tfd_total = 0.0
+    fc_total = int(len(_build_fixation_table(df)))
+
+    duration_ms = np.nan
+    segment_rows = ttff_ctx.get('segments', []) if isinstance(ttff_ctx, dict) else []
+    if segment_rows:
+        spans = []
+        for seg in segment_rows:
+            sid = seg.get('segment_id')
+            if sid is None:
+                continue
+            seg_mask = pd.to_numeric(df.get('ttff_segment_id'), errors='coerce') == float(sid)
+            sub = df.loc[seg_mask].copy()
+            if len(sub) == 0:
+                continue
+            if 'Video Time[ms]' in sub.columns and pd.to_numeric(sub['Video Time[ms]'], errors='coerce').notna().any():
+                vals = pd.to_numeric(sub['Video Time[ms]'], errors='coerce').dropna()
+            else:
+                vals = pd.to_numeric(sub.get('Recording Time Stamp[ms]'), errors='coerce').dropna()
+            if len(vals):
+                spans.append(float(vals.max() - vals.min()))
+        if spans:
+            duration_ms = float(np.nansum(spans))
+
+    if not np.isfinite(duration_ms):
+        if 'Video Time[ms]' in df.columns and pd.to_numeric(df['Video Time[ms]'], errors='coerce').notna().any():
+            vals = pd.to_numeric(df['Video Time[ms]'], errors='coerce').dropna()
+            if len(vals):
+                duration_ms = float(vals.max() - vals.min())
+        elif 'Recording Time Stamp[ms]' in df.columns:
+            vals = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').dropna()
+            if len(vals):
+                duration_ms = float(vals.max() - vals.min())
+
+    return {
+        'TFD_total_trial': float(tfd_total) if pd.notna(tfd_total) else np.nan,
+        'FC_total_trial': int(fc_total),
+        'trial_duration_ms': float(duration_ms) if pd.notna(duration_ms) else np.nan,
+    }
+
+
+def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, ttff_ctx: dict, dwell_mode: str, dwell_empty_as_zero: bool, trial_totals: dict | None = None) -> dict:
     samples = int(mask.sum())
     visited = int(samples > 0)
     tfd = _dwell_time(sub, mode=dwell_mode)
@@ -369,16 +413,45 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, ttff_ctx
     rff = _compute_return_fixations(df, mask)
     mpd = _compute_mpd(sub)
 
+    trial_totals = trial_totals or {}
+    tfd_total_trial = pd.to_numeric(pd.Series([trial_totals.get('TFD_total_trial', np.nan)]), errors='coerce').iloc[0]
+    fc_total_trial = pd.to_numeric(pd.Series([trial_totals.get('FC_total_trial', np.nan)]), errors='coerce').iloc[0]
+    trial_duration_ms = pd.to_numeric(pd.Series([trial_totals.get('trial_duration_ms', np.nan)]), errors='coerce').iloc[0]
+
+    share = np.nan
+    share_pct = np.nan
+    if pd.notna(tfd) and pd.notna(tfd_total_trial) and float(tfd_total_trial) > 0:
+        share = float(tfd) / float(tfd_total_trial)
+        share_pct = 100.0 * share
+
+    fc_share = np.nan
+    fc_prop = np.nan
+    if np.isfinite(fc_total_trial) and float(fc_total_trial) > 0:
+        fc_share = float(fc) / float(fc_total_trial)
+        fc_prop = fc_share
+
+    fc_rate = np.nan
+    if pd.notna(trial_duration_ms) and float(trial_duration_ms) > 0:
+        fc_rate = float(fc) / (float(trial_duration_ms) / 1000.0)
+
     out = {
         'samples': samples,
         'visited': visited,
         'FC': fc,
+        'FC_total_trial': int(fc_total_trial) if np.isfinite(fc_total_trial) else np.nan,
+        'FC_share': float(fc_share) if pd.notna(fc_share) else np.nan,
+        'FC_prop': float(fc_prop) if pd.notna(fc_prop) else np.nan,
+        'FC_rate': float(fc_rate) if pd.notna(fc_rate) else np.nan,
         'TTFF': float(ttff) if pd.notna(ttff) else np.nan,
         'FFD': float(ffd) if pd.notna(ffd) else np.nan,
         'TFD': float(tfd) if pd.notna(tfd) else np.nan,
+        'TFD_total_trial': float(tfd_total_trial) if pd.notna(tfd_total_trial) else np.nan,
+        'share': float(share) if pd.notna(share) else np.nan,
+        'share_pct': float(share_pct) if pd.notna(share_pct) else np.nan,
         'MFD': float(mfd) if pd.notna(mfd) else np.nan,
         'RFF': int(rff),
         'MPD': float(mpd) if pd.notna(mpd) else np.nan,
+        'trial_duration_ms': float(trial_duration_ms) if pd.notna(trial_duration_ms) else np.nan,
         'ttff_source': ttff_ctx.get('ttff_source'),
         'segment_count': int(ttff_ctx.get('segment_count', 0)),
         'ttff_segment_id': int(ttff_segment_id) if pd.notna(ttff_segment_id) else np.nan,
@@ -449,6 +522,7 @@ def compute_metrics(
         segment_gap_ms=ttff_segment_gap_ms,
     )
     work['ttff_segment_id'] = ttff_ctx['segment_id']
+    trial_totals = _compute_trial_totals(work, dwell_mode=dwell_mode, dwell_empty_as_zero=dwell_empty_as_zero, ttff_ctx=ttff_ctx)
 
     per_poly_rows = []
     per_class_rows = []
@@ -459,13 +533,13 @@ def compute_metrics(
         mask = point_in_poly(x, y, a.points) & finite_xy
         class_to_masks.setdefault(a.class_name, []).append(mask)
         sub = work[mask]
-        row = {'class_name': a.class_name, 'polygon_id': a.polygon_id, **_metric_pack(work, sub, mask, ttff_ctx, dwell_mode, dwell_empty_as_zero)}
+        row = {'class_name': a.class_name, 'polygon_id': a.polygon_id, **_metric_pack(work, sub, mask, ttff_ctx, dwell_mode, dwell_empty_as_zero, trial_totals=trial_totals)}
         per_poly_rows.append(row)
 
     for cls, masks in class_to_masks.items():
         union = np.logical_or.reduce(masks) if masks else np.zeros_like(x, dtype=bool)
         sub = work[union]
-        row = {'class_name': cls, 'polygon_count': len(masks), **_metric_pack(work, sub, union, ttff_ctx, dwell_mode, dwell_empty_as_zero)}
+        row = {'class_name': cls, 'polygon_count': len(masks), **_metric_pack(work, sub, union, ttff_ctx, dwell_mode, dwell_empty_as_zero, trial_totals=trial_totals)}
         per_class_rows.append(row)
 
     poly_df = pd.DataFrame(per_poly_rows)
@@ -508,12 +582,17 @@ def compute_metrics(
         'rff_definition': 'RFF = number of AOI re-entry episodes after first entry (based on fixation sequence).',
         'metric_naming': {
             'FC': 'Fixation Count',
+            'FC_share': 'AOI FC divided by total FC within the same trial',
+            'FC_prop': 'Alias of FC_share',
+            'FC_rate': 'AOI FC per second of trial duration',
             'TTFF': 'Time to First Fixation',
             'FFD': 'First Fixation Duration',
             'MFD': 'Mean Fixation Duration',
             'MPD': 'Mean Pupil Diameter',
             'RFF': 'Re-fixation Frequency',
             'TFD': 'Total Fixation Duration',
+            'share': 'AOI TFD divided by total TFD within the same trial',
+            'share_pct': 'share expressed as percent',
         },
         'ttff_logic': {
             'source': ttff_ctx.get('ttff_source'),

@@ -35,6 +35,9 @@
   - 总注视时长 `TFD`（Total Fixation Duration）
   - 首次注视时间 `TTFF`（Time to First Fixation）
   - 注视次数 `FC`（Fixation Count）
+  - 注视次数占比 `FC_share / FC_prop`（该 AOI 的 FC 占同一 trial 总 FC 的比例）
+  - 注视次数率 `FC_rate`（该 AOI 每秒 fixation count）
+  - 时长占比 `share_pct`（该 AOI 的 TFD 占同一 trial 总 TFD 的百分比）
   - 首次注视时长 `FFD`（First Fixation Duration）
   - 平均注视时长 `MFD`（Mean Fixation Duration）
   - 重注视频率 `RFF`（Re-fixation Frequency）
@@ -328,8 +331,11 @@ python scripts/summarize_aoi_groups.py \
 重点看 `outputs/aoi_metrics_by_class.csv`：
 
 - `TFD`：该类 AOI 总注视时长（推荐按 fixation 去重聚合，避免重复累计）
+- `share_pct`：该 AOI 占同一 trial 总 TFD 的百分比；当组间样本量不平衡时，更推荐用它看“注意分配”
 - `TTFF`：首次注视时间
 - `FC`：注视次数
+- `FC_share` / `FC_prop`：该 AOI 占同一 trial 总 FC 的比例；若研究问题更偏“注视次数如何在 AOI 间分配”，优先看它而不是原始 FC
+- `FC_rate`：该 AOI 每秒的 fixation count；如果要把 FC 做率化，推荐按时长率化，而不是按组人数手工归一化
 - `FFD`：首次注视时长
 - `MFD`：平均注视时长
 - `RFF`：重注视频率
@@ -477,6 +483,22 @@ pip install -r requirements.txt
 
 ## 8. 论文向下一步
 
+### 样本量不一样时怎么比较才合理
+
+如果不同人群的样本量不一样，**不要**把原始 `FC` 直接再除以组人数做“手工归一化”。
+更稳妥的做法是：
+- 保留 trial-level 的原始长表；
+- 用混合效应模型（被试随机截距）直接比较组别；
+- 优先查看 trial 内比例化/率化指标，如 `share_pct`、`FC_share` / `FC_prop`、`FC_rate`。
+
+原因是：
+- 混合模型本来就可以处理不平衡样本量；
+- 原始 `FC` 是绝对次数，按组人数硬除会改变指标含义；
+- `share_pct` 更偏**时长分配**，`FC_share` 更偏**次数分配**，`FC_rate` 更偏**单位时间率化**；
+- `TTFF` 回答的是“多久第一次看过去”，和 share/rate 不是同一个问题，适合联合解释而不是互相替代。
+
+为帮助解释不平衡设计，LMM 输出目录现在也会额外导出 `group_size_summary_<GroupVar>.csv`。
+
 ### 面向“不同人群是否改变视觉注意分配”的 LMM 可视化
 
 如果你已经得到 `batch_aoi_metrics_by_class.csv`，并且希望直接回答：
@@ -503,6 +525,8 @@ python scripts/plot_aoi_lmm_explanatory.py \
 
 默认输出的指标：
 - `share_pct`（**主推荐**）：每个 trial 内该 AOI 占总 TFD 的百分比，可直接看作“注意分配占比”
+- `FC_share`（推荐辅图）：每个 trial 内该 AOI 占总 FC 的比例
+- `FC_rate`（推荐辅图）：该 AOI 每秒 fixation count
 - `TFD`
 - `TTFF`（仅 `visited==1`）
 - `FC`（仅 `visited==1`）

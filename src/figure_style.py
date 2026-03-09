@@ -15,10 +15,14 @@ PALETTE = {
 
 METRIC_LABELS = {
     "FC": "Fixation Count (FC)",
-    "TTFF": "Time to First Fixation (TTFF, ms)",
+    "FC_share": "Fixation-count share within trial (FC_share)",
+    "FC_prop": "Fixation-count proportion within trial (FC_prop)",
+    "FC_rate": "Fixation-count rate (FC/s)",
     "TTFF": "Time to First Fixation (TTFF, ms)",
     "FFD": "First Fixation Duration (FFD, ms)",
     "TFD": "Total Fixation Duration (TFD, ms)",
+    "share": "Attention allocation share (TFD share)",
+    "share_pct": "Attention allocation share (%)",
     "MFD": "Mean Fixation Duration (MFD, ms)",
     "RFF": "Re-fixation Frequency (RFF)",
     "MPD": "Mean Pupil Diameter (MPD)",

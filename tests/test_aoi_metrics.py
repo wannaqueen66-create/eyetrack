@@ -97,3 +97,27 @@ def test_ttff_trial_start_ms_override():
     poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', trial_start_ms=100)
     assert float(poly.loc[0, 'TTFF']) == 20.0
     assert poly.loc[0, 'ttff_source'] == 'explicit_trial_start_ms'
+
+
+def test_fc_share_fc_rate_and_share_pct_are_trial_normalized():
+    df = pd.DataFrame({
+        'Recording Time Stamp[ms]': [0, 100, 200, 1000],
+        'Video Time[ms]': [0, 100, 200, 1000],
+        'Gaze Point X[px]': [5, 5, 50, 50],
+        'Gaze Point Y[px]': [5, 5, 50, 50],
+        'Fixation Index': [1, 2, 3, 4],
+        'Fixation Duration[ms]': [100, 200, 300, 400],
+    })
+    aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
+    poly, cls = compute_metrics(df, aoi, dwell_mode='fixation')
+    row = poly.loc[0]
+    assert int(row['FC']) == 2
+    assert int(row['FC_total_trial']) == 4
+    assert abs(float(row['FC_share']) - 0.5) < 1e-9
+    assert abs(float(row['FC_prop']) - 0.5) < 1e-9
+    assert abs(float(row['TFD']) - 300.0) < 1e-9
+    assert abs(float(row['TFD_total_trial']) - 1000.0) < 1e-9
+    assert abs(float(row['share']) - 0.3) < 1e-9
+    assert abs(float(row['share_pct']) - 30.0) < 1e-9
+    assert abs(float(row['trial_duration_ms']) - 1000.0) < 1e-9
+    assert abs(float(row['FC_rate']) - 2.0) < 1e-9

@@ -70,6 +70,8 @@ def _make_share(df: pd.DataFrame, dwell_col: str, key_cols: list[str]):
     d = d.merge(tot.reset_index(), on=key_cols, how="left")
     d["share"] = d[dwell_col] / d["dwell_total"]
     d.loc[~np.isfinite(d["share"]), "share"] = np.nan
+    d["share_pct"] = 100.0 * d["share"]
+    d.loc[~np.isfinite(d["share_pct"]), "share_pct"] = np.nan
     return d
 
 
@@ -146,11 +148,11 @@ def main():
         df["trial_excluded"] = _safe_num(df["trial_excluded"]).fillna(0).astype(int); df = df[df["trial_excluded"] == 0].copy()
     dwell_col = _pick_col(df, "TFD", "dwell_time_ms"); ttff_col = _pick_col(df, "TTFF"); fc_col = _pick_col(df, "FC", "fixation_count")
     outcomes = []
+    key_scene = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
     if dwell_col:
         df["TFD"] = _safe_num(df[dwell_col]).clip(lower=0); df["tfd_y"] = np.log1p(df["TFD"]); outcomes += [("TFD", "Total Fixation Duration (TFD)"), ("tfd_y", "log1p(TFD)")]
-        key_scene = "scene_id_raw" if "scene_id_raw" in df.columns else ("scene_id" if "scene_id" in df.columns else None)
         if key_scene:
-            df2 = _make_share(df, "TFD", ["participant_id", key_scene]); df2["share_logit"] = np.log((df2["share"] + 1e-6) / (1 - df2["share"] + 1e-6)); df_share = df2; outcomes += [("share", "share(TFD within trial)"), ("share_logit", "logit(share)")]
+            df2 = _make_share(df, "TFD", ["participant_id", key_scene]); df2["share_logit"] = np.log((df2["share"] + 1e-6) / (1 - df2["share"] + 1e-6)); df_share = df2; outcomes += [("share", "share(TFD within trial)"), ("share_pct", "share_pct (TFD % within trial)"), ("share_logit", "logit(share)")]
         else:
             df_share = df
     else:
@@ -159,6 +161,13 @@ def main():
         df["TTFF"] = _safe_num(df[ttff_col]); df["ttff_y"] = np.log1p(df["TTFF"].clip(lower=0)); outcomes += [("TTFF", "Time to First Fixation (TTFF)"), ("ttff_y", "log1p(TTFF)")]
     if fc_col:
         df["FC"] = _safe_num(df[fc_col]).clip(lower=0); df["fc_y"] = np.log1p(df["FC"]); outcomes += [("FC", "Fixation Count (FC)"), ("fc_y", "log1p(FC)")]
+    if "FC_share" in df.columns:
+        df["FC_share"] = _safe_num(df["FC_share"]).clip(lower=0)
+        outcomes += [("FC_share", "FC_share (AOI FC share within trial)"), ("FC_prop", "FC_prop (alias of FC_share)")]
+        df["FC_prop"] = df["FC_share"]
+    if "FC_rate" in df.columns:
+        df["FC_rate"] = _safe_num(df["FC_rate"]).clip(lower=0)
+        outcomes += [("FC_rate", "FC_rate (AOI FC per second)")]
     if "visited" in df.columns: df["visited"] = _safe_num(df["visited"]).fillna(0).astype(int)
     group_vars = [g for g in ["Experience", "SportFreq"] if g in df.columns]
     if not group_vars:
