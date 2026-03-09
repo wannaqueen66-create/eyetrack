@@ -274,6 +274,36 @@ files.download('outputs_batch_groups.zip')
 
 ### One-command runner (optional) / 一键运行（可选）
 
+#### Minimal 4-input bundle / 最小四输入一键入口
+
+If your real input is only:
+- a folder of eye-tracking CSV files / 眼动 CSV 文件夹
+- `group_manifest.csv`
+- one scene background image / 一张场景底图
+- one scene AOI JSON / 一份场景 AOI JSON
+
+use:
+
+```bash
+python scripts/run_minimal_aoi_bundle.py \
+  --csv_dir /path/to/csv_folder \
+  --group_manifest /path/to/group_manifest.csv \
+  --scene_image /path/to/scene.png \
+  --aoi_json /path/to/scene_aoi.json \
+  --scene_id WWR45_C1 \
+  --outdir outputs_minimal_bundle
+```
+
+What it does / 它会自动完成：
+- detect scene size from the background image / 从底图自动读取尺寸
+- stage the single scene into the repo's batch format / 自动整理成批处理所需目录结构
+- run fixation-based AOI metrics / 使用 fixation 口径计算 AOI 指标
+- export overlap / time-segment / exclusion diagnostics / 导出重叠、时间段、排除日志
+- generate organized outputs under `optimized_outputs/` / 生成整理后的结果目录
+
+This is the recommended entry when you do **not** have or want `scene_features.csv`.
+当你**没有也不想依赖** `scene_features.csv` 时，推荐优先使用这个入口。
+
 #### Single file mode / 单文件模式
 
 If you already have `aoi.json` and raw CSV, you can run the full workflow with:
@@ -285,6 +315,10 @@ python scripts/run_all.py \
   --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
   --workdir outputs_run_all
 ```
+
+`run_all.py` is mainly for the older full paper-oriented chain and will require `scene_features_csv`
+if you keep merge/model/figure stages on.
+`run_all.py` 更偏向旧版“论文全链条”入口；如果不跳过 merge/model/figure 阶段，它会要求 `scene_features_csv`。
 
 You can skip stages with flags like `--skip_model` / `--skip_figures`.
 
@@ -624,6 +658,10 @@ This workflow reorganizes AOI batch outputs into a structure that is easier for 
 该流程会把 AOI 批处理结果重组为更适合“按场景”和“按被试”分析的结构，并自动生成按人群分组的汇总表与图。
 
 ### Command / 命令
+
+If your data is a **single scene** with one background image + one AOI JSON + one folder of participant CSVs,
+prefer `scripts/run_minimal_aoi_bundle.py` first.
+如果你的数据是**单一场景**：一张底图 + 一份 AOI JSON + 一个参与者 CSV 文件夹，优先用 `scripts/run_minimal_aoi_bundle.py`。
 
 Option A (run optimize as a separate step):
 

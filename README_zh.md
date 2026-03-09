@@ -125,6 +125,35 @@ python scripts/optimize_merged_aoi_outputs.py \
 
 ### 一键运行（可选）
 
+#### 最小四输入一键入口
+
+如果你的输入只有这 4 类：
+- 眼动 CSV 文件夹
+- `group_manifest.csv`
+- 场景底图
+- 场景 AOI JSON
+
+建议直接运行：
+
+```bash
+python scripts/run_minimal_aoi_bundle.py \
+  --csv_dir /path/to/csv_folder \
+  --group_manifest /path/to/group_manifest.csv \
+  --scene_image /path/to/scene.png \
+  --aoi_json /path/to/scene_aoi.json \
+  --scene_id WWR45_C1 \
+  --outdir outputs_minimal_bundle
+```
+
+该脚本会自动：
+- 从底图识别尺寸
+- 把单场景数据整理成批处理目录结构
+- 用 fixation 口径计算 AOI 指标
+- 导出时间段/重叠/排除日志
+- 生成 `optimized_outputs/` 便于后续整理与汇报
+
+当你**不希望依赖** `scene_features.csv` 时，优先使用这个入口。
+
 #### 单文件模式
 
 如果你已经有 `aoi.json` 和原始 CSV，可以用一个命令跑完整流程：
@@ -136,6 +165,8 @@ python scripts/run_all.py \
   --scene_features_csv templates/indoor_pingpong_scene_features_template.csv \
   --workdir outputs_run_all
 ```
+
+`run_all.py` 更偏向旧版“论文全链条”入口；如果不跳过 merge/model/figure 阶段，它会要求 `scene_features_csv`。
 
 你也可以通过 `--skip_model` / `--skip_figures` 等参数跳过部分步骤。
 
@@ -403,6 +434,8 @@ pip install -r requirements.txt
 ---
 
 ## 9. 优化后的输出流程（按场景/按人/按分组）
+
+如果你的数据是**单一场景**：一张底图 + 一份 AOI JSON + 一个参与者 CSV 文件夹，优先用 `scripts/run_minimal_aoi_bundle.py`。
 
 新增脚本：`scripts/optimize_aoi_outputs.py`
 

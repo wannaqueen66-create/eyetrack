@@ -88,6 +88,7 @@ def main():
     # Timestamp continuity diagnostics (multi-trial protection)
     time_diag = {}
     if 'Recording Time Stamp[ms]' in df.columns:
+        import numpy as np
         ts = pd.to_numeric(df['Recording Time Stamp[ms]'], errors='coerce').to_numpy()
         ts = ts[np.isfinite(ts)]
         if ts.size >= 2:
