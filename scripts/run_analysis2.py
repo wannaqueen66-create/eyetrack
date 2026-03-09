@@ -172,7 +172,7 @@ def main():
             str(SCRIPTS / "model_aoi_two_part.py"),
             "--analysis_csv", str(analysis_csv),
             "--outdir", str(task3 / "two_part_models"),
-            "--log1p_tff",
+            "--log1p_ttff",
             "--log1p_tfd",
         ])
 

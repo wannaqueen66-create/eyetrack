@@ -23,15 +23,14 @@ This file defines the canonical AOI metric names for `eyetrack`.
 - `Total Fixation Duration`
 - `Time to First Fixation` (`TTFF`)
 
-## Legacy aliases kept for backward compatibility / 保留的旧别名
+## Legacy aliases still seen in helper scripts / 仍可能在辅助脚本中见到的旧别名
 
 - `fixation_count` → `FC`
-- `TFF` / `TTFF_ms` → `TTFF`
 - `dwell_time_ms` → `TFD`
 - `RF` → `RFF`
 
-New code should prefer canonical abbreviations, with `TFF` retained only as a legacy compatibility alias.
-新代码应优先使用标准缩写列名，`TFF` 仅作为兼容旧流程的历史别名保留。
+Canonical first-fixation timing output is now `TTFF` only.
+首次注视时间输出现统一为 `TTFF`，不再输出旧别名列。
 
 ## Definitions / 定义
 

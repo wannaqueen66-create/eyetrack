@@ -22,9 +22,10 @@ def main():
     ap.add_argument('--dwell_empty_as_zero', action='store_true', help='If set, TFD will be 0.0 (instead of NaN) when visited==0')
     ap.add_argument('--no_export_metric_plots', action='store_true', help='Disable AOI metric PNG export (default: export)')
 
-    # TTFF t0 control
-    ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional trial start timestamp (ms). If set, TTFF_ms = first_hit_ts - trial_start_ms')
-    ap.add_argument('--trial_start_col', default=None, help='Optional column name used to derive trial start (t0 = min(col)). Used only if --trial_start_ms is not set.')
+    # TTFF control / segmentation QC
+    ap.add_argument('--trial_start_ms', type=float, default=None, help='Optional TTFF baseline timestamp (ms). If set, TTFF = first_hit_time - trial_start_ms for every detected segment.')
+    ap.add_argument('--trial_start_col', default=None, help='Optional column used to derive TTFF baseline per segment (t0 = min(col) within segment). Used only if --trial_start_ms is not set.')
+    ap.add_argument('--ttff_segment_gap_ms', type=float, default=1500.0, help='Gap threshold (ms) for TTFF segment detection using Video Time / Time of Day (default: 1500).')
 
     # AOI overlap warning / report
     ap.add_argument('--warn_class_overlap', action='store_true', help='If set, print warnings when different AOI classes overlap in screen space')
@@ -104,7 +105,7 @@ def main():
                 'segments_estimated': int(segments),
             }
             if segments > 1:
-                msg = f"Detected timestamp gaps / multiple time segments in this CSV (segments={segments}, neg_jumps={neg}, gap_jumps={gap}, gap_thr_ms={gap_thr}). This file is still treated as ONE complete scene/view trial; no splitting is performed. TTFF is still computed from the CSV-level trial start by default."
+                msg = f"Detected timestamp gaps / multiple time segments in this CSV (segments={segments}, neg_jumps={neg}, gap_jumps={gap}, gap_thr_ms={gap_thr}). File-level continuity is broken; TTFF will be recomputed segment-wise using Video Time when available, and QC fields will mark the segmentation."
                 if args.time_segments == 'error':
                     raise SystemExit(msg)
                 elif args.time_segments == 'warn':
@@ -142,6 +143,7 @@ def main():
         trial_start_ms=args.trial_start_ms,
         trial_start_col=args.trial_start_col,
         warn_class_overlap=warn_overlap,
+        ttff_segment_gap_ms=args.ttff_segment_gap_ms,
     )
 
     # Save run config for reproducibility

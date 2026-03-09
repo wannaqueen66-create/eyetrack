@@ -124,7 +124,7 @@ def compute_aoi_metrics(clean: pd.DataFrame, aois: dict):
             "samples": len(sub),
             "dwell_time_ms": dwell_ms,
             "fixation_count": fix_count,
-            "TTFF_ms": ttff,
+            "TTFF": ttff,
         })
 
     return pd.DataFrame(rows)

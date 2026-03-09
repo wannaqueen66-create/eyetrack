@@ -16,7 +16,7 @@ PALETTE = {
 METRIC_LABELS = {
     "FC": "Fixation Count (FC)",
     "TTFF": "Time to First Fixation (TTFF, ms)",
-    "TFF": "Time to First Fixation (TTFF, ms)",
+    "TTFF": "Time to First Fixation (TTFF, ms)",
     "FFD": "First Fixation Duration (FFD, ms)",
     "TFD": "Total Fixation Duration (TFD, ms)",
     "MFD": "Mean Fixation Duration (MFD, ms)",

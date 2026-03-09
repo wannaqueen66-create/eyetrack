@@ -63,5 +63,5 @@ Use canonical abbreviations:
 - TFD
 - TTFF
 
-Use `TTFF` as the primary output name; keep legacy aliases like `TFF` / `TTFF_ms` / `dwell_time_ms` only for backward compatibility.
-新输出统一使用 `TTFF` 作为主列名；`TFF` / `TTFF_ms` / `dwell_time_ms` 仅作为向后兼容别名保留。
+Use `TTFF` as the primary output name; keep legacy aliases like `TTFF` / `dwell_time_ms` only for backward compatibility.
+新输出统一使用 `TTFF` 作为主列名；`TTFF` / `dwell_time_ms` 仅作为向后兼容别名保留。

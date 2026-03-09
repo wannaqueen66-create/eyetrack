@@ -17,6 +17,7 @@
 1. 打开上面的 Colab 链接
 2. 依次运行每个代码块（从上到下）
 3. 现在脚本默认输出 PNG 标题为英文（ASCII-only），一般不会再触发中文字体缺失警告。
+4. 最新 AOI / TTFF 流程会优先使用 CSV 中的 `Video Time[HH:mm:ss.ms]` 作为 TTFF 主时间轴，并结合 `Time of Day[HH:mm:ss.ms]` 自动检测 segment / gap / reset；结果表里会新增 `ttff_source / segment_count / ttff_warning / ttff_qc_status` 等 QC 字段，便于排查被整份 CSV 首行污染的情况。
 
 如果你确实需要标题显示中文姓名，可以在 Colab 安装中文字体（避免中文标题刷 `Glyph missing` 警告）：
 - `apt-get install -y fonts-noto-cjk`

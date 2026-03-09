@@ -10,7 +10,7 @@ Inputs
 - --aoi_class_csv: typically <...>/batch_aoi_metrics_by_class.csv produced by scripts/batch_aoi_metrics.py
   Required columns (minimum):
     participant_id, scene_id_raw (or scene_id), class_name
-    dwell_time_ms (or TFD), TTFF_ms (or TTFF), fixation_count (or FC), visited
+    dwell_time_ms (or TFD), TTFF, fixation_count (or FC), visited
     round, WWR, Complexity   (added by our patched batch_aoi_metrics.py)
 - --group_manifest: optional CSV with columns: name(or id) + SportFreq + Experience
 
@@ -24,7 +24,7 @@ Outcomes implemented
 -------------------
 1) tfd_y: log1p(TFD)
 2) share_logit: logit( share_of_total_fixation_duration_within_trial )  (exploratory allocation proxy)
-3) tff_y: log1p(TTFF) on visited==1
+3) ttff_y: log1p(TTFF) on visited==1
 4) fc_y: log1p(FC) on visited==1 (approximate; count-GLMM is better but out of scope)
 
 Model form (statsmodels MixedLM)
@@ -183,7 +183,7 @@ def main():
 
     # pick metric columns
     dwell_col = _pick_col(df, "TFD", "dwell_time_ms")
-    ttff_col = _pick_col(df, "TTFF", "TFF", "TTFF_ms")
+    ttff_col = _pick_col(df, "TTFF")
     fc_col = _pick_col(df, "FC", "fixation_count")
 
     need = ["participant_id", "class_name"]
@@ -236,8 +236,8 @@ def main():
             df["share_logit"] = np.log((df["share"] + eps) / (1 - df["share"] + eps))
 
     if ttff_col:
-        df["TFF"] = _safe_num(df[ttff_col])
-        df["tff_y"] = np.log1p(df["TFF"].clip(lower=0))
+        df["TTFF"] = _safe_num(df[ttff_col])
+        df["ttff_y"] = np.log1p(df["TTFF"].clip(lower=0))
 
     if fc_col:
         df["FC"] = _safe_num(df[fc_col])
@@ -255,7 +255,7 @@ def main():
     outcomes = [
         ("tfd_y", "All rows"),
         ("share_logit", "All rows (allocation proxy)"),
-        ("tff_y", "visited==1"),
+        ("ttff_y", "visited==1"),
         ("fc_y", "visited==1"),
     ]
 

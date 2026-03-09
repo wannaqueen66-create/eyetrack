@@ -4,7 +4,7 @@
 Inputs
 - --aoi_class_csv: outputs from batch_aoi_metrics.py (by class)
   must include: participant_id, scene_id, class_name, visited, TTFF, TFD, FC
-  legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted
+  legacy aliases (`TTFF`, `dwell_time_ms`, `fixation_count`) are still accepted
 - --group_manifest: group_manifest.csv with columns: name,SportFreq,Experience
 
 Outputs
@@ -193,7 +193,7 @@ def summarize(df: pd.DataFrame, group_col: str, group_type: str) -> pd.DataFrame
         # conditional (visited==1)
         sub_v = sub[visited.astype(int) == 1]
 
-        ttff = _safe_num(sub_v.get("TTFF", sub_v.get("TFF", sub_v.get("TTFF_ms", pd.Series([], dtype=float)))))
+        ttff = _safe_num(sub_v.get("TTFF", pd.Series([], dtype=float)))
         dwell = _safe_num(sub.get("TFD", sub.get("dwell_time_ms", pd.Series([], dtype=float))))
         dwell_v = _safe_num(sub_v.get("TFD", sub_v.get("dwell_time_ms", pd.Series([], dtype=float))))
         fix = _safe_num(sub.get("FC", sub.get("fixation_count", pd.Series([], dtype=float))))

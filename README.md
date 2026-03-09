@@ -451,7 +451,7 @@ Output files / 输出文件：
 - `outputs/aoi_metrics_by_class.csv`（类别汇总，论文常用）
 
 Note: canonical metric columns now use `FC / FFD / MFD / MPD / RFF / TFD / TTFF`.
-Legacy aliases such as `fixation_count / TTFF_ms / dwell_time_ms / RF` are still kept temporarily for backward compatibility.
+Canonical outputs now use `TTFF` only for time-to-first-fixation. Legacy dwell/count aliases may still appear in a few helper scripts, but old first-fixation timing aliases are no longer produced as output columns.
 
 **Group summaries (SportFreq / Experience)**
 After you have `batch_aoi_metrics_by_class.csv`, you can summarize outcomes by groups (like heatmap grouping):
@@ -483,12 +483,17 @@ Outputs:
 - `MPD`: mean pupil diameter / 平均瞳孔直径
 - `visited`: whether the AOI was visited in this trial/scene (1=yes, 0=no). If `visited==0`, then `TTFF` is NaN by definition. / 本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF` 按定义为 NaN。
 - `polygon_count`: number of polygons under class / 该类别下子区域数量
+- `ttff_source`: which time axis/baseline was used for TTFF (preferably segment-aware `Video Time`) / TTFF 使用的时间轴与基线来源
+- `segment_count`: detected number of time segments in the CSV / 当前 CSV 检测到的时间段数量
+- `ttff_warning`: QC warnings for resets/gaps/missing time fields / TTFF 相关 QC 警告（reset/gap/缺列等）
+- `ttff_qc_status`: TTFF QC status (`ok` / `warning` / `error`) / TTFF 质控状态
 
 **New options (recommended)**
 - `--point_source fixation`: use `Fixation Point X/Y` for AOI hit testing (aligns better with fixation-based dwell/TTFF)
 - `--dwell_empty_as_zero`: set TFD=0.0 when visited==0 (keeps TTFF as NaN)
 - `--image_match error`: if aoi.json includes image width/height and you pass --screen_w/--screen_h, stop on mismatch (default)
-- `--trial_start_ms` / `--trial_start_col`: control TTFF baseline t0 (optional; default t0=min timestamp)
+- `--trial_start_ms` / `--trial_start_col`: control TTFF baseline t0 (optional override; otherwise TTFF uses segment-aware `Video Time` start when available)
+- `--ttff_segment_gap_ms`: threshold for TTFF segment detection using `Video Time` / `Time of Day`
 - `--time_segments {warn,error,ignore}`: detect timestamp discontinuities (multi-trial risk) and warn/error
 - `--report_time_segments`: export `timestamp_segments_summary.csv` (per file in single-run; per participant×scene in batch)
 - `--min_valid_ratio`: trial-level tracking-rate threshold; exports `exclusion_log.csv` / `batch_exclusion_log.csv` when set
@@ -497,7 +502,7 @@ Outputs:
 
 **How to describe these checks in a paper (template)**
 - *AOI size consistency*: We ensured AOI definitions were drawn on the same background image size as the eye-tracking coordinates (mismatched AOI image size vs. screen size was treated as an error).
-- *TFF missingness*: If an AOI was not visited, `TTFF` was undefined and recorded as missing (NaN); visit probability and conditional TTFF were analyzed separately (two-part strategy).
+- *TTFF missingness*: If an AOI was not visited, `TTFF` is undefined and recorded as missing (NaN); visit probability and conditional TTFF should be analyzed separately (two-part strategy).
 - *Tracking-rate inclusion*: We computed a trial-level valid ratio based on screen bounds and (optionally) validity flags, and logged trial exclusions when valid_ratio fell below a pre-defined threshold.
 - *Multi-trial protection*: We flagged potential multi-segment recordings by detecting timestamp discontinuities (negative jumps or large gaps) and reported a segment count summary.
 - *AOI overlap*: We checked overlaps between AOI classes in screen space and reported overlap counts/ratios when present.

@@ -292,7 +292,7 @@ python scripts/run_aoi_metrics.py \
 - `outputs/aoi_metrics_by_class.csv`（类别汇总）
 
 说明：主列名统一采用 `FC / FFD / MFD / MPD / RFF / TFD / TTFF`。
-为兼容旧流程，结果中仍暂时保留 `fixation_count / TTFF_ms / dwell_time_ms / RF` 等旧别名列。
+结果中的首次注视时间列现统一为 `TTFF`；不再输出旧的首次注视时间列名，避免新旧并存造成歧义。
 
 **按组汇总（SportFreq / Experience）**
 当你已经得到 `batch_aoi_metrics_by_class.csv` 后，可以像热力图一样按组汇总：
@@ -326,12 +326,17 @@ python scripts/summarize_aoi_groups.py \
 - `MPD`：平均瞳孔直径
 - `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF` 按定义为 NaN。
 - `polygon_count`：该类包含的区域数量
+- `ttff_source`：TTFF 实际采用的时间轴/基线来源（优先为按 segment 处理后的 `Video Time`）
+- `segment_count`：该 CSV 检测出的时间段数量
+- `ttff_warning`：TTFF 相关 QC 警告（如 reset / gap / 缺少时间列）
+- `ttff_qc_status`：TTFF 质控状态（`ok` / `warning` / `error`）
 
 **新增选项（推荐）**
 - `--point_source fixation`：用 `Fixation Point X/Y` 做 AOI 命中判定（与 fixation-based 指标更一致）
 - `--dwell_empty_as_zero`：当 `visited==0` 时将 `TFD` 记为 0.0（`TTFF` 仍为 NaN）
 - `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
-- `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
+- `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选覆盖；否则优先按 `Video Time` 的 segment 起点计算）
+- `--ttff_segment_gap_ms`：用 `Video Time` / `Time of Day` 做 TTFF 分段检测时的 gap 阈值
 - `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
 - `--report_time_segments`：导出 `timestamp_segments_summary.csv`（单文件=每个 CSV 一行；批处理=每个 participant×scene 一行）
 - `--min_valid_ratio`：trial-level 追踪率阈值；设置后会输出 `exclusion_log.csv` / `batch_exclusion_log.csv`
@@ -340,7 +345,7 @@ python scripts/summarize_aoi_groups.py \
 
 **论文写法模板（可直接改动使用）**
 - *AOI 尺寸一致性*：我们要求 AOI 标注所用底图的像素尺寸与眼动坐标系一致（aoi.json 记录的 image 宽高与 screen_w/screen_h 不一致时按错误处理）。
-- *TFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
+- *TTFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
 - *追踪率纳入规则*：基于越界与（可选）Validity 字段计算 trial-level 的 valid_ratio，并在 valid_ratio 低于阈值时落盘 exclusion log（避免不同条件下追踪丢失造成系统性偏倚）。
 - *多段记录保护*：通过检测时间戳断点（负跳变或大间隔）标记潜在多段/多 trial 的 CSV，并输出 segment 汇总表供排查。
 - *AOI 重叠*：对不同 AOI 类在屏幕空间的重叠进行检测，并在存在时报告重叠的数量/比例。

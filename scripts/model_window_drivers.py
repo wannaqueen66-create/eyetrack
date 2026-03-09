@@ -1,30 +1,5 @@
 #!/usr/bin/env python3
-"""Model whether Window AOI outcomes are mainly driven by WWR or Complexity.
-
-Goal
-----
-Given an AOI long table (typically batch_aoi_metrics_by_class.csv or merged analysis table),
-fit comparable models with both predictors and report which predictor has the larger
-standardized effect for each outcome.
-
-Outcomes:
-- visited (binary)
-- TTFF (conditional on visited==1)
-- TFD (conditional on visited==1)
-- FC (conditional on visited==1; modeled on log1p scale)
-
-Predictors:
-- WWR
-- Complexity
-
-Input columns expected (minimum):
-- participant_id, scene_id, class_name, visited, TTFF, TFD, FC
-Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
-
-WWR/Complexity source priority:
-1) Existing numeric columns (--wwr_col / --complexity_col)
-2) Parse from scene_id patterns like: WWR45_C1, C1W45, 组1-C1W45, group2-C0W15
-"""
+"""Model whether Window AOI outcomes are mainly driven by WWR or Complexity."""
 
 from __future__ import annotations
 
@@ -39,315 +14,153 @@ import statsmodels.formula.api as smf
 
 
 def _export_plots(summary: pd.DataFrame, outdir: str):
-    """Export lightweight PNG visualizations from model summary.
-
-    Files:
-    - window_driver_effect_sizes.png
-    - window_driver_dominance.png
-    """
     try:
         import matplotlib.pyplot as plt
     except Exception:
         return
-
     s = summary.copy()
     if len(s) == 0:
         return
-
-    # Coerce numeric columns safely
     for c in ["wwr_coef", "complexity_coef", "wwr_p", "complexity_p"]:
         if c in s.columns:
             s[c] = pd.to_numeric(s[c], errors="coerce")
-
-    # 1) Signed standardized effect bars
     try:
-        x = np.arange(len(s))
-        w = 0.36
+        x = np.arange(len(s)); w = 0.36
         fig, ax = plt.subplots(figsize=(10, 4.8))
         ax.bar(x - w / 2, s["wwr_coef"], width=w, label="WWR", color="#4e79a7")
         ax.bar(x + w / 2, s["complexity_coef"], width=w, label="Complexity", color="#f28e2b")
         ax.axhline(0, color="black", linewidth=0.8)
-        ax.set_xticks(x)
-        ax.set_xticklabels(s["outcome"], rotation=20, ha="right")
-        ax.set_ylabel("Standardized coefficient")
-        ax.set_title("Window AOI: WWR vs Complexity effect sizes")
-        ax.legend(loc="best")
-
-        # significance stars
-        for i, r in s.reset_index(drop=True).iterrows():
-            for dx, pval, coef in [(-w / 2, r.get("wwr_p"), r.get("wwr_coef")), (w / 2, r.get("complexity_p"), r.get("complexity_coef"))]:
-                if pd.notna(pval) and pval < 0.05 and pd.notna(coef):
-                    ax.text(i + dx, coef + (0.03 if coef >= 0 else -0.05), "*", ha="center", va="bottom" if coef >= 0 else "top", fontsize=12)
-
-        fig.tight_layout()
-        fig.savefig(os.path.join(outdir, "window_driver_effect_sizes.png"), dpi=180)
-        plt.close(fig)
+        ax.set_xticks(x); ax.set_xticklabels(s["outcome"], rotation=20, ha="right")
+        ax.set_ylabel("Standardized coefficient"); ax.set_title("Window AOI: WWR vs Complexity effect sizes"); ax.legend(loc="best")
+        fig.tight_layout(); fig.savefig(os.path.join(outdir, "window_driver_effect_sizes.png"), dpi=180)
     except Exception:
         pass
-
-    # 2) Dominance count chart
     try:
-        vc = s["dominant"].fillna("undetermined").value_counts()
-        order = ["WWR", "Complexity", "both_or_close", "none_significant", "undetermined"]
-        vc = vc.reindex(order).fillna(0)
+        vc = s["dominant"].fillna("undetermined").value_counts().reindex(["WWR", "Complexity", "both_or_close", "none_significant", "undetermined"]).fillna(0)
         fig, ax = plt.subplots(figsize=(7, 4.2))
         bars = ax.bar(vc.index, vc.values, color=["#59a14f", "#e15759", "#9c755f", "#bab0ab", "#4e79a7"])
-        ax.set_ylabel("Outcome count")
-        ax.set_title("Dominant driver summary")
-        ax.bar_label(bars, padding=2, fmt="%.0f")
-        plt.xticks(rotation=20, ha="right")
-        fig.tight_layout()
-        fig.savefig(os.path.join(outdir, "window_driver_dominance.png"), dpi=180)
-        plt.close(fig)
+        ax.set_ylabel("Outcome count"); ax.set_title("Dominant driver summary"); ax.bar_label(bars, padding=2, fmt="%.0f")
+        fig.tight_layout(); fig.savefig(os.path.join(outdir, "window_driver_dominance.png"), dpi=180)
     except Exception:
         pass
 
 
 def _parse_scene(scene_id: str) -> Tuple[Optional[float], Optional[float]]:
     s = str(scene_id)
-
-    # WWR45_C1
     m = re.search(r"WWR(?P<wwr>\d+)_C(?P<c>\d+)", s, flags=re.IGNORECASE)
     if m:
         return float(m.group("wwr")), float(m.group("c"))
-
-    # C1W45
     m = re.search(r"C(?P<c>\d+)W(?P<wwr>\d+)", s, flags=re.IGNORECASE)
     if m:
         return float(m.group("wwr")), float(m.group("c"))
-
-    # fallback: W45 + C1 appearing separately
     mw = re.search(r"(?:WWR|W)(?P<wwr>\d+)", s, flags=re.IGNORECASE)
     mc = re.search(r"(?:COMP(?:LEXITY)?|C)(?P<c>\d+)", s, flags=re.IGNORECASE)
-    wwr = float(mw.group("wwr")) if mw else None
-    comp = float(mc.group("c")) if mc else None
-    return wwr, comp
+    return (float(mw.group("wwr")) if mw else None, float(mc.group("c")) if mc else None)
 
 
 def _z(x: pd.Series) -> pd.Series:
     x = pd.to_numeric(x, errors="coerce")
-    m = x.mean()
-    sd = x.std(ddof=0)
+    m = x.mean(); sd = x.std(ddof=0)
     if not np.isfinite(sd) or sd <= 0:
         return pd.Series(np.nan, index=x.index)
     return (x - m) / sd
 
 
 def _safe_fit_mixedlm(df: pd.DataFrame, y_col: str):
-    # Standardize y so coefficients are comparable standardized effects.
-    d = df.copy()
-    d["y_z"] = _z(d[y_col])
-    d = d.dropna(subset=["y_z", "WWR_z", "Complexity_z", "participant_id"])
+    d = df.copy(); d["y_z"] = _z(d[y_col]); d = d.dropna(subset=["y_z", "WWR_z", "Complexity_z", "participant_id"])
     if len(d) < 12:
         raise ValueError(f"Too few rows for mixedlm ({y_col}): n={len(d)}")
-    model = smf.mixedlm("y_z ~ WWR_z + Complexity_z", data=d, groups=d["participant_id"])
-    res = model.fit(reml=False, method="lbfgs")
-    return res, d
+    return smf.mixedlm("y_z ~ WWR_z + Complexity_z", data=d, groups=d["participant_id"]).fit(reml=False, method="lbfgs"), d
 
 
 def _safe_fit_logit(df: pd.DataFrame):
-    # GLM with participant fixed effects for binary visited outcome.
-    d = df.copy()
-    d["visited"] = pd.to_numeric(d["visited"], errors="coerce")
-    d = d.dropna(subset=["visited", "WWR_z", "Complexity_z", "participant_id"])
-    d["visited"] = (d["visited"] > 0).astype(int)
+    d = df.copy(); d["visited"] = pd.to_numeric(d["visited"], errors="coerce"); d = d.dropna(subset=["visited", "WWR_z", "Complexity_z", "participant_id"]); d["visited"] = (d["visited"] > 0).astype(int)
     if d["visited"].nunique() < 2:
         raise ValueError("visited has <2 classes after filtering")
     if len(d) < 20:
         raise ValueError(f"Too few rows for visited model: n={len(d)}")
     model = smf.glm("visited ~ WWR_z + Complexity_z + C(participant_id)", data=d, family=__import__("statsmodels.api").api.families.Binomial())
-    res = model.fit()
-    return res, d
+    return model.fit(), d
 
 
 def _coef_block(res, names=("WWR_z", "Complexity_z")):
-    out = {}
-    for nm in names:
-        out[nm] = {
-            "coef": float(res.params.get(nm, np.nan)),
-            "p": float(res.pvalues.get(nm, np.nan)) if hasattr(res, "pvalues") else np.nan,
-        }
-    return out
+    return {nm: {"coef": float(res.params.get(nm, np.nan)), "p": float(res.pvalues.get(nm, np.nan)) if hasattr(res, "pvalues") else np.nan} for nm in names}
 
 
 def _dominance(wwr_coef: float, comp_coef: float, wwr_p: float, comp_p: float, p_alpha: float = 0.05, ratio_thr: float = 1.2) -> str:
-    aw = abs(wwr_coef) if np.isfinite(wwr_coef) else np.nan
-    ac = abs(comp_coef) if np.isfinite(comp_coef) else np.nan
+    aw = abs(wwr_coef) if np.isfinite(wwr_coef) else np.nan; ac = abs(comp_coef) if np.isfinite(comp_coef) else np.nan
     if not np.isfinite(aw) or not np.isfinite(ac):
         return "undetermined"
-
-    w_sig = np.isfinite(wwr_p) and (wwr_p < p_alpha)
-    c_sig = np.isfinite(comp_p) and (comp_p < p_alpha)
-
+    w_sig = np.isfinite(wwr_p) and (wwr_p < p_alpha); c_sig = np.isfinite(comp_p) and (comp_p < p_alpha)
     if (not w_sig) and (not c_sig):
         return "none_significant"
-
     if aw >= ratio_thr * max(ac, 1e-12) and w_sig:
         return "WWR"
     if ac >= ratio_thr * max(aw, 1e-12) and c_sig:
         return "Complexity"
-
     if w_sig and (not c_sig):
         return "WWR"
     if c_sig and (not w_sig):
         return "Complexity"
-
     return "both_or_close"
 
 
 def main():
     ap = argparse.ArgumentParser(description="Compare WWR vs Complexity as AOI main drivers")
-    ap.add_argument("--analysis_csv", required=True, help="Input long table CSV")
+    ap.add_argument("--analysis_csv", required=True)
     ap.add_argument("--outdir", default="outputs_window_drivers")
-    ap.add_argument("--class_name", default="window", help="AOI class to analyze (default: window)")
-    ap.add_argument("--wwr_col", default="WWR", help="Existing WWR column name (if present)")
-    ap.add_argument("--complexity_col", default="Complexity", help="Existing Complexity column name (if present)")
+    ap.add_argument("--class_name", default="window")
+    ap.add_argument("--wwr_col", default="WWR")
+    ap.add_argument("--complexity_col", default="Complexity")
     ap.add_argument("--p_alpha", type=float, default=0.05)
-    ap.add_argument("--dominance_ratio", type=float, default=1.2, help="Dominance threshold on |standardized coef| ratio")
+    ap.add_argument("--dominance_ratio", type=float, default=1.2)
     args = ap.parse_args()
 
     os.makedirs(args.outdir, exist_ok=True)
     df = pd.read_csv(args.analysis_csv)
-
-    # Basic required columns
-    if "TTFF" not in df.columns and "TFF" in df.columns:
-        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
-    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
-    if "TFF" not in df.columns and "TTFF" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
     if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
         df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
     if "FC" not in df.columns and "fixation_count" in df.columns:
         df["FC"] = pd.to_numeric(df["fixation_count"], errors="coerce")
-
-    req = ["participant_id", "scene_id", "class_name", "visited", "TFF", "TFD", "FC"]
+    req = ["participant_id", "scene_id", "class_name", "visited", "TTFF", "TFD", "FC"]
     miss = [c for c in req if c not in df.columns]
     if miss:
         raise ValueError(f"analysis_csv missing columns: {miss}")
-
-    # Focus on target AOI class
     d = df[df["class_name"].astype(str).str.lower() == str(args.class_name).lower()].copy()
     if len(d) == 0:
         raise ValueError(f"No rows found for class_name={args.class_name}")
-
-    # Build WWR / Complexity
-    if args.wwr_col in d.columns:
-        d["WWR"] = pd.to_numeric(d[args.wwr_col], errors="coerce")
-    else:
-        d["WWR"] = np.nan
-
-    if args.complexity_col in d.columns:
-        d["Complexity"] = pd.to_numeric(d[args.complexity_col], errors="coerce")
-    else:
-        d["Complexity"] = np.nan
-
+    d["WWR"] = pd.to_numeric(d[args.wwr_col], errors="coerce") if args.wwr_col in d.columns else np.nan
+    d["Complexity"] = pd.to_numeric(d[args.complexity_col], errors="coerce") if args.complexity_col in d.columns else np.nan
     parsed = d["scene_id"].apply(_parse_scene)
     d[["WWR_parsed", "Complexity_parsed"]] = pd.DataFrame(parsed.tolist(), index=d.index)
-
     d["WWR"] = d["WWR"].where(d["WWR"].notna(), d["WWR_parsed"])
     d["Complexity"] = d["Complexity"].where(d["Complexity"].notna(), d["Complexity_parsed"])
+    d["WWR_z"] = _z(d["WWR"]); d["Complexity_z"] = _z(d["Complexity"])
+    d[["participant_id", "scene_id", "class_name", "WWR", "Complexity", "WWR_parsed", "Complexity_parsed", "visited", "TTFF", "TFD", "FC"]].to_csv(os.path.join(args.outdir, "window_driver_input_audit.csv"), index=False)
 
-    d["WWR_z"] = _z(d["WWR"])
-    d["Complexity_z"] = _z(d["Complexity"])
-
-    # Save parsed audit table
-    audit_cols = [
-        "participant_id", "scene_id", "class_name",
-        "WWR", "Complexity", "WWR_parsed", "Complexity_parsed",
-        "visited", "TFF", "TFD", "FC",
-    ]
-    d[audit_cols].to_csv(os.path.join(args.outdir, "window_driver_input_audit.csv"), index=False)
-
-    rows = []
-    report = []
-
-    # Model A: visited (binary)
+    rows = []; report = []
     try:
-        res, dm = _safe_fit_logit(d)
-        b = _coef_block(res)
-        dom = _dominance(
-            b["WWR_z"]["coef"], b["Complexity_z"]["coef"],
-            b["WWR_z"]["p"], b["Complexity_z"]["p"],
-            p_alpha=args.p_alpha,
-            ratio_thr=args.dominance_ratio,
-        )
-        rows.append({
-            "outcome": "visited",
-            "n": len(dm),
-            "wwr_coef": b["WWR_z"]["coef"],
-            "wwr_p": b["WWR_z"]["p"],
-            "complexity_coef": b["Complexity_z"]["coef"],
-            "complexity_p": b["Complexity_z"]["p"],
-            "dominant": dom,
-        })
-        with open(os.path.join(args.outdir, "model_visited_glm.txt"), "w", encoding="utf-8") as f:
-            f.write(str(res.summary()))
-        report.append(f"visited: dominant={dom}, beta_WWR={b['WWR_z']['coef']:.4g} (p={b['WWR_z']['p']:.3g}), beta_Complexity={b['Complexity_z']['coef']:.4g} (p={b['Complexity_z']['p']:.3g})")
+        res, dm = _safe_fit_logit(d); b = _coef_block(res); dom = _dominance(b["WWR_z"]["coef"], b["Complexity_z"]["coef"], b["WWR_z"]["p"], b["Complexity_z"]["p"], p_alpha=args.p_alpha, ratio_thr=args.dominance_ratio)
+        rows.append({"outcome": "visited", "n": len(dm), "wwr_coef": b["WWR_z"]["coef"], "wwr_p": b["WWR_z"]["p"], "complexity_coef": b["Complexity_z"]["coef"], "complexity_p": b["Complexity_z"]["p"], "dominant": dom})
+        open(os.path.join(args.outdir, "model_visited_glm.txt"), "w", encoding="utf-8").write(str(res.summary())); report.append(f"visited: dominant={dom}")
     except Exception as e:
-        rows.append({"outcome": "visited", "n": 0, "wwr_coef": np.nan, "wwr_p": np.nan, "complexity_coef": np.nan, "complexity_p": np.nan, "dominant": f"FAILED: {repr(e)}"})
-        report.append(f"visited: FAILED {repr(e)}")
+        rows.append({"outcome": "visited", "n": 0, "wwr_coef": np.nan, "wwr_p": np.nan, "complexity_coef": np.nan, "complexity_p": np.nan, "dominant": f"FAILED: {repr(e)}"}); report.append(f"visited: FAILED {repr(e)}")
 
-    # Conditional subset for continuous/count outcomes
     dc = d[pd.to_numeric(d["visited"], errors="coerce") > 0].copy()
-
-    for outcome, y_col, transform in [
-        ("TFF_given_visited", "TFF", "none"),
-        ("TFD_given_visited", "TFD", "none"),
-        ("FC_given_visited", "FC", "log1p"),
-    ]:
+    for outcome, y_col, transform in [("TTFF_given_visited", "TTFF", "none"), ("TFD_given_visited", "TFD", "none"), ("FC_given_visited", "FC", "log1p")]:
         try:
-            dm = dc.copy()
-            dm[y_col] = pd.to_numeric(dm[y_col], errors="coerce")
-            if transform == "log1p":
-                dm[y_col] = np.log1p(dm[y_col].clip(lower=0))
-
-            res, fit_df = _safe_fit_mixedlm(dm, y_col=y_col)
-            b = _coef_block(res)
-            dom = _dominance(
-                b["WWR_z"]["coef"], b["Complexity_z"]["coef"],
-                b["WWR_z"]["p"], b["Complexity_z"]["p"],
-                p_alpha=args.p_alpha,
-                ratio_thr=args.dominance_ratio,
-            )
-            rows.append({
-                "outcome": outcome,
-                "n": len(fit_df),
-                "wwr_coef": b["WWR_z"]["coef"],
-                "wwr_p": b["WWR_z"]["p"],
-                "complexity_coef": b["Complexity_z"]["coef"],
-                "complexity_p": b["Complexity_z"]["p"],
-                "dominant": dom,
-            })
-            out_model = os.path.join(args.outdir, f"model_{outcome}.txt")
-            with open(out_model, "w", encoding="utf-8") as f:
-                f.write(str(res.summary()))
-            report.append(f"{outcome}: dominant={dom}, beta_WWR={b['WWR_z']['coef']:.4g} (p={b['WWR_z']['p']:.3g}), beta_Complexity={b['Complexity_z']['coef']:.4g} (p={b['Complexity_z']['p']:.3g})")
+            dm = dc.copy(); dm[y_col] = pd.to_numeric(dm[y_col], errors="coerce");
+            if transform == "log1p": dm[y_col] = np.log1p(dm[y_col].clip(lower=0))
+            res, fit_df = _safe_fit_mixedlm(dm, y_col=y_col); b = _coef_block(res); dom = _dominance(b["WWR_z"]["coef"], b["Complexity_z"]["coef"], b["WWR_z"]["p"], b["Complexity_z"]["p"], p_alpha=args.p_alpha, ratio_thr=args.dominance_ratio)
+            rows.append({"outcome": outcome, "n": len(fit_df), "wwr_coef": b["WWR_z"]["coef"], "wwr_p": b["WWR_z"]["p"], "complexity_coef": b["Complexity_z"]["coef"], "complexity_p": b["Complexity_z"]["p"], "dominant": dom})
+            open(os.path.join(args.outdir, f"model_{outcome}.txt"), "w", encoding="utf-8").write(str(res.summary())); report.append(f"{outcome}: dominant={dom}")
         except Exception as e:
-            rows.append({"outcome": outcome, "n": 0, "wwr_coef": np.nan, "wwr_p": np.nan, "complexity_coef": np.nan, "complexity_p": np.nan, "dominant": f"FAILED: {repr(e)}"})
-            report.append(f"{outcome}: FAILED {repr(e)}")
-
-    summary = pd.DataFrame(rows)
-    summary_path = os.path.join(args.outdir, "window_driver_summary.csv")
-    summary.to_csv(summary_path, index=False)
-
-    # Optional lightweight visual outputs
-    _export_plots(summary, args.outdir)
-
-    report_path = os.path.join(args.outdir, "window_driver_report.txt")
-    with open(report_path, "w", encoding="utf-8") as f:
+            rows.append({"outcome": outcome, "n": 0, "wwr_coef": np.nan, "wwr_p": np.nan, "complexity_coef": np.nan, "complexity_p": np.nan, "dominant": f"FAILED: {repr(e)}"}); report.append(f"{outcome}: FAILED {repr(e)}")
+    summary = pd.DataFrame(rows); summary.to_csv(os.path.join(args.outdir, "window_driver_summary.csv"), index=False); _export_plots(summary, args.outdir)
+    with open(os.path.join(args.outdir, "window_driver_report.txt"), "w", encoding="utf-8") as f:
         f.write("Window AOI driver comparison (WWR vs Complexity)\n")
-        f.write(f"input={args.analysis_csv}\n")
-        f.write(f"class_name={args.class_name}\n")
-        f.write(f"p_alpha={args.p_alpha}, dominance_ratio={args.dominance_ratio}\n\n")
-        for ln in report:
-            f.write("- " + ln + "\n")
-
-    print("Saved:")
-    print(" -", summary_path)
-    print(" -", report_path)
-    print(" -", os.path.join(args.outdir, "window_driver_effect_sizes.png"), "(if matplotlib available)")
-    print(" -", os.path.join(args.outdir, "window_driver_dominance.png"), "(if matplotlib available)")
+        for ln in report: f.write("- " + ln + "\n")
+    print("Saved:"); print(" -", os.path.join(args.outdir, "window_driver_summary.csv")); print(" -", os.path.join(args.outdir, "window_driver_report.txt"))
 
 
 if __name__ == "__main__":

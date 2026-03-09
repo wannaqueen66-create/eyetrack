@@ -183,7 +183,7 @@ def _write_views(df_class: pd.DataFrame, df_poly: pd.DataFrame | None, outdir: P
 def _group_summary(df: pd.DataFrame, group_col: str, level: str = "scene") -> pd.DataFrame:
     rows = []
     tfd_col = _metric_col(df, "TFD", "dwell_time_ms")
-    tff_col = _metric_col(df, "TTFF", "TFF", "TTFF_ms")
+    tff_col = _metric_col(df, "TTFF", "TTFF")
     fc_col = _metric_col(df, "FC", "fixation_count")
     ffd_col = _metric_col(df, "FFD")
     mfd_col = _metric_col(df, "MFD")

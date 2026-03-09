@@ -44,6 +44,8 @@
 
 ## Cell 2：安装依赖
 
+> 最新 AOI / TTFF 流程说明：脚本会优先使用 CSV 中的 `Video Time[HH:mm:ss.ms]` 作为 TTFF 主时间轴，并结合 `Time of Day[HH:mm:ss.ms]` 自动检测 segment / gap / reset；输出表中会新增 `ttff_source / segment_count / ttff_warning / ttff_qc_status` 等 QC 字段。
+
 ```bash
 !pip -q install -r requirements.txt
 ```

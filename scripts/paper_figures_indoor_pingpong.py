@@ -3,14 +3,13 @@ import argparse
 import os
 import sys
 
-# Ensure repo root is on sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-import matplotlib.pyplot as plt
 
-from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+from src.figure_style import PALETTE, apply_paper_style, metric_label, soften_axes
 
 
 def main():
@@ -29,18 +28,13 @@ def main():
 
     if 'TFD' not in df.columns and 'dwell_time_ms' in df.columns:
         df['TFD'] = pd.to_numeric(df['dwell_time_ms'], errors='coerce')
-    if 'TTFF' not in df.columns and 'TFF' in df.columns:
-        df['TTFF'] = pd.to_numeric(df['TFF'], errors='coerce')
-    if 'TTFF' not in df.columns and 'TTFF_ms' in df.columns:
-        df['TTFF'] = pd.to_numeric(df['TTFF_ms'], errors='coerce')
-    if 'TFF' not in df.columns and 'TTFF' in df.columns:
-        df['TFF'] = pd.to_numeric(df['TTFF'], errors='coerce')
     if 'FC' not in df.columns and 'fixation_count' in df.columns:
         df['FC'] = pd.to_numeric(df['fixation_count'], errors='coerce')
+    if 'TTFF' not in df.columns:
+        raise ValueError('analysis_csv missing required column: TTFF')
 
     apply_paper_style()
 
-    # Figure 1: TFD by condition
     if 'condition' in df.columns and 'TFD' in df.columns:
         fig, ax = plt.subplots(figsize=(7.0, 4.2))
         sns.boxplot(data=df, x='condition', y='TFD', ax=ax, color=PALETTE['blue'], width=0.55, fliersize=0, linewidth=1.0)
@@ -53,38 +47,20 @@ def main():
         fig.savefig(os.path.join(args.outdir, 'fig1_tfd_by_condition.png'), dpi=300)
         plt.close(fig)
 
-    # Figure 2: TTFF vs table density
     if 'table_density' in df.columns and 'TTFF' in df.columns:
         fig, ax = plt.subplots(figsize=(6.4, 4.2))
-        sns.regplot(
-            data=df,
-            x='table_density',
-            y='TTFF',
-            ax=ax,
-            color=PALETTE['orange'],
-            scatter_kws={'alpha':0.55, 's':24, 'edgecolor':'white', 'linewidth':0.4},
-            line_kws={'linewidth':1.8}
-        )
+        sns.regplot(data=df, x='table_density', y='TTFF', ax=ax, color=PALETTE['orange'], scatter_kws={'alpha': 0.55, 's': 24, 'edgecolor': 'white', 'linewidth': 0.4}, line_kws={'linewidth': 1.8})
         ax.set_title('TTFF vs Table Density', pad=10)
         ax.set_xlabel('Table density')
         ax.set_ylabel(metric_label('TTFF'))
         soften_axes(ax)
         fig.tight_layout()
-        fig.savefig(os.path.join(args.outdir, 'fig2_tff_vs_table_density.png'), dpi=300)
+        fig.savefig(os.path.join(args.outdir, 'fig2_ttff_vs_table_density.png'), dpi=300)
         plt.close(fig)
 
-    # Figure 3: FC vs crowding
     if 'crowding_level' in df.columns and 'FC' in df.columns:
         fig, ax = plt.subplots(figsize=(6.4, 4.2))
-        sns.regplot(
-            data=df,
-            x='crowding_level',
-            y='FC',
-            ax=ax,
-            color=PALETTE['green'],
-            scatter_kws={'alpha':0.55, 's':24, 'edgecolor':'white', 'linewidth':0.4},
-            line_kws={'linewidth':1.8}
-        )
+        sns.regplot(data=df, x='crowding_level', y='FC', ax=ax, color=PALETTE['green'], scatter_kws={'alpha': 0.55, 's': 24, 'edgecolor': 'white', 'linewidth': 0.4}, line_kws={'linewidth': 1.8})
         ax.set_title('Fixation Count vs Crowding Level', pad=10)
         ax.set_xlabel('Crowding level')
         ax.set_ylabel(metric_label('FC'))

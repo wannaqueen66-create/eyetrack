@@ -55,5 +55,19 @@
     "Fixation Y[px]",
     "FixationPointY",
     "fixation_y"
+  ],
+  "Video Time[HH:mm:ss.ms]": [
+    "Video Time[HH:mm:ss.ms]",
+    "Video Time [HH:mm:ss.ms]",
+    "video time[hh:mm:ss.ms]",
+    "video_time",
+    "VideoTime"
+  ],
+  "Time of Day[HH:mm:ss.ms]": [
+    "Time of Day[HH:mm:ss.ms]",
+    "Time of Day [HH:mm:ss.ms]",
+    "time of day[hh:mm:ss.ms]",
+    "time_of_day",
+    "TimeOfDay"
   ]
 }
