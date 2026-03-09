@@ -7,45 +7,34 @@ Produce a stable, paper-oriented research output bundle for the eye-tracking rep
 while preserving the content expectations that were previously associated with an
 `analysis-2` / `research_bundle` output folder.
 
-Pipeline
---------
-1) batch_aoi_metrics.py
-2) optimize_aoi_outputs.py
-3) summarize_aoi_by_condition_group.py
-4) model_aoi_lmm_allocation.py
-5) model_aoi_two_part.py (optional, when scene features are available)
-6) aoi_distribution_diagnostics.py
+Mainline output tracks
+----------------------
+The current mainline now writes two clearly separated result tracks:
+1) full sample
+2) after-QC re-run
 
-Outputs
--------
-results/research_bundle/
-  01_描述性分析_Descriptive/
-    organized_outputs/
-    grouped_overall/
-    grouped_experience/
-  02_显著性分析_Significance/
-    allocation_lmm/
-    allocation_lmm_visuals/
-    two_part_models/
-  98_附录_Appendix/
-    diagnostics/
-    raw_batch_outputs/
-    notes/
+The after-QC track is re-computed from a filtered participant manifest rather than
+only hiding excluded participants in final plots.
 """
 
 from __future__ import annotations
 
 import argparse
+import csv
 import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = REPO_ROOT / "scripts"
+CONFIGS = REPO_ROOT / "configs"
 
+TRACK_ALL_DIRNAME = "00_全样本_AllSample"
+TRACK_QC_DIRNAME = "01_QC后_AfterQC"
 TASK1_DIRNAME = "01_描述性分析_Descriptive"
 TASK2_DIRNAME = "02_显著性分析_Significance"
 TASK3_DIRNAME = "legacy/03_TwoPart模型"
@@ -53,6 +42,8 @@ DIAG_DIRNAME = "98_附录_Appendix/diagnostics"
 COLAB_DIRNAME = "98_附录_Appendix/colab_notes"
 REPORTS_DIRNAME = "98_附录_Appendix/notes"
 RAW_BATCH_DIRNAME = "98_附录_Appendix/raw_batch_outputs"
+QC_EXCLUSION_CONFIG_DEFAULT = CONFIGS / "excluded_participants_qc.csv"
+MANIFEST_ID_CANDIDATES = ("name", "participant_id", "id")
 
 
 def run(cmd: list[str]):
@@ -60,8 +51,86 @@ def run(cmd: list[str]):
     subprocess.check_call(cmd, cwd=str(REPO_ROOT))
 
 
-def write_structure_readme(
-    out_root: Path,
+def load_excluded_participants(path: Path) -> list[str]:
+    if not path.exists():
+        raise SystemExit(f"Missing QC exclusion config: {path}")
+
+    with path.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            raise SystemExit(f"QC exclusion config has no header: {path}")
+        fieldnames = [str(x).strip() for x in reader.fieldnames]
+        id_col = None
+        for cand in MANIFEST_ID_CANDIDATES:
+            if cand in fieldnames:
+                id_col = cand
+                break
+        if id_col is None:
+            raise SystemExit(
+                f"QC exclusion config must contain one of columns: {', '.join(MANIFEST_ID_CANDIDATES)}"
+            )
+        excluded = []
+        for row in reader:
+            pid = str(row.get(id_col, "")).strip()
+            if pid:
+                excluded.append(pid)
+    if not excluded:
+        raise SystemExit(f"QC exclusion config is empty: {path}")
+    return excluded
+
+
+def filter_group_manifest(src_manifest: Path, dst_manifest: Path, excluded_participants: list[str]) -> tuple[str, int, int]:
+    excluded_set = {str(x).strip() for x in excluded_participants if str(x).strip()}
+    if not excluded_set:
+        raise SystemExit("No excluded participants provided for QC filtering")
+
+    with src_manifest.open("r", encoding="utf-8-sig", newline="") as f:
+        reader = csv.DictReader(f)
+        if not reader.fieldnames:
+            raise SystemExit(f"group_manifest has no header: {src_manifest}")
+        fieldnames = [str(x) for x in reader.fieldnames]
+        id_col = None
+        for cand in MANIFEST_ID_CANDIDATES:
+            if cand in fieldnames:
+                id_col = cand
+                break
+        if id_col is None:
+            raise SystemExit(
+                f"group_manifest must contain one of columns: {', '.join(MANIFEST_ID_CANDIDATES)}"
+            )
+
+        rows_kept = []
+        found = set()
+        total_rows = 0
+        for row in reader:
+            total_rows += 1
+            pid = str(row.get(id_col, "")).strip()
+            if pid in excluded_set:
+                found.add(pid)
+                continue
+            rows_kept.append(row)
+
+    missing = sorted(excluded_set - found)
+    if missing:
+        raise SystemExit(
+            "Some QC exclusion participants were not found in group_manifest "
+            f"({src_manifest}): {', '.join(missing)}"
+        )
+
+    dst_manifest.parent.mkdir(parents=True, exist_ok=True)
+    with dst_manifest.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(rows_kept)
+
+    return id_col, total_rows, len(rows_kept)
+
+
+def write_track_readme(
+    track_root: Path,
+    track_label: str,
+    qc_mode: str,
+    excluded_participants: list[str],
     task1: Path,
     task2: Path,
     diag: Path,
@@ -74,15 +143,16 @@ def write_structure_readme(
     lines = [
         "eyetrack 研究输出目录说明",
         "",
-        f"总目录: {out_root.name}",
+        f"当前结果轨道: {track_label}",
+        f"QC口径: {qc_mode}",
         "",
-        "主线只保留两大块:",
+        "本轨道保留两大块主线:",
         f"1. {task1.name}/  -> 描述性分析（主看 overall + Experience）",
         f"2. {task2.name}/  -> 显著性分析（LMM + two-part）",
         "",
         "附录/保留内容:",
-        f"- {diag.relative_to(out_root.parent).as_posix()}/  -> 分布/有效率/重叠等诊断",
-        f"- {raw_batch.relative_to(out_root.parent).as_posix()}/ -> 原始批处理导出（底层表格与 overlay）",
+        f"- {diag.relative_to(track_root).as_posix()}/  -> 分布/有效率/重叠等诊断",
+        f"- {raw_batch.relative_to(track_root).as_posix()}/ -> 原始批处理导出（底层表格与 overlay）",
         "",
         "主线子目录说明:",
         f"- {task1.name}/organized_outputs/: optimize_aoi_outputs.py 整理后的 AOI 结果",
@@ -92,6 +162,12 @@ def write_structure_readme(
         f"- {task2.name}/allocation_lmm_visuals/: 面向解释的显著性分析图形",
         f"- {task2.name}/two_part_models/: two-part 模型结果（若已生成）",
     ]
+    if excluded_participants:
+        lines += [
+            "",
+            "QC排除对象:",
+            *[f"- {name}" for name in excluded_participants],
+        ]
     if autogenerated_scene_features:
         lines.append(f"- 自动生成 scene_features: {autogenerated_scene_features.name}")
     if analysis_csv:
@@ -100,76 +176,94 @@ def write_structure_readme(
         "",
         "兼容说明:",
         "- 旧的 research_bundle / analysis2 / 03_TwoPart模型 等命名保留在兼容入口或 raw/历史分支中。",
-        "- main 分支主路径以当前两大块目录结构为准。",
+        "- main 分支主路径以当前双轨结果结构为准：全样本 + QC后。",
         "",
-        f"更多说明见: {reports.relative_to(out_root.parent).as_posix()}/README.txt 与 {colab.relative_to(out_root.parent).as_posix()}/README.txt",
+        f"更多说明见: {reports.relative_to(track_root).as_posix()}/README.txt 与 {colab.relative_to(track_root).as_posix()}/README.txt",
     ]
+    (track_root / "README_研究输出说明.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_top_level_readme(out_root: Path, excluded_participants: list[str], qc_config_path: Path):
+    lines = [
+        "eyetrack 主线研究输出目录说明",
+        "",
+        f"总目录: {out_root.name}",
+        "",
+        "当前 main 主线明确分成两套结果:",
+        f"1. {TRACK_ALL_DIRNAME}/ -> 全样本结果",
+        f"2. {TRACK_QC_DIRNAME}/ -> QC后结果（重新分析）",
+        "",
+        "说明:",
+        "- QC后结果不是只在图上隐藏被试，而是基于过滤后的 participant manifest 整套重跑。",
+        f"- QC 排除名单配置文件: {qc_config_path.relative_to(REPO_ROOT).as_posix()}",
+        "- 每套结果内部继续保留“描述性分析 / 显著性分析 / 附录”结构。",
+    ]
+    if excluded_participants:
+        lines += ["", "本次 QC 排除对象:", *[f"- {name}" for name in excluded_participants]]
     (out_root / "README_研究输出说明.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def main():
-    ap = argparse.ArgumentParser(description="Run eyetrack research output bundle")
-    ap.add_argument("--group_manifest", required=True)
-    src = ap.add_mutually_exclusive_group(required=True)
-    src.add_argument("--scenes_root", help="Scene-root mode for fresh batch run")
-    src.add_argument("--batch_class_csv", help="Reuse existing batch_aoi_metrics_by_class.csv")
-
-    ap.add_argument("--batch_polygon_csv", default=None, help="Optional existing batch_aoi_metrics_by_polygon.csv when reusing batch outputs")
-    ap.add_argument("--scene_features_csv", default=None, help="Optional scene feature table for two-part/modeling extensions; if omitted in --scenes_root mode, it will be auto-generated")
-    ap.add_argument("--group_id_col", default="name")
-    ap.add_argument("--aoi_json_mode", default="image_stem")
-    ap.add_argument("--screen_w", type=int, default=None)
-    ap.add_argument("--screen_h", type=int, default=None)
-    ap.add_argument("--min_valid_ratio", type=float, default=0.6)
-    ap.add_argument("--out_root", default="results/research_bundle")
-    args = ap.parse_args()
-
-    out_root = REPO_ROOT / args.out_root
-    raw_batch = out_root / RAW_BATCH_DIRNAME
-    task1 = out_root / TASK1_DIRNAME
-    task2 = out_root / TASK2_DIRNAME
-    task3 = out_root / TASK3_DIRNAME
-    diag = out_root / DIAG_DIRNAME
-    colab = out_root / COLAB_DIRNAME
-    reports = out_root / REPORTS_DIRNAME
+def build_single_track(
+    *,
+    track_root: Path,
+    track_label: str,
+    group_manifest: Path,
+    scenes_root: str | None,
+    batch_class_csv: str | None,
+    batch_polygon_csv: str | None,
+    scene_features_csv: str | None,
+    group_id_col: str,
+    aoi_json_mode: str,
+    screen_w: int | None,
+    screen_h: int | None,
+    min_valid_ratio: float,
+    excluded_participants: list[str],
+):
+    raw_batch = track_root / RAW_BATCH_DIRNAME
+    task1 = track_root / TASK1_DIRNAME
+    task2 = track_root / TASK2_DIRNAME
+    task3 = track_root / TASK3_DIRNAME
+    diag = track_root / DIAG_DIRNAME
+    colab = track_root / COLAB_DIRNAME
+    reports = track_root / REPORTS_DIRNAME
     for p in [raw_batch, task1, task2, task3, diag, colab, reports]:
         p.mkdir(parents=True, exist_ok=True)
 
-    if args.scenes_root:
+    if scenes_root:
         batch_out = raw_batch
         cmd = [
             sys.executable,
             str(SCRIPTS / "batch_aoi_metrics.py"),
-            "--group_manifest", args.group_manifest,
-            "--scenes_root", args.scenes_root,
-            "--aoi_json_mode", args.aoi_json_mode,
+            "--group_manifest", str(group_manifest),
+            "--scenes_root", scenes_root,
+            "--aoi_json_mode", aoi_json_mode,
             "--unmatched_csv", "error",
             "--outdir", str(batch_out),
             "--dwell_mode", "fixation",
             "--point_source", "fixation",
             "--require_validity",
-            "--min_valid_ratio", str(args.min_valid_ratio),
+            "--min_valid_ratio", str(min_valid_ratio),
             "--report_time_segments",
             "--report_class_overlap",
             "--export_aoi_overlay",
         ]
-        if args.screen_w is not None and args.screen_h is not None:
-            cmd += ["--screen_w", str(args.screen_w), "--screen_h", str(args.screen_h), "--image_match", "error"]
+        if screen_w is not None and screen_h is not None:
+            cmd += ["--screen_w", str(screen_w), "--screen_h", str(screen_h), "--image_match", "error"]
         run(cmd)
         class_csv = batch_out / "batch_aoi_metrics_by_class.csv"
         poly_csv = batch_out / "batch_aoi_metrics_by_polygon.csv"
     else:
-        class_csv = Path(args.batch_class_csv)
-        poly_csv = Path(args.batch_polygon_csv) if args.batch_polygon_csv else None
-        if not class_csv.exists():
-            raise SystemExit(f"Missing batch_class_csv: {class_csv}")
+        class_csv = Path(batch_class_csv) if batch_class_csv else None
+        poly_csv = Path(batch_polygon_csv) if batch_polygon_csv else None
+        if class_csv is None or not class_csv.exists():
+            raise SystemExit(f"Missing batch_class_csv: {batch_class_csv}")
 
     cmd = [
         sys.executable,
         str(SCRIPTS / "optimize_aoi_outputs.py"),
         "--aoi_class_csv", str(class_csv),
-        "--group_manifest", args.group_manifest,
-        "--group_id_col", args.group_id_col,
+        "--group_manifest", str(group_manifest),
+        "--group_id_col", group_id_col,
         "--outdir", str(task1 / "organized_outputs"),
     ]
     if poly_csv and poly_csv.exists():
@@ -181,8 +275,8 @@ def main():
         sys.executable,
         str(SCRIPTS / "summarize_aoi_by_condition_group.py"),
         "--aoi_class_csv", str(class_csv),
-        "--group_manifest", args.group_manifest,
-        "--group_id_col", args.group_id_col,
+        "--group_manifest", str(group_manifest),
+        "--group_id_col", group_id_col,
         "--outdir", str(summary_root),
         "--include_round",
     ])
@@ -202,8 +296,8 @@ def main():
         sys.executable,
         str(SCRIPTS / "model_aoi_lmm_allocation.py"),
         "--aoi_class_csv", str(class_csv),
-        "--group_manifest", args.group_manifest,
-        "--group_id_col", args.group_id_col,
+        "--group_manifest", str(group_manifest),
+        "--group_id_col", group_id_col,
         "--outdir", str(task2 / "allocation_lmm"),
     ])
 
@@ -211,8 +305,8 @@ def main():
         sys.executable,
         str(SCRIPTS / "plot_aoi_lmm_explanatory.py"),
         "--aoi_class_csv", str(class_csv),
-        "--group_manifest", args.group_manifest,
-        "--group_id_col", args.group_id_col,
+        "--group_manifest", str(group_manifest),
+        "--group_id_col", group_id_col,
         "--outdir", str(task2 / "allocation_lmm_visuals"),
     ])
 
@@ -223,29 +317,29 @@ def main():
         "--outdir", str(diag / "distribution"),
     ])
 
-    scene_features_csv = args.scene_features_csv
+    effective_scene_features_csv = scene_features_csv
     autogenerated_scene_features = None
     analysis_csv = None
-    if (not scene_features_csv) and args.scenes_root:
-        autogenerated_scene_features = out_root / "scene_features_autogenerated.csv"
+    if (not effective_scene_features_csv) and scenes_root:
+        autogenerated_scene_features = track_root / "scene_features_autogenerated.csv"
         run([
             sys.executable,
             str(SCRIPTS / "generate_scene_features.py"),
             "--aoi_class_csv", str(class_csv),
-            "--scenes_root", args.scenes_root,
-            "--group_manifest", args.group_manifest,
-            "--aoi_json_mode", args.aoi_json_mode,
+            "--scenes_root", scenes_root,
+            "--group_manifest", str(group_manifest),
+            "--aoi_json_mode", aoi_json_mode,
             "--out_csv", str(autogenerated_scene_features),
         ])
-        scene_features_csv = str(autogenerated_scene_features)
+        effective_scene_features_csv = str(autogenerated_scene_features)
 
-    if scene_features_csv:
-        analysis_csv = out_root / "significance_analysis_table.csv"
+    if effective_scene_features_csv:
+        analysis_csv = track_root / "significance_analysis_table.csv"
         run([
             sys.executable,
             str(SCRIPTS / "merge_scene_features.py"),
             "--aoi_class_csv", str(class_csv),
-            "--scene_features_csv", str(scene_features_csv),
+            "--scene_features_csv", str(effective_scene_features_csv),
             "--out_csv", str(analysis_csv),
         ])
         run([
@@ -259,10 +353,12 @@ def main():
 
     report_note = (
         "Canonical research output bundle for eyetrack.\n"
-        "Main branch now emphasizes two top-level blocks only: descriptive analysis and significance analysis.\n"
-        f"Main reading path: {TASK1_DIRNAME} -> {TASK2_DIRNAME}.\n"
-        f"Appendix/raw path: {DIAG_DIRNAME} + {RAW_BATCH_DIRNAME}.\n"
+        f"Current track: {track_label}\n"
+        f"Main reading path: {task1.name} -> {task2.name}.\n"
+        f"Appendix/raw path: {diag.relative_to(track_root).as_posix()} + {raw_batch.relative_to(track_root).as_posix()}.\n"
     )
+    if excluded_participants:
+        report_note += "QC exclusion participants: " + ", ".join(excluded_participants) + "\n"
     if autogenerated_scene_features:
         report_note += f"Auto-generated scene_features_csv: {autogenerated_scene_features}\n"
     if analysis_csv:
@@ -271,12 +367,16 @@ def main():
 
     (colab / "README.txt").write_text(
         "Use scripts/run_colab_one_command.py in Colab for mixed-size scene folders.\n"
-        "The top-level output folder keeps the 研究输出_时间戳 convention, but inside main branch it now emphasizes 01_描述性分析_Descriptive and 02_显著性分析_Significance.\n",
+        "The top-level output folder keeps the 研究输出_时间戳 convention, and now contains two result tracks: 00_全样本_AllSample and 01_QC后_AfterQC.\n",
         encoding="utf-8",
     )
 
-    write_structure_readme(
-        out_root=out_root,
+    qc_mode = "全样本（不额外排除参与者）" if not excluded_participants else "QC后重跑（基于过滤后的 participant manifest）"
+    write_track_readme(
+        track_root=track_root,
+        track_label=track_label,
+        qc_mode=qc_mode,
+        excluded_participants=excluded_participants,
         task1=task1,
         task2=task2,
         diag=diag,
@@ -287,7 +387,82 @@ def main():
         analysis_csv=analysis_csv,
     )
 
+
+def main():
+    ap = argparse.ArgumentParser(description="Run eyetrack research output bundle with full-sample and QC-rerun tracks")
+    ap.add_argument("--group_manifest", required=True)
+    src = ap.add_mutually_exclusive_group(required=True)
+    src.add_argument("--scenes_root", help="Scene-root mode for fresh batch run")
+    src.add_argument("--batch_class_csv", help="Reuse existing batch_aoi_metrics_by_class.csv")
+
+    ap.add_argument("--batch_polygon_csv", default=None, help="Optional existing batch_aoi_metrics_by_polygon.csv when reusing batch outputs")
+    ap.add_argument("--scene_features_csv", default=None, help="Optional scene feature table for two-part/modeling extensions; if omitted in --scenes_root mode, it will be auto-generated")
+    ap.add_argument("--group_id_col", default="name")
+    ap.add_argument("--aoi_json_mode", default="image_stem")
+    ap.add_argument("--screen_w", type=int, default=None)
+    ap.add_argument("--screen_h", type=int, default=None)
+    ap.add_argument("--min_valid_ratio", type=float, default=0.6)
+    ap.add_argument("--out_root", default="results/research_bundle")
+    ap.add_argument("--qc_exclusion_csv", default=str(QC_EXCLUSION_CONFIG_DEFAULT), help="CSV config listing participants excluded in the QC rerun")
+    args = ap.parse_args()
+
+    out_root = REPO_ROOT / args.out_root
+    out_root.mkdir(parents=True, exist_ok=True)
+
+    excluded_participants = load_excluded_participants(Path(args.qc_exclusion_csv))
+
+    all_track_root = out_root / TRACK_ALL_DIRNAME
+    build_single_track(
+        track_root=all_track_root,
+        track_label="全样本 / All Sample",
+        group_manifest=Path(args.group_manifest),
+        scenes_root=args.scenes_root,
+        batch_class_csv=args.batch_class_csv,
+        batch_polygon_csv=args.batch_polygon_csv,
+        scene_features_csv=args.scene_features_csv,
+        group_id_col=args.group_id_col,
+        aoi_json_mode=args.aoi_json_mode,
+        screen_w=args.screen_w,
+        screen_h=args.screen_h,
+        min_valid_ratio=args.min_valid_ratio,
+        excluded_participants=[],
+    )
+
+    with tempfile.TemporaryDirectory(prefix="eyetrack_qc_") as tmpdir:
+        filtered_manifest = Path(tmpdir) / "group_manifest_after_qc.csv"
+        manifest_id_col, total_rows, kept_rows = filter_group_manifest(
+            src_manifest=Path(args.group_manifest),
+            dst_manifest=filtered_manifest,
+            excluded_participants=excluded_participants,
+        )
+        print(
+            "[qc] filtered group_manifest",
+            f"id_col={manifest_id_col}",
+            f"total_rows={total_rows}",
+            f"kept_rows={kept_rows}",
+            f"excluded={len(excluded_participants)}",
+        )
+        qc_track_root = out_root / TRACK_QC_DIRNAME
+        build_single_track(
+            track_root=qc_track_root,
+            track_label="QC后 / After QC",
+            group_manifest=filtered_manifest,
+            scenes_root=args.scenes_root,
+            batch_class_csv=args.batch_class_csv,
+            batch_polygon_csv=args.batch_polygon_csv,
+            scene_features_csv=args.scene_features_csv,
+            group_id_col=args.group_id_col,
+            aoi_json_mode=args.aoi_json_mode,
+            screen_w=args.screen_w,
+            screen_h=args.screen_h,
+            min_valid_ratio=args.min_valid_ratio,
+            excluded_participants=excluded_participants,
+        )
+
+    write_top_level_readme(out_root, excluded_participants, Path(args.qc_exclusion_csv))
     print("Saved research output bundle to:", out_root)
+    print("  - full sample:", all_track_root)
+    print("  - after QC:", out_root / TRACK_QC_DIRNAME)
 
 
 if __name__ == "__main__":
