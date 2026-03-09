@@ -12,6 +12,10 @@ The current inferential mainline is:
 
 - `allocation_lmm/`
   - especially `groupvar_Experience/`
+  - and inside it, the three explicit LMM family folders:
+    - `01_main_effects/`
+    - `02_two_way_interactions/`
+    - `03_three_way_interaction/`
 - plus `allocation_lmm_visuals/` as explanatory companion figures
 - plus `two_part_models/` only when scene-feature questions are central
 
@@ -52,17 +56,24 @@ These are useful for support, mechanism discussion, or supplement tables, but sh
 
 Recommended entry:
 
-1. `model_stability_summary.csv`
-2. `evidence_stability_overview_<GroupVar>.png`
-3. For each primary outcome:
-   - `model_fit_<outcome>.csv`
-   - `fixef_<outcome>.csv`
-   - `contrasts_<outcome>.csv`
-   - `evidence_fixef_key_terms_<outcome>.png`
-   - `evidence_contrasts_<outcome>.png`
-4. `evidence_model_fit_overview_<GroupVar>.png`
-5. `ranef_<outcome>.csv` when variance decomposition is needed
-6. `forest_fixef_<outcome>.png` for compact audit / appendix support
+1. `model_family_index.csv`
+2. `three_model_packet_summary.csv`
+3. Then enter the three family folders in this order:
+   - `01_main_effects/`
+   - `02_two_way_interactions/`
+   - `03_three_way_interaction/`
+4. Within each family folder:
+   - `model_stability_summary.csv`
+   - `evidence_stability_overview_<GroupVar>.png`
+   - `evidence_model_fit_overview_<GroupVar>.png`
+   - For each primary outcome:
+     - `model_fit_<outcome>.csv`
+     - `fixef_<outcome>.csv`
+     - `contrasts_<outcome>.csv` (interaction families first; main-effects family may omit or de-emphasize this)
+     - `evidence_fixef_key_terms_<outcome>.png`
+     - `evidence_contrasts_<outcome>.png` when contrasts are exported
+   - `ranef_<outcome>.csv` when variance decomposition is needed
+   - `forest_fixef_<outcome>.png` for compact audit / appendix support
 
 ## 4. How the main evidence pieces map to each other
 
@@ -83,9 +94,10 @@ For one outcome, treat the files as one packet:
 
 So the practical workflow is:
 
-- use `model_stability_summary.csv` to decide whether an outcome is eligible for the main text
-- use `model_fit_<outcome>.csv` + `fixef_<outcome>.csv` for the core statistical claim
-- use `contrasts_<outcome>.csv` for simple-effect wording and reviewer response
+- use `three_model_packet_summary.csv` to decide which model family and outcome are eligible for the main text
+- within a family, use `model_stability_summary.csv` to check stability before quoting effects
+- use `model_fit_<outcome>.csv` + `fixef_<outcome>.csv` for the core statistical claim in that family
+- use `contrasts_<outcome>.csv` mainly for the two-way / three-way interaction families when you need simple-effect wording and reviewer response support
 - use evidence PNGs for compact communication in manuscript drafting / supplement / rebuttal
 
 ## 5. Experience vs overall

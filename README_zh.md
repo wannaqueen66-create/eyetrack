@@ -159,21 +159,23 @@ python scripts/run_colab_one_command.py \
 ### 每套 `02_显著性分析_Significance` 内部建议阅读顺序
 全样本与 QC 后两套结果，建议都按同一顺序读：
 
-1. `allocation_lmm/groupvar_Experience/model_stability_summary.csv`  
-   先做稳定性分诊，先分清哪些 outcome 可以当主结果、哪些只能谨慎引用。
-2. `allocation_lmm/groupvar_Experience/evidence_stability_overview_Experience.png`  
-   这是给论文/审稿沟通最快的一张稳定性总览图。
-3. 先只看主显著性指标：`share_pct`、`share_logit`、`FC_share`、`fc_share_logit`、`FC_rate`、`tfd_y`、`ttff_y`、`fc_y`。
-4. 对每个主指标，再按一个固定包读取：
+1. `allocation_lmm/groupvar_Experience/model_family_index.csv`  
+   先看三套 LMM 家族的索引：main effects / two-way interactions / three-way interaction。
+2. `allocation_lmm/groupvar_Experience/three_model_packet_summary.csv`  
+   这是最快的一张三模型总览表，用来判断哪些 outcome × family 足够稳定，可以进入主结果。
+3. 然后按 `01_main_effects` → `02_two_way_interactions` → `03_three_way_interaction` 的顺序进入各模型家族文件夹。
+4. 先只看主显著性指标：`share_pct`、`share_logit`、`FC_share`、`fc_share_logit`、`FC_rate`、`tfd_y`、`ttff_y`、`fc_y`。
+5. 对每个主指标，在对应模型家族内再按一个固定包读取：
+   - `model_stability_summary.csv` / `evidence_stability_overview_Experience.png`
    - `model_fit_<outcome>.csv` → 模型是否可用
-   - `fixef_<outcome>.csv` → fixed effects 主表
-   - `contrasts_<outcome>.csv` → 围绕 WWR × Complexity × Group 的 simple effects / contrasts
+   - `fixef_<outcome>.csv` → 该模型家族下的 fixed effects 主表
+   - `contrasts_<outcome>.csv` → 面向 simple effects / 审稿回复的 contrasts，主要看交互模型家族
    - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → 面向论文和审稿回复的证据图
-5. `allocation_lmm_visuals/`  
+6. `allocation_lmm_visuals/`  
    作为解释图、辅图来读，不要替代核心统计表。
-6. `two_part_models/`  
+7. `two_part_models/`  
    当 scene feature 问题是主问题时再并入主线；否则可放补充。
-7. `ffd_y`、`mfd_y`、`rff_y`、`MPD` 这些探索性指标，优先放补充或机制讨论。
+8. `ffd_y`、`mfd_y`、`rff_y`、`MPD` 这些探索性指标，优先放补充或机制讨论。
 
 ### `overall` 与 `Experience` 在显著性主线里的关系
 - `overall` 继续保留在**描述性主线**里，适合交代水平、分布、整体形态。

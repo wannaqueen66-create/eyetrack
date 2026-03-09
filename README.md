@@ -158,22 +158,24 @@ Start at:
 ### Recommended inferential reading order inside each `02_显著性分析_Significance`
 Use the same reading order for both full-sample and after-QC tracks:
 
-1. `allocation_lmm/groupvar_Experience/model_stability_summary.csv`  
-   First triage table. Decide which outcomes are stable / caution / unstable before quoting effects.
-2. `allocation_lmm/groupvar_Experience/evidence_stability_overview_Experience.png`  
-   Fast reviewer-facing summary of which outcomes are safe as main-result candidates.
-3. Primary outcomes only: `share_pct`, `share_logit`, `FC_share`, `fc_share_logit`, `FC_rate`, `tfd_y`, `ttff_y`, `fc_y`  
+1. `allocation_lmm/groupvar_Experience/model_family_index.csv`  
+   First map of the three LMM families: main effects / two-way interactions / three-way interaction.
+2. `allocation_lmm/groupvar_Experience/three_model_packet_summary.csv`  
+   Fast reviewer-facing summary of which outcomes/families are stable enough as main-result candidates.
+3. Then enter the three family folders in order: `01_main_effects` → `02_two_way_interactions` → `03_three_way_interaction`.
+4. Primary outcomes only: `share_pct`, `share_logit`, `FC_share`, `fc_share_logit`, `FC_rate`, `tfd_y`, `ttff_y`, `fc_y`  
    Read them in that order unless your paper question needs a different emphasis.
-4. For each primary outcome, read the files as a linked packet:
+5. Inside each family folder, read the files as a linked packet:
+   - `model_stability_summary.csv` / `evidence_stability_overview_Experience.png`
    - `model_fit_<outcome>.csv` → whether the model fit is usable
-   - `fixef_<outcome>.csv` → omnibus fixed effects / coefficient table
-   - `contrasts_<outcome>.csv` → reviewer-facing simple effects around WWR × Complexity × Group
+   - `fixef_<outcome>.csv` → omnibus fixed effects / coefficient table for that family
+   - `contrasts_<outcome>.csv` → reviewer-facing simple effects, mainly for the interaction families
    - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → fast communication PNGs
-5. `allocation_lmm_visuals/`  
+6. `allocation_lmm_visuals/`  
    Use as explanatory companion figures, not as the first evidence source.
-6. `two_part_models/`  
+7. `two_part_models/`  
    Use when scene-feature questions are central and the track generated them.
-7. Exploratory outcomes (`ffd_y`, `mfd_y`, `rff_y`, `MPD`)  
+8. Exploratory outcomes (`ffd_y`, `mfd_y`, `rff_y`, `MPD`)  
    Keep for supplement / mechanism discussion unless they are the explicit study target.
 
 ### About `overall` vs `Experience` on the inferential mainline

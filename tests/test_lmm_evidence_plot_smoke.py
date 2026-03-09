@@ -122,6 +122,11 @@ def test_evidence_plot_smoke(tmp_path):
         {'term': 'C(class_name)[T.window]:WWR_z:C(Experience)[T.High]', 'coef': 0.4, 'se': 0.15, 'test_stat': 2.67, 'p': 0.008, 'ci_low': 0.11, 'ci_high': 0.69, 'abs_test': 2.67},
     ])
 
+    stab['model_family'] = 'two_way_interactions'
+    fit['model_family'] = 'two_way_interactions'
+    contrasts['model_family'] = 'two_way_interactions'
+    fixef['model_family'] = 'two_way_interactions'
+
     mod._plot_stability_overview(stab, tmp_path / 'evidence_stability_overview_Experience.png', 'Experience')
     mod._plot_model_fit_overview(fit, tmp_path / 'evidence_model_fit_overview_Experience.png', 'Experience')
     mod._plot_contrasts_overview(contrasts, tmp_path / 'evidence_contrasts_share_pct.png', 'Experience', 'share_pct')

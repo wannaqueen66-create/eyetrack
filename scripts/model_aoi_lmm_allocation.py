@@ -990,102 +990,117 @@ def _plot_fixef_terms_overview(fixef_df: pd.DataFrame, out_png: Path, group_var:
     plt.close(fig)
 
 
+def _model_family_specs(group_var: str) -> list[dict]:
+    return [
+        {
+            "family_key": "01_main_effects",
+            "family_slug": "main_effects",
+            "family_title": "Main effects",
+            "family_terms_label": "WWR + Complexity + Group",
+            "formula_rhs": f"C(class_name) * (WWR_z + Complexity_z + C({group_var}))",
+            "export_contrasts": False,
+        },
+        {
+            "family_key": "02_two_way_interactions",
+            "family_slug": "two_way_interactions",
+            "family_title": "Two-way interactions",
+            "family_terms_label": "WWR*Complexity + WWR*Group + Complexity*Group",
+            "formula_rhs": f"C(class_name) * (WWR_z*Complexity_z + WWR_z*C({group_var}) + Complexity_z*C({group_var}))",
+            "export_contrasts": True,
+        },
+        {
+            "family_key": "03_three_way_interaction",
+            "family_slug": "three_way_interaction",
+            "family_title": "Three-way interaction",
+            "family_terms_label": "WWR*Complexity*Group",
+            "formula_rhs": f"C(class_name) * WWR_z * Complexity_z * C({group_var})",
+            "export_contrasts": True,
+        },
+    ]
+
+
 def _write_group_readme(gdir: Path, group_var: str):
     text = f"""AOI allocation LMM report: {group_var}
 
 What is the main line here?
 ---------------------------
 This folder is the inferential mainline for {group_var}.
-Read it in a fixed order instead of jumping between tables and PNGs.
+The outputs are now split into three explicit LMM model families so that
+main effects, two-way interactions, and the three-way interaction are read separately.
+
+Three-model structure
+---------------------
+1. 01_main_effects/
+   Core additive model: WWR + Complexity + Group
+2. 02_two_way_interactions/
+   Pairwise interaction model: WWR*Complexity + WWR*Group + Complexity*Group
+3. 03_three_way_interaction/
+   Full interaction model: WWR*Complexity*Group
+
+All three model families keep AOI class in the fixed-effects structure and adjust for round when available.
+Use the folders above as three clearly separated evidence packets rather than mixing coefficients across families.
 
 Recommended reading order
 -------------------------
-1. model_stability_summary.csv
-   First triage table. Decide which outcomes are stable / caution / unstable.
-2. evidence_stability_overview_{group_var}.png
-   Fast reviewer-facing overview of which outcomes are main-result candidates.
-3. Main-result outcomes first:
-   - share_pct / share_logit
-   - FC_share / fc_share_logit
-   - FC_rate
-   - tfd_y
-   - ttff_y
-   - fc_y
-4. For each main-result outcome, read one linked packet:
-   - model_fit_<outcome>.csv
-   - fixef_<outcome>.csv
-   - contrasts_<outcome>.csv
-   - evidence_fixef_key_terms_<outcome>.png
-   - evidence_contrasts_<outcome>.png
-5. Use ranef_<outcome>.csv when you need variance decomposition / random-effect reporting.
-6. Treat ffd_y / mfd_y / rff_y / MPD as supplementary or exploratory unless they are the explicit target of the study.
+1. model_family_index.csv
+   Fast map of the three LMM families and how they should be interpreted.
+2. three_model_packet_summary.csv
+   One-row-per-group_var × outcome × model_family summary. Use it to see which metrics were connected and which family looks stable.
+3. For your main inferential path, open the folders in this order:
+   - 01_main_effects/
+   - 02_two_way_interactions/
+   - 03_three_way_interaction/
+4. Inside each family folder, read in this order:
+   - model_stability_summary.csv
+   - evidence_stability_overview_{group_var}.png
+   - evidence_model_fit_overview_{group_var}.png
+   - for each primary outcome: model_fit -> fixef -> forest/evidence_fixef_key_terms -> contrasts/evidence_contrasts (if exported)
+
+Primary / headline outcomes
+---------------------------
+Read these first unless your study question explicitly prioritizes another metric:
+- share_pct
+- share_logit
+- FC_share
+- fc_share_logit
+- FC_rate
+- tfd_y
+- ttff_y
+- fc_y
+
+Supplementary / exploratory outcomes
+------------------------------------
+- ffd_y
+- mfd_y
+- rff_y
+- MPD
 
 How files relate to each other
 ------------------------------
-- model_fit_<outcome>.csv
-  Tells you whether the model fit is usable and how much variation is explained.
-- fixef_<outcome>.csv
-  Omnibus fixed-effect coefficient table; use this for the main parameter evidence.
-- contrasts_<outcome>.csv
-  Simple-effects / reviewer-facing contrast table around WWR × Complexity × {group_var}.
-- evidence_model_fit_overview_{group_var}.png
-  One-figure summary of fit quality across outcomes.
-- evidence_fixef_key_terms_<outcome>.png
-  Figure version of the key non-intercept fixed effects for one outcome.
-- evidence_contrasts_<outcome>.png
-  Figure version of the main contrasts for one outcome.
-- forest_fixef_<outcome>.png
-  Compact fixed-effect forest plot for audit / appendix / quick scanning.
-- *_data.csv companions
-  Exact tabular export behind the evidence PNGs.
-
-Files in this folder
---------------------
 - model_stability_summary.csv
-  One-row-per-model stability triage table. Read this first.
-- group_size_summary_{group_var}.csv
-  Sample-size summary by group (participants / rows / scenes). Use this to explain unbalanced designs.
-- README_model_stability.txt
-  Explains the grading rules and the recommended reading order.
-- model_<outcome>.txt
-  Raw statsmodels MixedLM summary for audit / troubleshooting.
+  Family-specific triage table. Decide which outcomes are stable / caution / unstable within that model family.
+- model_fit_<outcome>.csv
+  Fit quality, R², convergence, sample size, and stability fields for one outcome within one model family.
 - fixef_<outcome>.csv
   Fixed-effect table with coefficient, SE, Wald z, p, and 95% CI.
 - ranef_<outcome>.csv
-  Random-effect variance components (participant intercept, scene variance component if available, residual variance).
-- model_fit_<outcome>.csv
-  Model fit information including AIC, BIC, logLik, nobs, convergence, approximate marginal/conditional R², and embedded stability fields.
+  Random-effect variance decomposition.
 - contrasts_<outcome>.csv
-  Key simple effects around WWR × Complexity × {group_var}, exported as linear contrasts from the fixed-effect covariance matrix.
+  Reviewer-facing linear contrasts. Exported for the interaction families by default.
 - forest_fixef_<outcome>.png
-  Forest plot of the strongest fixed effects by |z|, with inline effect/CI labels and a stability tag in the title.
-- forest_fixef_<outcome>_data.csv
-  Companion table for the forest plot (same terms/order and rendered labels).
-- evidence_stability_overview_{group_var}.png
-  Reviewer-friendly stability summary: one heatmap-like row across outcomes + triage count bar.
-- evidence_stability_overview_{group_var}_data.csv
-  Companion table for the stability overview.
-- evidence_model_fit_overview_{group_var}.png
-  Reviewer-friendly model-fit summary: marginal vs conditional R² plus AIC/BIC overview.
-- evidence_model_fit_overview_{group_var}_data.csv
-  Companion table for the model-fit overview.
-- evidence_contrasts_<outcome>.png
-  Reviewer-friendly contrast plot with effect estimates and 95% CI grouped by contrast family.
-- evidence_contrasts_<outcome>_data.csv
-  Companion table for the contrast plot.
+  Compact audit/appendix forest plot.
 - evidence_fixef_key_terms_<outcome>.png
-  Reviewer-friendly fixed-effect summary of the most important non-intercept terms.
-- evidence_fixef_key_terms_<outcome>_data.csv
-  Companion table for the fixed-effect summary.
+  Cleaner summary of the key non-intercept fixed effects.
+- evidence_contrasts_<outcome>.png
+  Cleaner summary of the main contrasts when that family exports contrasts.
+- *_data.csv companions
+  Exact tabular exports behind the PNGs.
 
-How to interpret
-----------------
-1. Start with model_stability_summary.csv and identify whether each outcome is stable / caution / unstable.
-2. For stable models, then inspect model_fit_<outcome>.csv and fixef_<outcome>.csv.
-3. Use contrasts_<outcome>.csv for reviewer-facing simple-effects reporting around the target interaction.
-4. For quick reviewer communication, open the evidence PNGs: stability overview first, then model-fit overview, then the per-outcome contrasts/fixef summaries.
-5. Use ranef_<outcome>.csv to report variance decomposition / random intercept components.
-6. If a model is caution/unstable, treat it as supplementary unless you can justify the warnings.
+Interpretation rule of thumb
+----------------------------
+- 01_main_effects answers: are there overall additive shifts by WWR, Complexity, or Group?
+- 02_two_way_interactions answers: do pairwise combinations matter?
+- 03_three_way_interaction answers: does the WWR × Complexity pattern itself differ by Group?
 
 Stability grades
 ----------------
@@ -1093,19 +1108,12 @@ Stability grades
 - caution: fit converged, but warnings suggest singular/boundary random effects, near-zero random variances, or other softer optimizer concerns.
 - unstable: non-converged, Hessian non-PD, or SE/CI output is abnormal/non-finite.
 
-R² definition
--------------
-Approximate Nakagawa-style Gaussian mixed-model R²:
-- marginal R² = Var(Xβ) / [Var(Xβ) + ΣVar(random intercepts) + Var(residual)]
-- conditional R² = [Var(Xβ) + ΣVar(random intercepts)] / [Var(Xβ) + ΣVar(random intercepts) + Var(residual)]
-
 Contrast note
 -------------
 Contrasts are estimated from the fixed-effect design matrix while averaging over observed round proportions when round is included.
 This keeps round as a nuisance adjustment rather than forcing a single arbitrary round level.
 """
     (gdir / "README_LMM_report.txt").write_text(text, encoding="utf-8")
-
 
 def _write_stability_readme(outdir: Path):
     text = f"""Model stability grading for AOI allocation LMM outputs
@@ -1186,6 +1194,59 @@ def _write_group_size_summary(df: pd.DataFrame, outdir: Path, group_var: str):
     if group_var in gdf.columns:
         gdf = gdf.drop(columns=[group_var])
     gdf.to_csv(outdir / f'group_size_summary_{group_var}.csv', index=False, encoding='utf-8-sig')
+
+def _write_model_family_index(gdir: Path, group_var: str):
+    rows = []
+    for spec in _model_family_specs(group_var):
+        rows.append(
+            {
+                "group_var": group_var,
+                "model_family": spec["family_slug"],
+                "family_dir": spec["family_key"],
+                "family_title": spec["family_title"],
+                "terms": spec["family_terms_label"],
+                "formula_rhs": spec["formula_rhs"],
+                "contrasts_exported": bool(spec.get("export_contrasts", False)),
+            }
+        )
+    pd.DataFrame(rows).to_csv(gdir / "model_family_index.csv", index=False, encoding="utf-8-sig")
+
+
+def _collect_packet_summary_rows(group_dir: Path, group_var: str) -> list[dict]:
+    rows: list[dict] = []
+    for spec in _model_family_specs(group_var):
+        fdir = group_dir / spec["family_key"]
+        if not fdir.exists():
+            continue
+        stab_fp = fdir / "model_stability_summary.csv"
+        if not stab_fp.exists():
+            continue
+        try:
+            stab = pd.read_csv(stab_fp, encoding="utf-8-sig")
+        except Exception:
+            continue
+        if stab.empty:
+            continue
+        stab = stab.copy()
+        stab.insert(0, "model_family", spec["family_slug"])
+        stab.insert(0, "family_dir", spec["family_key"])
+        stab.insert(0, "family_title", spec["family_title"])
+        for col in ["group_var", "outcome", "outcome_label", "subset", "n", "formula", "stability_grade", "stability_grade_rank", "stability_reasons", "warning_count", "aic", "bic", "logLik"]:
+            if col not in stab.columns:
+                stab[col] = np.nan
+        rows.extend(stab[["group_var", "family_dir", "model_family", "family_title", "outcome", "outcome_label", "subset", "n", "formula", "stability_grade", "stability_grade_rank", "stability_reasons", "warning_count", "aic", "bic", "logLik"]].to_dict("records"))
+    return rows
+
+
+def _write_three_model_packet_summary(gdir: Path, group_var: str):
+    rows = _collect_packet_summary_rows(gdir, group_var)
+    if not rows:
+        return
+    df = pd.DataFrame(rows)
+    if "stability_grade_rank" in df.columns:
+        df = df.sort_values(["outcome", "stability_grade_rank", "family_dir"], ascending=[True, True, True])
+    df.to_csv(gdir / "three_model_packet_summary.csv", index=False, encoding="utf-8-sig")
+
 
 
 def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
@@ -1295,7 +1356,7 @@ def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="AOI allocation LMM (Experience & SportFreq) with fuller report export")
+    ap = argparse.ArgumentParser(description="AOI allocation LMM (Experience & SportFreq) with three explicit model families and fuller report export")
     ap.add_argument("--aoi_class_csv", required=True)
     ap.add_argument("--group_manifest", default=None)
     ap.add_argument("--group_id_col", default="name", help="ID column in group_manifest (default: name)")
@@ -1331,7 +1392,8 @@ def main():
         f"vc_scene_col: {vc_scene_col}",
         f"stability_ci_alpha_default: {CI_ALPHA_DEFAULT}",
         f"stability_random_var_tol: {RANDOM_VAR_TOL}",
-        "outputs: model_stability_summary / fixef / ranef / model_fit / contrasts / forest plot / raw summary txt",
+        "model_families: 01_main_effects / 02_two_way_interactions / 03_three_way_interaction",
+        "outputs: family index / packet summary / stability / fixef / ranef / model_fit / contrasts / forest plot / evidence PNG / raw summary txt",
     ]
 
     for gv in group_vars:
@@ -1339,178 +1401,202 @@ def main():
         _write_group_readme(gdir, gv)
         _write_stability_readme(gdir)
         _write_group_size_summary(df, gdir, gv)
-        stability_rows: list[dict] = []
+        _write_model_family_index(gdir, gv)
 
-        for ycol, subset_note in outcomes:
-            if ycol not in df.columns:
-                continue
+        family_specs = _model_family_specs(gv)
+        for spec in family_specs:
+            fam_dir = _ensure_dir(gdir / spec["family_key"])
+            stability_rows: list[dict] = []
 
-            d = df.copy()
-            d = d.dropna(subset=[ycol, "WWR_z", "Complexity_z", "class_name", gv, "participant_id"])
-            if "visited==1" in subset_note:
-                d = d[d["visited"] == 1].copy()
-            d = d.copy()
-            d[gv] = d[gv].apply(_norm_hilo)
-            d = d.dropna(subset=[gv])
+            for ycol, subset_note in outcomes:
+                if ycol not in df.columns:
+                    continue
 
-            base_summary = {
-                "group_var": gv,
-                "outcome": ycol,
-                "outcome_label": OUTCOME_LABELS.get(ycol, ycol),
-                "subset": subset_note,
-                "n": int(len(d)),
-                "formula": "",
-                "stability_grade": "unstable",
-                "stability_grade_rank": 3,
-                "stability_reasons": "not_run",
-                "stability_notes": "Model was not fit.",
-            }
+                d = df.copy()
+                d = d.dropna(subset=[ycol, "WWR_z", "Complexity_z", "class_name", gv, "participant_id"])
+                if "visited==1" in subset_note:
+                    d = d[d["visited"] == 1].copy()
+                d = d.copy()
+                d[gv] = d[gv].apply(_norm_hilo)
+                d = d.dropna(subset=[gv])
 
-            if len(d) < args.min_rows:
-                (gdir / f"model_{ycol}.txt").write_text(
-                    f"SKIP: too few rows for outcome={ycol} (n={len(d)}; min_rows={args.min_rows})\n",
-                    encoding="utf-8",
-                )
-                base_summary.update(
-                    {
-                        "stability_reasons": "too_few_rows",
-                        "stability_notes": f"Skipped because n={len(d)} < min_rows={args.min_rows}.",
-                        "warning_count": 0,
-                    }
-                )
-                stability_rows.append(base_summary)
-                continue
+                base_summary = {
+                    "group_var": gv,
+                    "model_family": spec["family_slug"],
+                    "family_dir": spec["family_key"],
+                    "family_title": spec["family_title"],
+                    "family_terms": spec["family_terms_label"],
+                    "outcome": ycol,
+                    "outcome_label": OUTCOME_LABELS.get(ycol, ycol),
+                    "subset": subset_note,
+                    "n": int(len(d)),
+                    "formula": "",
+                    "stability_grade": "unstable",
+                    "stability_grade_rank": 3,
+                    "stability_reasons": "not_run",
+                    "stability_notes": "Model was not fit.",
+                }
 
-            formula = f"{ycol} ~ C(class_name) * WWR_z * Complexity_z * C({gv})"
-            if d["round"].notna().any():
-                formula += " + C(round)"
-            base_summary["formula"] = formula
-
-            try:
-                res, caught_warnings = fit_mixedlm(d, formula, group_col="participant_id", vc_scene_col="scene_id_model")
-
-                fixef = _tidy_fixef(res)
-                ranef = _extract_random_effects(res, d, group_col="participant_id", vc_scene_col=vc_scene_col)
-                stability = _collect_stability_signals(res, fixef, ranef, caught_warnings)
-
-                (gdir / f"model_{ycol}.txt").write_text(
-                    "\n".join(
-                        [
-                            f"Outcome: {ycol}",
-                            f"Outcome label: {OUTCOME_LABELS.get(ycol, ycol)}",
-                            f"Subset: {subset_note}",
-                            f"Formula: {formula}",
-                            f"n={len(d)}",
-                            f"vc_scene_col={vc_scene_col}",
-                            f"stability_grade={stability['stability_grade']}",
-                            f"stability_reasons={stability['stability_reasons']}",
-                            f"warning_count={stability['warning_count']}",
-                            "Warnings:",
-                            stability["warnings_text"] or "(none)",
-                            "",
-                            str(res.summary()),
-                        ]
+                if len(d) < args.min_rows:
+                    (fam_dir / f"model_{ycol}.txt").write_text(
+                        f"SKIP: too few rows for outcome={ycol} (n={len(d)}; min_rows={args.min_rows})\n",
+                        encoding="utf-8",
                     )
-                    + "\n",
-                    encoding="utf-8",
-                )
-
-                fixef.insert(0, "stability_grade", stability["stability_grade"])
-                fixef.insert(0, "group_var", gv)
-                fixef.insert(0, "outcome", ycol)
-                fixef.insert(0, "n", int(len(d)))
-                fixef.to_csv(gdir / f"fixef_{ycol}.csv", index=False, encoding="utf-8-sig")
-
-                ranef.insert(0, "stability_grade", stability["stability_grade"])
-                ranef.insert(0, "group_var", gv)
-                ranef.insert(0, "outcome", ycol)
-                ranef.to_csv(gdir / f"ranef_{ycol}.csv", index=False, encoding="utf-8-sig")
-
-                fitdf = _model_fit_table(res, d, formula, ycol, gv, subset_note, ranef, stability=stability)
-                fitdf.to_csv(gdir / f"model_fit_{ycol}.csv", index=False, encoding="utf-8-sig")
-
-                contrasts = _build_contrasts(res, d, ycol, gv)
-                if len(contrasts):
-                    contrasts.insert(0, "stability_grade", stability["stability_grade"])
-                    contrasts.to_csv(gdir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
-
-                _forest_plot(
-                    fixef,
-                    gdir / f"forest_fixef_{ycol}.png",
-                    f"{gv} | {ycol} fixed effects",
-                    stability_grade=stability["stability_grade"],
-                )
-
-                stability_row = base_summary.copy()
-                stability_row.update(stability)
-                stability_row.update(
-                    {
-                        "n_participants": int(d["participant_id"].nunique(dropna=True)),
-                        "n_scenes": int(d["scene_id_model"].nunique(dropna=True)) if "scene_id_model" in d.columns else np.nan,
-                        "n_aoi_classes": int(d["class_name"].nunique(dropna=True)),
-                        "aic": float(getattr(res, "aic", np.nan)),
-                        "bic": float(getattr(res, "bic", np.nan)),
-                        "logLik": float(getattr(res, "llf", np.nan)),
-                    }
-                )
-                stability_rows.append(stability_row)
-            except Exception as e:
-                (gdir / f"model_{ycol}.txt").write_text(
-                    "\n".join(
-                        [
-                            f"FAILED outcome={ycol}",
-                            f"Subset: {subset_note}",
-                            f"Formula: {formula}",
-                            f"n={len(d)}",
-                            repr(e),
-                        ]
+                    base_summary.update(
+                        {
+                            "stability_reasons": "too_few_rows",
+                            "stability_notes": f"Skipped because n={len(d)} < min_rows={args.min_rows}.",
+                            "warning_count": 0,
+                        }
                     )
-                    + "\n",
-                    encoding="utf-8",
-                )
-                base_summary.update(
-                    {
-                        "stability_reasons": "fit_failed",
-                        "stability_notes": repr(e),
-                        "warning_count": 0,
-                    }
-                )
-                stability_rows.append(base_summary)
+                    stability_rows.append(base_summary)
+                    continue
 
-        if stability_rows:
-            stab_df = pd.DataFrame(stability_rows)
-            sort_cols = [c for c in ["stability_grade_rank", "outcome"] if c in stab_df.columns]
-            if sort_cols:
-                stab_df = stab_df.sort_values(sort_cols, ascending=[True] * len(sort_cols))
-            stab_df.to_csv(gdir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
-            _plot_stability_overview(stab_df, gdir / f"evidence_stability_overview_{gv}.png", gv)
+                formula = f"{ycol} ~ {spec['formula_rhs']}"
+                if d["round"].notna().any():
+                    formula += " + C(round)"
+                base_summary["formula"] = formula
 
-        fit_files = sorted(gdir.glob("model_fit_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("model_fit_", "")))
-        fit_parts = []
-        for fp in fit_files:
-            try:
-                fit_parts.append(pd.read_csv(fp, encoding="utf-8-sig"))
-            except Exception:
-                continue
-        if fit_parts:
-            fit_df = pd.concat(fit_parts, ignore_index=True)
-            _plot_model_fit_overview(fit_df, gdir / f"evidence_model_fit_overview_{gv}.png", gv)
+                try:
+                    res, caught_warnings = fit_mixedlm(d, formula, group_col="participant_id", vc_scene_col="scene_id_model")
 
-        for fx in sorted(gdir.glob("fixef_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("fixef_", ""))):
-            outcome = fx.stem.replace("fixef_", "")
-            try:
-                fixef_df = pd.read_csv(fx, encoding="utf-8-sig")
-            except Exception:
-                continue
-            _plot_fixef_terms_overview(fixef_df, gdir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
+                    fixef = _tidy_fixef(res)
+                    ranef = _extract_random_effects(res, d, group_col="participant_id", vc_scene_col=vc_scene_col)
+                    stability = _collect_stability_signals(res, fixef, ranef, caught_warnings)
 
-        for cp in sorted(gdir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
-            outcome = cp.stem.replace("contrasts_", "")
-            try:
-                contrasts_df = pd.read_csv(cp, encoding="utf-8-sig")
-            except Exception:
-                continue
-            _plot_contrasts_overview(contrasts_df, gdir / f"evidence_contrasts_{outcome}.png", gv, outcome)
+                    (fam_dir / f"model_{ycol}.txt").write_text(
+                        "\n".join(
+                            [
+                                f"Outcome: {ycol}",
+                                f"Outcome label: {OUTCOME_LABELS.get(ycol, ycol)}",
+                                f"Model family: {spec['family_title']} ({spec['family_slug']})",
+                                f"Family terms: {spec['family_terms_label']}",
+                                f"Subset: {subset_note}",
+                                f"Formula: {formula}",
+                                f"n={len(d)}",
+                                f"vc_scene_col={vc_scene_col}",
+                                f"stability_grade={stability['stability_grade']}",
+                                f"stability_reasons={stability['stability_reasons']}",
+                                f"warning_count={stability['warning_count']}",
+                                "Warnings:",
+                                stability["warnings_text"] or "(none)",
+                                "",
+                                str(res.summary()),
+                            ]
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+
+                    fixef.insert(0, "model_family", spec["family_slug"])
+                    fixef.insert(0, "family_title", spec["family_title"])
+                    fixef.insert(0, "stability_grade", stability["stability_grade"])
+                    fixef.insert(0, "group_var", gv)
+                    fixef.insert(0, "outcome", ycol)
+                    fixef.insert(0, "n", int(len(d)))
+                    fixef.to_csv(fam_dir / f"fixef_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                    ranef.insert(0, "model_family", spec["family_slug"])
+                    ranef.insert(0, "family_title", spec["family_title"])
+                    ranef.insert(0, "stability_grade", stability["stability_grade"])
+                    ranef.insert(0, "group_var", gv)
+                    ranef.insert(0, "outcome", ycol)
+                    ranef.to_csv(fam_dir / f"ranef_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                    fitdf = _model_fit_table(res, d, formula, ycol, gv, subset_note, ranef, stability=stability)
+                    fitdf.insert(1, "model_family", spec["family_slug"])
+                    fitdf.insert(2, "family_title", spec["family_title"])
+                    fitdf.insert(3, "family_terms", spec["family_terms_label"])
+                    fitdf.to_csv(fam_dir / f"model_fit_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                    if spec.get("export_contrasts", False):
+                        contrasts = _build_contrasts(res, d, ycol, gv)
+                        if len(contrasts):
+                            contrasts.insert(0, "model_family", spec["family_slug"])
+                            contrasts.insert(0, "family_title", spec["family_title"])
+                            contrasts.insert(0, "stability_grade", stability["stability_grade"])
+                            contrasts.to_csv(fam_dir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                    _forest_plot(
+                        fixef,
+                        fam_dir / f"forest_fixef_{ycol}.png",
+                        f"{gv} | {spec['family_title']} | {ycol} fixed effects",
+                        stability_grade=stability["stability_grade"],
+                    )
+
+                    stability_row = base_summary.copy()
+                    stability_row.update(stability)
+                    stability_row.update(
+                        {
+                            "n_participants": int(d["participant_id"].nunique(dropna=True)),
+                            "n_scenes": int(d["scene_id_model"].nunique(dropna=True)) if "scene_id_model" in d.columns else np.nan,
+                            "n_aoi_classes": int(d["class_name"].nunique(dropna=True)),
+                            "aic": float(getattr(res, "aic", np.nan)),
+                            "bic": float(getattr(res, "bic", np.nan)),
+                            "logLik": float(getattr(res, "llf", np.nan)),
+                        }
+                    )
+                    stability_rows.append(stability_row)
+                except Exception as e:
+                    (fam_dir / f"model_{ycol}.txt").write_text(
+                        "\n".join(
+                            [
+                                f"FAILED outcome={ycol}",
+                                f"Model family: {spec['family_title']} ({spec['family_slug']})",
+                                f"Subset: {subset_note}",
+                                f"Formula: {formula}",
+                                f"n={len(d)}",
+                                repr(e),
+                            ]
+                        )
+                        + "\n",
+                        encoding="utf-8",
+                    )
+                    base_summary.update(
+                        {
+                            "stability_reasons": "fit_failed",
+                            "stability_notes": repr(e),
+                            "warning_count": 0,
+                        }
+                    )
+                    stability_rows.append(base_summary)
+
+            if stability_rows:
+                stab_df = pd.DataFrame(stability_rows)
+                sort_cols = [c for c in ["stability_grade_rank", "outcome"] if c in stab_df.columns]
+                if sort_cols:
+                    stab_df = stab_df.sort_values(sort_cols, ascending=[True] * len(sort_cols))
+                stab_df.to_csv(fam_dir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
+                _plot_stability_overview(stab_df, fam_dir / f"evidence_stability_overview_{gv}.png", gv)
+
+            fit_files = sorted(fam_dir.glob("model_fit_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("model_fit_", "")))
+            fit_parts = []
+            for fp in fit_files:
+                try:
+                    fit_parts.append(pd.read_csv(fp, encoding="utf-8-sig"))
+                except Exception:
+                    continue
+            if fit_parts:
+                fit_df = pd.concat(fit_parts, ignore_index=True)
+                _plot_model_fit_overview(fit_df, fam_dir / f"evidence_model_fit_overview_{gv}.png", gv)
+
+            for fx in sorted(fam_dir.glob("fixef_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("fixef_", ""))):
+                outcome = fx.stem.replace("fixef_", "")
+                try:
+                    fixef_df = pd.read_csv(fx, encoding="utf-8-sig")
+                except Exception:
+                    continue
+                _plot_fixef_terms_overview(fixef_df, fam_dir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
+
+            for cp in sorted(fam_dir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
+                outcome = cp.stem.replace("contrasts_", "")
+                try:
+                    contrasts_df = pd.read_csv(cp, encoding="utf-8-sig")
+                except Exception:
+                    continue
+                _plot_contrasts_overview(contrasts_df, fam_dir / f"evidence_contrasts_{outcome}.png", gv, outcome)
+
+        _write_three_model_packet_summary(gdir, gv)
 
     (outdir / "RUNINFO.txt").write_text("\n".join(runinfo + ["evidence_pngs: stability/model_fit/contrasts/fixef summaries alongside core csv outputs"]) + "\n", encoding="utf-8")
     print("Saved:", outdir)
