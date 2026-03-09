@@ -74,9 +74,22 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.aoi_metrics import normalize_aoi_class_series, normalize_aoi_class_name
+from src.figure_style import apply_paper_style, soften_axes, PALETTE
 
 
 AOI_PRIORITY = ["table", "window", "equipment"]
+AOI_DISPLAY = {
+    "table": "Pingpong table",
+    "window": "Window",
+    "equipment": "Equipment",
+}
+STABILITY_ORDER = ["stable", "caution", "unstable"]
+STABILITY_COLORS = {
+    "stable": "#2E8B57",
+    "caution": "#E69F00",
+    "unstable": "#C0392B",
+}
+CONTRAST_FAMILY_ORDER = ["group_simple_effect", "wwr_simple_effect", "complexity_simple_effect"]
 OUTCOME_LABELS = {
     "tfd_y": "log1p(TFD)",
     "share_logit": "logit(attention share from TFD share)",
@@ -736,6 +749,246 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str, stability_gr
     plt.close(fig)
 
 
+def _clean_label(text: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_\-]+", "_", str(text)).strip("_")
+
+
+def _outcome_sort_key(name: str) -> tuple[int, str]:
+    order = ["share_pct", "share_logit", "FC_share", "fc_share_logit", "FC_rate", "tfd_y", "ttff_y", "fc_y"]
+    return (order.index(name), name) if name in order else (999, str(name))
+
+
+def _export_png_data(df: pd.DataFrame, out_png: Path):
+    if df is None or df.empty:
+        return
+    out_png.with_name(out_png.stem + "_data.csv").parent.mkdir(parents=True, exist_ok=True)
+    df.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+
+
+def _plot_stability_overview(stab_df: pd.DataFrame, out_png: Path, group_var: str):
+    if stab_df is None or stab_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    d = stab_df.copy()
+    d["stability_grade"] = d["stability_grade"].fillna("unknown")
+    d = d.sort_values("outcome", key=lambda s: s.map(lambda x: _outcome_sort_key(str(x))))
+    d["outcome_display"] = d["outcome_label"].fillna(d["outcome"]) + "\n(" + d["outcome"].astype(str) + ")"
+    grade_rank_map = {g: i for i, g in enumerate(STABILITY_ORDER, start=1)}
+    d["stability_rank_plot"] = d["stability_grade"].map(grade_rank_map).fillna(0)
+    d["warning_count"] = pd.to_numeric(d.get("warning_count"), errors="coerce").fillna(0).astype(int)
+
+    fig, axes = plt.subplots(1, 2, figsize=(max(10.5, 0.9 * len(d) + 3.5), 5.2), gridspec_kw={"width_ratios": [max(4, len(d) * 0.8), 3.2]})
+    ax0, ax1 = axes
+
+    heat = np.array([d["stability_rank_plot"].tolist()], dtype=float)
+    cmap = plt.matplotlib.colors.ListedColormap(["#EAF7F0", "#FFF4D6", "#FBEAEA"])
+    norm = plt.matplotlib.colors.BoundaryNorm([0.5, 1.5, 2.5, 3.5], cmap.N)
+    ax0.imshow(heat, aspect="auto", cmap=cmap, norm=norm)
+    ax0.set_yticks([0])
+    ax0.set_yticklabels([group_var])
+    ax0.set_xticks(np.arange(len(d)))
+    ax0.set_xticklabels(d["outcome_display"], rotation=30, ha="right")
+    ax0.set_title(f"{group_var}: model stability triage")
+    for i, row in d.reset_index(drop=True).iterrows():
+        grade = str(row["stability_grade"])
+        color = STABILITY_COLORS.get(grade, PALETTE["gray"])
+        ax0.text(i, 0, grade, ha="center", va="center", fontsize=9, color=color, fontweight="bold")
+        ax0.text(i, 0.3, f"warn={int(row['warning_count'])}", ha="center", va="center", fontsize=7, color="#4B5563")
+    ax0.grid(False)
+    for spine in ["top", "right"]:
+        ax0.spines[spine].set_visible(False)
+
+    cnt = (
+        d["stability_grade"].value_counts()
+        .reindex(STABILITY_ORDER, fill_value=0)
+        .reset_index()
+    )
+    cnt.columns = ["stability_grade", "n_models"]
+    ax1.barh(cnt["stability_grade"], cnt["n_models"], color=[STABILITY_COLORS.get(g, PALETTE["gray"]) for g in cnt["stability_grade"]])
+    for yi, (_, row) in enumerate(cnt.iterrows()):
+        ax1.text(float(row["n_models"]) + 0.05, yi, str(int(row["n_models"])), va="center", ha="left", fontsize=9)
+    ax1.set_xlabel("Number of outcomes")
+    ax1.set_title("Triage count")
+    soften_axes(ax1)
+    ax1.grid(axis="x", alpha=0.25)
+
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    export_df = d[[c for c in ["group_var", "outcome", "outcome_label", "stability_grade", "stability_grade_rank", "warning_count", "stability_reasons", "stability_notes", "aic", "bic", "logLik"] if c in d.columns]].copy()
+    _export_png_data(export_df, out_png)
+    plt.close(fig)
+
+
+def _plot_model_fit_overview(fit_df: pd.DataFrame, out_png: Path, group_var: str):
+    if fit_df is None or fit_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    d = fit_df.copy()
+    d = d.sort_values("outcome", key=lambda s: s.map(lambda x: _outcome_sort_key(str(x))))
+    d["r2_marginal"] = pd.to_numeric(d.get("r2_marginal"), errors="coerce")
+    d["r2_conditional"] = pd.to_numeric(d.get("r2_conditional"), errors="coerce")
+    d["aic"] = pd.to_numeric(d.get("aic"), errors="coerce")
+    d["bic"] = pd.to_numeric(d.get("bic"), errors="coerce")
+    d["delta_r2_random"] = d["r2_conditional"] - d["r2_marginal"]
+    d["outcome_display"] = d["outcome"].astype(str)
+
+    fig, axes = plt.subplots(1, 2, figsize=(max(11.5, 0.85 * len(d) + 4.0), 4.8), gridspec_kw={"width_ratios": [max(5, len(d) * 0.85), max(5, len(d) * 0.85)]})
+    ax0, ax1 = axes
+
+    x = np.arange(len(d))
+    width = 0.38
+    ax0.bar(x - width / 2, d["r2_marginal"], width=width, color=PALETTE["blue"], label="Marginal R²")
+    ax0.bar(x + width / 2, d["r2_conditional"], width=width, color=PALETTE["green"], label="Conditional R²")
+    for xi, r in d.iterrows():
+        if np.isfinite(r["r2_marginal"]):
+            ax0.text(xi - width / 2, float(r["r2_marginal"]) + 0.01, f"{float(r['r2_marginal']):.2f}", ha="center", va="bottom", fontsize=7)
+        if np.isfinite(r["r2_conditional"]):
+            ax0.text(xi + width / 2, float(r["r2_conditional"]) + 0.01, f"{float(r['r2_conditional']):.2f}", ha="center", va="bottom", fontsize=7)
+    ax0.set_xticks(x)
+    ax0.set_xticklabels(d["outcome_display"], rotation=30, ha="right")
+    ax0.set_ylim(0, max(1.0, float(np.nanmax(d[["r2_marginal", "r2_conditional"]].to_numpy(dtype=float))) + 0.12 if d[["r2_marginal", "r2_conditional"]].notna().any().any() else 1.0))
+    ax0.set_ylabel("Approximate R²")
+    ax0.set_title(f"{group_var}: marginal vs conditional R²")
+    soften_axes(ax0)
+    ax0.legend(frameon=False, loc="upper left")
+
+    aic_ok = d["aic"].notna().sum() >= 1
+    bic_ok = d["bic"].notna().sum() >= 1
+    if aic_ok:
+        ax1.plot(x, d["aic"], marker="o", color=PALETTE["purple"], label="AIC")
+    if bic_ok:
+        ax1.plot(x, d["bic"], marker="s", color=PALETTE["orange"], label="BIC")
+    for idx, row in d.iterrows():
+        grade = str(row.get("stability_grade", ""))
+        if grade in STABILITY_COLORS:
+            ax1.scatter(idx, row["aic"] if np.isfinite(row["aic"]) else np.nan, color=STABILITY_COLORS[grade], s=18, zorder=3)
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(d["outcome_display"], rotation=30, ha="right")
+    ax1.set_ylabel("Information criterion")
+    ax1.set_title("AIC/BIC overview")
+    soften_axes(ax1)
+    if aic_ok or bic_ok:
+        ax1.legend(frameon=False, loc="best")
+
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    export_df = d[[c for c in ["group_var", "outcome", "formula", "subset", "nobs", "n_participants", "n_scenes", "n_aoi_classes", "aic", "bic", "logLik", "r2_marginal", "r2_conditional", "delta_r2_random", "var_fixed", "var_random_total", "var_residual", "converged", "stability_grade", "stability_reasons"] if c in d.columns]].copy()
+    _export_png_data(export_df, out_png)
+    plt.close(fig)
+
+
+def _plot_contrasts_overview(contrasts_df: pd.DataFrame, out_png: Path, group_var: str, outcome: str):
+    if contrasts_df is None or contrasts_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    d = contrasts_df.copy()
+    d = d.sort_values(["contrast_family", "aoi", "Complexity", "WWR", "group_level", "contrast_label"], na_position="last")
+    families = [f for f in CONTRAST_FAMILY_ORDER if f in set(d["contrast_family"].astype(str))]
+    if not families:
+        families = sorted(d["contrast_family"].astype(str).unique().tolist())
+    ncols = len(families)
+    fig, axes = plt.subplots(1, ncols, figsize=(max(5.2 * ncols, 7.5), max(4.4, 0.34 * len(d) + 1.8)), sharex=False, sharey=False)
+    if not isinstance(axes, np.ndarray):
+        axes = np.array([axes])
+
+    export_parts = []
+    for ax, fam in zip(axes, families):
+        sub = d[d["contrast_family"].astype(str) == str(fam)].copy()
+        sub = sub.sort_values(["aoi", "Complexity", "WWR", "group_level", "p"], na_position="last")
+        if sub.empty:
+            ax.set_axis_off()
+            continue
+        sub["display_label"] = sub.apply(
+            lambda r: f"{AOI_DISPLAY.get(str(r.get('aoi')), str(r.get('aoi')))} | {str(r.get('contrast_label'))}",
+            axis=1,
+        )
+        sub = sub.iloc[::-1].reset_index(drop=True)
+        y = np.arange(len(sub))
+        colors = np.where(pd.to_numeric(sub["p"], errors="coerce").fillna(1.0) < 0.05, PALETTE["orange"], PALETTE["gray"])
+        ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
+        ax.hlines(y, sub["ci_low"], sub["ci_high"], color=colors, linewidth=2)
+        ax.scatter(sub["estimate"], y, color=colors, s=28, zorder=3)
+        for yi, row in sub.iterrows():
+            if np.isfinite(row["estimate"]) and np.isfinite(row["ci_low"]) and np.isfinite(row["ci_high"]):
+                ax.text(float(row["ci_high"]) + 0.02 * max(1.0, float(np.nanmax(sub["ci_high"]) - np.nanmin(sub["ci_low"]))), yi, f"{float(row['estimate']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}]", fontsize=7, va="center")
+        ax.set_yticks(y)
+        ax.set_yticklabels(sub["display_label"])
+        ax.set_xlabel("Contrast estimate (95% CI)")
+        ax.set_title(fam.replace("_", " "))
+        soften_axes(ax)
+        export_parts.append(sub)
+
+    fig.suptitle(f"{group_var} | {outcome} reviewer-friendly contrasts", y=1.02, fontsize=12)
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    if export_parts:
+        _export_png_data(pd.concat(export_parts, ignore_index=True), out_png)
+    plt.close(fig)
+
+
+def _plot_fixef_terms_overview(fixef_df: pd.DataFrame, out_png: Path, group_var: str, outcome: str):
+    if fixef_df is None or fixef_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    d = fixef_df.copy()
+    d = d[~d["term"].astype(str).str.contains("Intercept", case=False, na=False)].copy()
+    if d.empty:
+        return
+    d["p"] = pd.to_numeric(d.get("p"), errors="coerce")
+    d["coef"] = pd.to_numeric(d.get("coef"), errors="coerce")
+    d["ci_low"] = pd.to_numeric(d.get("ci_low"), errors="coerce")
+    d["ci_high"] = pd.to_numeric(d.get("ci_high"), errors="coerce")
+    d["abs_test"] = pd.to_numeric(d.get("abs_test"), errors="coerce")
+    d["term_order_rank"] = d["term"].astype(str).str.count(":")
+    top = d.sort_values(["p", "abs_test"], ascending=[True, False]).head(12).copy()
+    top["effect_direction"] = np.where(top["coef"] >= 0, "positive", "negative")
+    top["sig_flag"] = np.where(top["p"].fillna(1.0) < 0.05, "p<0.05", "n.s.")
+    top = top.sort_values(["sig_flag", "abs_test"], ascending=[True, True]).iloc[::-1].reset_index(drop=True)
+
+    fig, ax = plt.subplots(figsize=(11.5, max(4.8, 0.42 * len(top) + 1.8)))
+    y = np.arange(len(top))
+    colors = np.where(top["p"].fillna(1.0) < 0.05, PALETTE["blue"], PALETTE["gray"])
+    ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
+    ax.hlines(y, top["ci_low"], top["ci_high"], color=colors, linewidth=2)
+    ax.scatter(top["coef"], y, color=colors, s=30, zorder=3)
+    for yi, row in top.iterrows():
+        label = f"{float(row['coef']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}] | {row['sig_flag']}"
+        ax.text(float(row["ci_high"]) + 0.03 * max(1.0, float(np.nanmax(top["ci_high"]) - np.nanmin(top["ci_low"]))), yi, label, fontsize=7, va="center")
+    ax.set_yticks(y)
+    ax.set_yticklabels(top["term"])
+    ax.set_xlabel("Fixed-effect estimate (95% CI)")
+    ax.set_title(f"{group_var} | {outcome} key fixed effects")
+    soften_axes(ax)
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    _export_png_data(top, out_png)
+    plt.close(fig)
+
+
 def _write_group_readme(gdir: Path, group_var: str):
     text = f"""AOI allocation LMM report: {group_var}
 
@@ -761,14 +1014,31 @@ Files in this folder
   Forest plot of the strongest fixed effects by |z|, with inline effect/CI labels and a stability tag in the title.
 - forest_fixef_<outcome>_data.csv
   Companion table for the forest plot (same terms/order and rendered labels).
+- evidence_stability_overview_{group_var}.png
+  Reviewer-friendly stability summary: one heatmap-like row across outcomes + triage count bar.
+- evidence_stability_overview_{group_var}_data.csv
+  Companion table for the stability overview.
+- evidence_model_fit_overview_{group_var}.png
+  Reviewer-friendly model-fit summary: marginal vs conditional R² plus AIC/BIC overview.
+- evidence_model_fit_overview_{group_var}_data.csv
+  Companion table for the model-fit overview.
+- evidence_contrasts_<outcome>.png
+  Reviewer-friendly contrast plot with effect estimates and 95% CI grouped by contrast family.
+- evidence_contrasts_<outcome>_data.csv
+  Companion table for the contrast plot.
+- evidence_fixef_key_terms_<outcome>.png
+  Reviewer-friendly fixed-effect summary of the most important non-intercept terms.
+- evidence_fixef_key_terms_<outcome>_data.csv
+  Companion table for the fixed-effect summary.
 
 How to interpret
 ----------------
 1. Start with model_stability_summary.csv and identify whether each outcome is stable / caution / unstable.
 2. For stable models, then inspect model_fit_<outcome>.csv and fixef_<outcome>.csv.
 3. Use contrasts_<outcome>.csv for reviewer-facing simple-effects reporting around the target interaction.
-4. Use ranef_<outcome>.csv to report variance decomposition / random intercept components.
-5. If a model is caution/unstable, treat it as supplementary unless you can justify the warnings.
+4. For quick reviewer communication, open the evidence PNGs: stability overview first, then model-fit overview, then the per-outcome contrasts/fixef summaries.
+5. Use ranef_<outcome>.csv to report variance decomposition / random intercept components.
+6. If a model is caution/unstable, treat it as supplementary unless you can justify the warnings.
 
 Stability grades
 ----------------
@@ -1151,8 +1421,36 @@ def main():
             if sort_cols:
                 stab_df = stab_df.sort_values(sort_cols, ascending=[True] * len(sort_cols))
             stab_df.to_csv(gdir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
+            _plot_stability_overview(stab_df, gdir / f"evidence_stability_overview_{gv}.png", gv)
 
-    (outdir / "RUNINFO.txt").write_text("\n".join(runinfo) + "\n", encoding="utf-8")
+        fit_files = sorted(gdir.glob("model_fit_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("model_fit_", "")))
+        fit_parts = []
+        for fp in fit_files:
+            try:
+                fit_parts.append(pd.read_csv(fp, encoding="utf-8-sig"))
+            except Exception:
+                continue
+        if fit_parts:
+            fit_df = pd.concat(fit_parts, ignore_index=True)
+            _plot_model_fit_overview(fit_df, gdir / f"evidence_model_fit_overview_{gv}.png", gv)
+
+        for fx in sorted(gdir.glob("fixef_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("fixef_", ""))):
+            outcome = fx.stem.replace("fixef_", "")
+            try:
+                fixef_df = pd.read_csv(fx, encoding="utf-8-sig")
+            except Exception:
+                continue
+            _plot_fixef_terms_overview(fixef_df, gdir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
+
+        for cp in sorted(gdir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
+            outcome = cp.stem.replace("contrasts_", "")
+            try:
+                contrasts_df = pd.read_csv(cp, encoding="utf-8-sig")
+            except Exception:
+                continue
+            _plot_contrasts_overview(contrasts_df, gdir / f"evidence_contrasts_{outcome}.png", gv, outcome)
+
+    (outdir / "RUNINFO.txt").write_text("\n".join(runinfo + ["evidence_pngs: stability/model_fit/contrasts/fixef summaries alongside core csv outputs"]) + "\n", encoding="utf-8")
     print("Saved:", outdir)
 
 

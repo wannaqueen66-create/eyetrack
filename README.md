@@ -314,7 +314,7 @@ Outputs:
 - `研究输出_YYYYMMDD_HHMMSS/01_AOI与描述统计/` organized AOI results + grouped summaries
 - `研究输出_YYYYMMDD_HHMMSS/02_LMM模型/` allocation LMM results + explanatory visuals
   - `allocation_lmm/groupvar_Experience/` and `allocation_lmm/groupvar_SportFreq/`
-  - now includes fixed-effect tables, random-effect variance tables, model-fit tables, key contrasts/simple effects, and fixed-effect forest plots
+  - now includes fixed-effect tables, random-effect variance tables, model-fit tables, key contrasts/simple effects, fixed-effect forest plots, and reviewer-friendly evidence PNGs
 - `研究输出_YYYYMMDD_HHMMSS/03_TwoPart模型/` merged analysis table downstream two-part model results
 - `研究输出_YYYYMMDD_HHMMSS/04_诊断信息/` overlap / valid-ratio / distribution diagnostics
 - `研究输出_YYYYMMDD_HHMMSS/00_AOI原始批处理/` raw AOI batch outputs (including overlays / merged tables)
@@ -704,6 +704,14 @@ Outputs (per group variable):
 - `contrasts_*.csv` (key simple effects around WWR × Complexity × Group)
 - `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first, now with inline `b [95% CI]` labels and a stability tag in the title)
 - `forest_fixef_*_data.csv` (companion table for each forest plot, same term order as the PNG)
+- `evidence_stability_overview_<GroupVar>.png` (start here for reviewer-facing stability triage across outcomes)
+- `evidence_stability_overview_<GroupVar>_data.csv` (companion table for the stability overview)
+- `evidence_model_fit_overview_<GroupVar>.png` (marginal/conditional R² plus AIC/BIC overview across outcomes)
+- `evidence_model_fit_overview_<GroupVar>_data.csv` (companion table for the model-fit overview)
+- `evidence_contrasts_<outcome>.png` (reviewer-friendly contrast summary with effect sizes and 95% CI)
+- `evidence_contrasts_<outcome>_data.csv` (companion table for the contrast PNG)
+- `evidence_fixef_key_terms_<outcome>.png` (reviewer-friendly fixed-effect summary for the key non-intercept terms)
+- `evidence_fixef_key_terms_<outcome>_data.csv` (companion table for the fixed-effect PNG)
 - `README_LMM_report.txt` (how to read the folder)
 
 ### Explanatory PNGs for allocation interpretation / 面向“注意分配变化”解释的 PNG
@@ -743,6 +751,9 @@ Output files:
 These explanatory PNGs now include direct value labels on the plotted points. If a reviewer needs the exact plotted numbers, use the same-stem `_data.csv` / `_labels.csv` files in the `tables/` folder.
 
 How to read them:
+- Think of `02_LMM模型/` as a two-layer package:
+  - **Main-pattern figures** (`allocation_lmm_visuals/`): answer “what attention-allocation pattern do we see?”
+  - **Evidence figures** (`allocation_lmm/groupvar_<GroupVar>/evidence_*.png`): answer “what statistical support backs that pattern?”
 - Start with `condition_group_interaction_<GroupVar>_share_pct.png`.
   This is the clearest figure for the question: **do different groups reallocate visual attention across AOIs when WWR / Complexity changes?**
 - Each column is one AOI (`table`, `window`, `equipment`), each row is one Complexity level (`C0`, `C1`), and the two colored lines are the two group levels.
@@ -750,10 +761,10 @@ How to read them:
 - Then inspect `scene_group_profile_<GroupVar>_share_pct.png` to see whether the same pattern is stable across round-specific scene slots (`R1/R2`), rather than only after collapsing conditions.
 - Use `TFD`, `TTFF`, and `FC` PNGs as supporting figures: `TFD` shows absolute dwell, while `TTFF` and `FC` help explain whether a redistribution pattern is driven by earlier entry or more repeated fixations.
 - For the statistical report itself, go to `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/` and read in this order:
-  1. `model_stability_summary.csv` (**main triage table**; use `stable` as primary candidates, `caution` with explicit warning language, `unstable` as supplementary/diagnostic)
-  2. `model_fit_<outcome>.csv` (AIC/BIC/logLik/nobs/convergence + marginal/conditional R² + stability fields)
-  3. `fixef_<outcome>.csv` (full fixed-effect table)
-  4. `contrasts_<outcome>.csv` (simple effects for reviewer-facing interaction follow-up)
+  1. `evidence_stability_overview_<GroupVar>.png` + `model_stability_summary.csv` (**main triage entry**; use `stable` as primary candidates, `caution` with explicit warning language, `unstable` as supplementary/diagnostic)
+  2. `evidence_model_fit_overview_<GroupVar>.png` + `model_fit_<outcome>.csv` (AIC/BIC/logLik/nobs/convergence + marginal/conditional R² + stability fields)
+  3. `evidence_fixef_key_terms_<outcome>.png` + `fixef_<outcome>.csv` (key fixed effects first, then full fixed-effect table)
+  4. `evidence_contrasts_<outcome>.png` + `contrasts_<outcome>.csv` (simple effects for reviewer-facing interaction follow-up)
   5. `ranef_<outcome>.csv` (random-effect variance decomposition)
   6. `forest_fixef_<outcome>.png` (compact visual summary of strongest fixed effects, title includes stability tag)
 

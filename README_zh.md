@@ -164,7 +164,7 @@ python scripts/run_colab_one_command.py \
 运行后会产出：
 - `研究输出_YYYYMMDD_HHMMSS/01_AOI与描述统计/`：AOI 结果整理 + 分组描述统计
 - `研究输出_YYYYMMDD_HHMMSS/02_LMM模型/`：allocation LMM 结果 + 面向解释的 LMM 可视化 PNG
-  - 其中 `allocation_lmm/groupvar_Experience/` 与 `allocation_lmm/groupvar_SportFreq/` 会额外包含：固定效应表、随机效应方差表、模型拟合信息表、关键 simple effects/contrasts、固定效应 forest plot
+  - 其中 `allocation_lmm/groupvar_Experience/` 与 `allocation_lmm/groupvar_SportFreq/` 会额外包含：固定效应表、随机效应方差表、模型拟合信息表、关键 simple effects/contrasts、固定效应 forest plot，以及 reviewer-friendly 的证据型 PNG
 - `研究输出_YYYYMMDD_HHMMSS/03_TwoPart模型/`：合并分析表下游的 two-part model 结果
 - `研究输出_YYYYMMDD_HHMMSS/04_诊断信息/`：重叠 / 有效率 / 分布等诊断输出
 - `研究输出_YYYYMMDD_HHMMSS/00_AOI原始批处理/`：底层 AOI 批处理表格、overlay 与合并结果
@@ -543,6 +543,10 @@ python scripts/plot_aoi_lmm_explanatory.py \
 
 这些 explanatory PNG 现在会直接在折线点旁标出数值；如果 reviewer 需要逐点核对，请到 `tables/` 目录读取同名 `_data.csv` / `_labels.csv`。
 
+建议把 `02_LMM模型/` 理解成两层：
+- **主图层**：`allocation_lmm_visuals/`，回答“模式长什么样”
+- **证据层**：`allocation_lmm/groupvar_<GroupVar>/evidence_*.png`，回答“这些模式背后有哪些统计支撑”
+
 怎么解读最有效：
 - **第一优先看** `condition_group_interaction_<GroupVar>_share_pct.png`
   - 这是最直接回答“是否改变视觉注意分配”的图。
@@ -556,13 +560,13 @@ python scripts/plot_aoi_lmm_explanatory.py \
   - `FC`：看差异是否来自“更频繁回看”。
 
 统计报告建议阅读顺序：
-1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/model_stability_summary.csv`
-   - 这是**主稳定性汇总表**；优先把 `stable` 当作主结果候选，`caution` 需带警示语，`unstable` 更适合作为补充/诊断结果
-2. 再看 `model_fit_<outcome>.csv`
-   - 包含 `AIC/BIC/logLik/nobs/converged`、近似 `marginal R²` / `conditional R²`，以及稳定性字段
-3. 再看 `fixef_<outcome>.csv`
-   - 固定效应表：`coef / SE / Wald z / p / 95% CI`
-4. 再看 `contrasts_<outcome>.csv`
+1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/evidence_stability_overview_<GroupVar>.png` + `model_stability_summary.csv`
+   - 这是**主稳定性入口**；优先把 `stable` 当作主结果候选，`caution` 需带警示语，`unstable` 更适合作为补充/诊断结果
+2. 再看 `evidence_model_fit_overview_<GroupVar>.png` + `model_fit_<outcome>.csv`
+   - 用一张图先总览 `marginal R² / conditional R² / AIC / BIC`，再回到单个 outcome 的 csv 核对细节
+3. 再看 `evidence_fixef_key_terms_<outcome>.png` + `fixef_<outcome>.csv`
+   - 先抓重点固定效应，再回到完整表格核对 `coef / SE / Wald z / p / 95% CI`
+4. 再看 `evidence_contrasts_<outcome>.png` + `contrasts_<outcome>.csv`
    - 围绕 `WWR × Complexity × Group` 导出的关键 simple effects / contrasts
 5. 再看 `ranef_<outcome>.csv`
    - 随机效应/方差分解：被试随机截距、scene 方差分量（若有）、残差方差
