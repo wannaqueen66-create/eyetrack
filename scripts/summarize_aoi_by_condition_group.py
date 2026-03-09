@@ -13,7 +13,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label, annotate_series_smart
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label, annotate_series_smart, metric_value_label
 from src.manifest_scene_order import attach_manifest_trial_metadata
 
 
@@ -76,6 +76,16 @@ def _make_share(df: pd.DataFrame, dwell_col: str, key_cols: list[str]):
     return d
 
 
+def _export_plot_companion(summary: pd.DataFrame, out_png: Path, outcome: str):
+    if summary is None or summary.empty:
+        return
+    data_df = summary.copy()
+    data_df["value_label"] = data_df["mean"].apply(
+        lambda v: metric_value_label(outcome, float(v)) if pd.notna(v) else ""
+    )
+    data_df.to_csv(out_png.with_name(out_png.stem + "_data.csv"), index=False, encoding="utf-8-sig")
+
+
 def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str, title: str):
     if summary.empty:
         return
@@ -126,6 +136,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=320, bbox_inches="tight")
+    _export_plot_companion(summary, out_png, outcome)
 
 
 def main():

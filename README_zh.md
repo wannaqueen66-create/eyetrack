@@ -51,7 +51,7 @@
 - `main` 上的核心 PNG 已统一为更接近 Origin / Building and Environment 期刊气质的清爽投稿风格。
 - 影响范围包括：描述性 grouped PNG、解释型 LMM PNG、evidence PNG，以及 fixed-effect forest plot。
 - 重点优化了配色、留白、网格线、标题/图例层级，以及数值标签的避免重叠策略。
-- 为了兼顾可读性与结果保真，关键 PNG 旁仍保留对应的 `*_data.csv`，当图内不再铺满所有数值标签时，仍可直接对照精确结果。
+- 为了兼顾可读性与结果保真，主线 PNG 现在更系统地配套 `*_data.csv`，包括描述性 grouped 图、解释型 LMM 图、evidence 图和 forest plot；当图内不再铺满所有数值标签时，仍可直接对照精确结果。
 
 #### `02_显著性分析_Significance`
 这是现在的**显著性分析主线**。
@@ -285,14 +285,19 @@ python scripts/run_colab_one_command.py \
 **描述性输出**
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`  
+  这里是 Experience 描述性主线的便捷镜像，尽量保持 CSV + PNG 成套出现。
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*_data.csv`
 
 **显著性 / 探索性推断输出**
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`  
+  这里的主结果包现在尽量按“表 + PNG + `_data.csv`”的对应关系组织 reviewer-facing 输出。
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/*_data.csv`
 
 标准命名与定义也可参考：`docs/METRICS_SPEC.md`。
 显著性主线的固定阅读顺序可参考：`docs/SIGNIFICANCE_MAINLINE.md`。

@@ -51,7 +51,7 @@ Mainline PNG styling note:
 - The core PNG figures on `main` are now unified to a cleaner journal-facing style closer to Origin / Building and Environment conventions.
 - This affects the descriptive grouped PNGs, explanatory LMM PNGs, evidence PNGs, and fixed-effect forest plots.
 - The goal is cleaner spacing, calmer palette, lighter grids, more consistent titles/legends, and fewer overlapping numeric labels.
-- Companion `*_data.csv` files remain available beside key PNGs so exact values are preserved even when in-figure labels are intentionally reduced.
+- Companion `*_data.csv` files now follow the main PNG outputs more systematically, including descriptive grouped plots, explanatory LMM PNGs, evidence PNGs, and fixed-effect forest plots, so exact values remain inspectable even when in-figure labels are intentionally reduced.
 
 #### `02_显著性分析_Significance`
 Primary reading path for inferential outputs.
@@ -286,14 +286,19 @@ After `python scripts/run_analysis2.py ...`, the new metrics are easiest to insp
 **Descriptive outputs**
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/tables/summary_Experience_*.csv`
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*.png`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_overall/plots/plot_Experience_*_data.csv`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/grouped_experience/`  
+  Main-track convenience mirror for Experience-focused descriptive CSV + PNG pairs.
 - `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/tables/summary_experience_scene.csv`
-- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*.png`
+- `研究输出_时间戳/*/01_描述性分析_Descriptive/organized_outputs/grouped/plots/*_data.csv`
 
 **Significance / exploratory inferential outputs**
-- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm/groupvar_Experience/`  
+  Core packet now follows a table + PNG + `_data.csv` pattern wherever a reviewer-facing PNG is exported.
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/`
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
+- `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/tables/*_data.csv`
 
 For canonical names and definitions, also see `docs/METRICS_SPEC.md`.
 For the fixed inferential reading order on `main`, also see `docs/SIGNIFICANCE_MAINLINE.md`.
