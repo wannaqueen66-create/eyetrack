@@ -12,6 +12,8 @@ from datetime import datetime
 import pandas as pd
 from PIL import Image
 
+from colab_scene_scan import print_scan_report
+
 
 def is_formal_scene_folder(folder: str) -> bool:
     csvs = glob.glob(os.path.join(folder, "*.csv"))
@@ -91,6 +93,7 @@ def main():
     args = ap.parse_args()
 
     group_manifest = args.group_manifest or os.path.join(args.scenes_root_orig, "group_manifest.csv")
+    print_scan_report(args.scenes_root_orig, group_manifest)
     if not os.path.exists(args.repo_dir):
         raise SystemExit(f"REPO_DIR not found: {args.repo_dir}")
     if not os.path.exists(os.path.join(args.repo_dir, "scripts", "batch_aoi_metrics.py")):
@@ -105,7 +108,7 @@ def main():
     os.makedirs(out_root, exist_ok=True)
     out_merged = os.path.join(out_root, "输出结果_AOI_合并")
 
-    print("OUT_ROOT:", out_root)
+    print("即将输出 AOI bundle / OUT_ROOT:", out_root)
 
     shutil.rmtree(args.filtered_root, ignore_errors=True)
     os.makedirs(args.filtered_root, exist_ok=True)

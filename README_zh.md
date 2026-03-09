@@ -151,6 +151,13 @@ python scripts/run_colab_one_command.py \
 - 每个场景文件夹内包含：场景底图、AOI JSON、该场景下所有被试 CSV
 - `group_manifest.csv` 至少包含 `name`（participant id），通常还包含 `SportFreq` / `Experience`
 
+运行时会先打印一段场景扫描预检播报，包括：
+- `group_manifest.csv` 是否找到
+- 扫描到多少候选目录
+- 识别出多少有效场景目录
+- 每个有效场景的背景图 / CSV / JSON 数量
+- 被跳过目录的 `[WARN]` 汇总（例如 `AOI输出_*`、`research_bundle_*`、`输出结果` 会优先按非场景目录跳过）
+
 运行后会产出：
 - `research_bundle_YYYYMMDD_HHMMSS/task1/`：AOI 结果整理 + 分组描述统计
 - `research_bundle_YYYYMMDD_HHMMSS/task2/`：allocation LMM 结果 + 面向解释的 LMM 可视化 PNG

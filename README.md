@@ -300,6 +300,13 @@ Inputs expected under `--scenes_root_orig`:
 - each scene folder contains the background image, AOI JSON, and all participant CSVs for that scene
 - `group_manifest.csv` contains at least `name` (participant id), and usually `SportFreq` / `Experience`
 
+Before the pipeline starts, Colab now prints a scene-precheck summary that includes:
+- whether `group_manifest.csv` was found
+- how many candidate directories were detected
+- how many valid scene folders were recognized
+- per-scene counts for background images / CSVs / JSONs
+- a `[WARN]` summary of skipped folders (for example `AOI输出_*`, `research_bundle_*`, and `输出结果` are treated as obvious non-scene result folders)
+
 Outputs:
 - `research_bundle_YYYYMMDD_HHMMSS/task1/` organized AOI results + grouped summaries
 - `research_bundle_YYYYMMDD_HHMMSS/task2/` allocation LMM results

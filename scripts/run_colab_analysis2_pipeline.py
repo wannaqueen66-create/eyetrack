@@ -7,6 +7,8 @@ import subprocess
 import sys
 from datetime import datetime
 
+from colab_scene_scan import print_scan_report
+
 
 def main():
     ap = argparse.ArgumentParser(description="Colab-friendly research-bundle pipeline for eyetrack")
@@ -19,6 +21,7 @@ def main():
     args = ap.parse_args()
 
     group_manifest = args.group_manifest or os.path.join(args.scenes_root_orig, "group_manifest.csv")
+    print_scan_report(args.scenes_root_orig, group_manifest)
     if not os.path.exists(group_manifest):
         raise SystemExit(f"Missing group_manifest: {group_manifest}")
     if not os.path.exists(args.repo_dir):
@@ -40,6 +43,7 @@ def main():
     if args.scene_features_csv:
         cmd += ["--scene_features_csv", args.scene_features_csv]
 
+    print("即将输出 research bundle / OUT_ROOT:", out_root)
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, cwd=args.repo_dir, check=True)
     print("DONE:", out_root)

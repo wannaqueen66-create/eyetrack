@@ -184,6 +184,38 @@ def main():
             p = os.path.join(scene_dir, f'{stem}.json')
             return p if os.path.exists(p) else None
 
+        def scene_asset_counts(scene_dir):
+            bg_count = 0
+            csv_count = 0
+            json_count = 0
+            for fn in os.listdir(scene_dir):
+                p = os.path.join(scene_dir, fn)
+                if not os.path.isfile(p):
+                    continue
+                ext = os.path.splitext(fn)[1].lower()
+                if ext in IMG_EXTS:
+                    bg_count += 1
+                elif ext == '.csv' and fn not in SKIP_CSV:
+                    csv_count += 1
+                elif ext == '.json':
+                    json_count += 1
+            return bg_count, csv_count, json_count
+
+        def classify_non_scene_dir(scene_id):
+            s = str(scene_id)
+            patterns = [
+                r'^AOI输出(?:_|$)',
+                r'^research_bundle(?:_|$)',
+                r'^输出结果(?:_|$)',
+                r'^results?(?:_|$)',
+                r'^colab(?:_|$)',
+                r'^__MACOSX$',
+            ]
+            for pat in patterns:
+                if _re.search(pat, s, flags=_re.IGNORECASE):
+                    return 'NON_SCENE_DIR', 'looks like a result/bundle folder'
+            return None
+
         def match_participant_id_from_filename(csv_name):
             # Try match any name as substring in filename
             for nm in names:
@@ -193,6 +225,7 @@ def main():
 
         rows = []
         problems = []
+        scene_summaries = []
         import re as _re
         scene_ex_re = _re.compile(args.scene_exclude_regex) if args.scene_exclude_regex else None
 
@@ -203,13 +236,36 @@ def main():
             if not os.path.isdir(scene_dir):
                 continue
 
+            bg_count, csv_count, json_count = scene_asset_counts(scene_dir)
+            scene_summaries.append({
+                'scene_id': scene_id,
+                'bg_count': bg_count,
+                'csv_count': csv_count,
+                'json_count': json_count,
+                'status': 'pending',
+                'detail': '',
+            })
+            summary = scene_summaries[-1]
+
+            classified = classify_non_scene_dir(scene_id)
+            if classified is not None:
+                code, detail = classified
+                summary['status'] = code
+                summary['detail'] = detail
+                problems.append((scene_id, code, detail, bg_count, csv_count, json_count))
+                continue
+
             bg = pick_bg(scene_dir)
             if not bg:
-                problems.append((scene_id, 'NO_BG_IMAGE', 'no image found'))
+                summary['status'] = 'NO_BG_IMAGE'
+                summary['detail'] = 'no image found'
+                problems.append((scene_id, 'NO_BG_IMAGE', 'no image found', bg_count, csv_count, json_count))
                 continue
             aoi_path = find_aoi_json(scene_dir, bg)
             if not aoi_path:
-                msg = (scene_id, 'NO_AOI_JSON', f'mode={args.aoi_json_mode}')
+                summary['status'] = 'NO_AOI_JSON'
+                summary['detail'] = f'mode={args.aoi_json_mode}'
+                msg = (scene_id, 'NO_AOI_JSON', f'mode={args.aoi_json_mode}', bg_count, csv_count, json_count)
                 if args.missing_aoi_json == 'error':
                     raise SystemExit(f"Missing AOI json for scene={scene_id} (mode={args.aoi_json_mode}).")
                 problems.append(msg)
@@ -218,16 +274,22 @@ def main():
             # collect CSVs
             csvs = [fn for fn in os.listdir(scene_dir) if fn.lower().endswith('.csv') and fn not in SKIP_CSV]
             if not csvs:
-                problems.append((scene_id, 'NO_CSV', 'no csv found'))
+                summary['status'] = 'NO_CSV'
+                summary['detail'] = 'no csv found'
+                problems.append((scene_id, 'NO_CSV', 'no csv found', bg_count, csv_count, json_count))
                 continue
 
+            matched_count = 0
+            unmatched_files = []
             for fn in sorted(csvs):
                 pid = match_participant_id_from_filename(fn)
                 if pid is None:
+                    unmatched_files.append(fn)
                     if args.unmatched_csv == 'error':
                         raise SystemExit(f'Unmatched CSV filename under scene={scene_id}: {fn}. Cannot match any name in group_manifest.')
                     else:
                         continue
+                matched_count += 1
                 rows.append({
                     'participant_id': pid,
                     'scene_id': scene_id,
@@ -235,10 +297,31 @@ def main():
                     'aoi_path': aoi_path,
                 })
 
+            summary['matched_csv_count'] = matched_count
+            summary['unmatched_csv_count'] = len(unmatched_files)
+            if matched_count == 0:
+                summary['status'] = 'NO_MATCHED_CSV'
+                summary['detail'] = 'csv found but none matched group_manifest names'
+                problems.append((scene_id, 'NO_MATCHED_CSV', 'csv found but none matched group_manifest names', bg_count, csv_count, json_count))
+                continue
+            summary['status'] = 'OK'
+            detail = f"matched_csv={matched_count}"
+            if unmatched_files:
+                detail += f", unmatched_csv={len(unmatched_files)}"
+            summary['detail'] = detail
+
+        print('Scene scan summary:')
+        print('  Candidate scene folders:', len(scene_summaries))
+        ok_summaries = [s for s in scene_summaries if s['status'] == 'OK']
+        print('  Valid scenes:', len(ok_summaries))
+        for s in ok_summaries:
+            print(f"  - {s['scene_id']}: BG={s['bg_count']} CSV={s['csv_count']} JSON={s['json_count']} ({s['detail']})")
+
         if problems:
             print('[WARN] Scene scan issues (these scenes may be skipped):')
             for p in problems[:50]:
-                print('  -', p)
+                scene_id, code, detail, bg_count, csv_count, json_count = p
+                print(f'  - {scene_id}: {code} | {detail} | BG={bg_count} CSV={csv_count} JSON={json_count}')
             if len(problems) > 50:
                 print('  ... total problems:', len(problems))
 
