@@ -169,8 +169,9 @@ Use the same reading order for both full-sample and after-QC tracks:
    - `model_stability_summary.csv` / `evidence_stability_overview_Experience.png`
    - `model_fit_<outcome>.csv` → whether the model fit is usable
    - `fixef_<outcome>.csv` → omnibus fixed effects / coefficient table for that family
+   - `wwr_trend_tests_<outcome>.csv` / `wwr_trend_coding_<outcome>.csv` → explicit ordered WWR trend answer: linear rise/fall vs mid-point peak/trough
    - `contrasts_<outcome>.csv` → reviewer-facing simple effects, mainly for the interaction families
-   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → fast communication PNGs
+   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_wwr_trend_terms_<outcome>.png` / `evidence_wwr_trend_shape_<outcome>.png` / `evidence_contrasts_<outcome>.png` → fast communication PNGs
 6. `allocation_lmm_visuals/`  
    Use as explanatory companion figures, not as the first evidence source.
 7. `two_part_models/`  

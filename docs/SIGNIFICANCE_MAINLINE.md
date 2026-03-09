@@ -16,6 +16,11 @@ The current inferential mainline is:
     - `01_main_effects/`
     - `02_two_way_interactions/`
     - `03_three_way_interaction/`
+  - plus the new WWR trend layer exported inside each family folder for primary outcomes:
+    - `wwr_trend_tests_<outcome>.csv`
+    - `wwr_trend_coding_<outcome>.csv`
+    - `evidence_wwr_trend_terms_<outcome>.png`
+    - `evidence_wwr_trend_shape_<outcome>.png`
 - plus `allocation_lmm_visuals/` as explanatory companion figures
 - plus `two_part_models/` only when scene-feature questions are central
 
@@ -85,8 +90,16 @@ For one outcome, treat the files as one packet:
   - answers: which fixed effects are estimated, with coefficient / SE / z / p / CI
 - `contrasts_<outcome>.csv`
   - answers: what are the simple effects around WWR × Complexity × Group, in reviewer-friendly form
+- `wwr_trend_tests_<outcome>.csv`
+  - answers: is the ordered WWR pattern mainly linear up/down, or quadratic with a mid-point peak/trough?
+- `wwr_trend_coding_<outcome>.csv`
+  - answers: how each observed WWR level was encoded for the linear and quadratic tests
 - `evidence_fixef_key_terms_<outcome>.png`
   - visual summary of key fixed effects
+- `evidence_wwr_trend_terms_<outcome>.png`
+  - compact coefficient CI plot for linear/quadratic WWR terms
+- `evidence_wwr_trend_shape_<outcome>.png`
+  - compact shape sketch that makes “linear increase/decrease” vs “45 highest/lowest” visually explicit
 - `evidence_contrasts_<outcome>.png`
   - visual summary of contrasts
 - `*_data.csv`

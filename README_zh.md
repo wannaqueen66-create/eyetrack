@@ -169,8 +169,9 @@ python scripts/run_colab_one_command.py \
    - `model_stability_summary.csv` / `evidence_stability_overview_Experience.png`
    - `model_fit_<outcome>.csv` → 模型是否可用
    - `fixef_<outcome>.csv` → 该模型家族下的 fixed effects 主表
+   - `wwr_trend_tests_<outcome>.csv` / `wwr_trend_coding_<outcome>.csv` → 明确回答 WWR 是线性上升/下降，还是中点（通常 45）最高/最低
    - `contrasts_<outcome>.csv` → 面向 simple effects / 审稿回复的 contrasts，主要看交互模型家族
-   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → 面向论文和审稿回复的证据图
+   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_wwr_trend_terms_<outcome>.png` / `evidence_wwr_trend_shape_<outcome>.png` / `evidence_contrasts_<outcome>.png` → 面向论文和审稿回复的证据图
 6. `allocation_lmm_visuals/`  
    作为解释图、辅图来读，不要替代核心统计表。
 7. `two_part_models/`  

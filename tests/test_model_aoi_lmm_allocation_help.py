@@ -12,3 +12,4 @@ def test_model_aoi_lmm_allocation_help():
     assert '--group_id_col' in out
     assert '--outdir' in out
     assert '--min_rows' in out
+    assert 'AOI allocation LMM' in out

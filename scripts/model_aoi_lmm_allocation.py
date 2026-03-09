@@ -90,6 +90,7 @@ STABILITY_COLORS = {
     "unstable": "#C0392B",
 }
 CONTRAST_FAMILY_ORDER = ["group_simple_effect", "wwr_simple_effect", "complexity_simple_effect"]
+PRIMARY_TREND_OUTCOMES = ["share_pct", "FC_share", "FC_rate", "tfd_y", "ttff_y", "fc_y", "share_logit", "fc_share_logit"]
 OUTCOME_LABELS = {
     "tfd_y": "log1p(TFD)",
     "share_logit": "logit(attention share from TFD share)",
@@ -573,6 +574,31 @@ def _key_wwr_values(df_model: pd.DataFrame) -> list[tuple[float, float, str]]:
     return out
 
 
+def _wwr_trend_codings(df_model: pd.DataFrame) -> pd.DataFrame:
+    pairs = (
+        df_model[["WWR"]]
+        .dropna()
+        .drop_duplicates()
+        .sort_values(["WWR"])
+        .reset_index(drop=True)
+    )
+    if pairs.empty:
+        return pd.DataFrame(columns=["WWR", "WWR_linear", "WWR_quadratic", "wwr_order", "WWR_label"])
+    n = len(pairs)
+    linear = np.linspace(-1.0, 1.0, n)
+    midpoint = (n - 1) / 2.0
+    raw_quad = np.array([(i - midpoint) ** 2 for i in range(n)], dtype=float)
+    raw_quad = raw_quad - raw_quad.mean()
+    quad_sd = raw_quad.std(ddof=0)
+    quadratic = raw_quad / quad_sd if np.isfinite(quad_sd) and quad_sd > 0 else raw_quad
+    out = pairs.copy()
+    out["wwr_order"] = np.arange(1, n + 1, dtype=int)
+    out["WWR_linear"] = linear
+    out["WWR_quadratic"] = quadratic
+    out["WWR_label"] = out["WWR"].map(lambda x: f"WWR{int(round(float(x)))}")
+    return out
+
+
 def _key_complexity_values(df_model: pd.DataFrame) -> list[tuple[float, str]]:
     pairs = (
         df_model[["Complexity_num", "Complexity_label"]]
@@ -990,6 +1016,176 @@ def _plot_fixef_terms_overview(fixef_df: pd.DataFrame, out_png: Path, group_var:
     plt.close(fig)
 
 
+def _trend_direction_label(linear_est: float, linear_p: float, quadratic_est: float, quadratic_p: float) -> str:
+    if np.isfinite(quadratic_p) and quadratic_p < 0.05 and np.isfinite(quadratic_est):
+        return "mid_point_peak" if quadratic_est < 0 else "mid_point_trough"
+    if np.isfinite(linear_p) and linear_p < 0.05 and np.isfinite(linear_est):
+        return "linear_increase" if linear_est > 0 else "linear_decrease"
+    return "no_clear_trend"
+
+
+def _build_wwr_trend_rows(df_model: pd.DataFrame, outcome: str, group_var: str, family_slug: str, family_title: str, subset_note: str) -> pd.DataFrame:
+    trend_map = _wwr_trend_codings(df_model)
+    if trend_map.empty:
+        return pd.DataFrame()
+    trend = trend_map.copy()
+    trend.insert(0, "outcome", outcome)
+    trend.insert(0, "subset", subset_note)
+    trend.insert(0, "group_var", group_var)
+    trend.insert(0, "family_title", family_title)
+    trend.insert(0, "model_family", family_slug)
+    return trend
+
+
+def _extract_wwr_trend_tests(fixef_df: pd.DataFrame, outcome: str, group_var: str, family_slug: str, family_title: str, subset_note: str) -> pd.DataFrame:
+    if fixef_df is None or fixef_df.empty:
+        return pd.DataFrame()
+    d = fixef_df.copy()
+    d["term"] = d["term"].astype(str)
+    trend_terms = d[d["term"].isin(["WWR_linear", "WWR_quadratic"])].copy()
+    if trend_terms.empty:
+        return pd.DataFrame()
+    trend_terms["trend_component"] = trend_terms["term"].map({"WWR_linear": "linear", "WWR_quadratic": "quadratic"})
+    linear_row = trend_terms.loc[trend_terms["trend_component"] == "linear"].head(1)
+    quadratic_row = trend_terms.loc[trend_terms["trend_component"] == "quadratic"].head(1)
+    linear_est = float(linear_row["coef"].iloc[0]) if len(linear_row) else np.nan
+    linear_p = float(linear_row["p"].iloc[0]) if len(linear_row) else np.nan
+    quadratic_est = float(quadratic_row["coef"].iloc[0]) if len(quadratic_row) else np.nan
+    quadratic_p = float(quadratic_row["p"].iloc[0]) if len(quadratic_row) else np.nan
+    trend_terms.insert(0, "trend_direction", _trend_direction_label(linear_est, linear_p, quadratic_est, quadratic_p))
+    trend_terms.insert(0, "subset", subset_note)
+    trend_terms.insert(0, "family_title", family_title)
+    trend_terms.insert(0, "model_family", family_slug)
+    trend_terms.insert(0, "group_var", group_var)
+    trend_terms.insert(0, "outcome", outcome)
+    trend_terms["trend_component_label"] = trend_terms["trend_component"].map({"linear": "Linear trend", "quadratic": "Quadratic trend"})
+    return trend_terms
+
+
+def _plot_wwr_trend_terms(trend_df: pd.DataFrame, out_png: Path, group_var: str, outcome: str, family_title: str):
+    if trend_df is None or trend_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    d = trend_df.copy()
+    d["coef"] = pd.to_numeric(d.get("coef"), errors="coerce")
+    d["ci_low"] = pd.to_numeric(d.get("ci_low"), errors="coerce")
+    d["ci_high"] = pd.to_numeric(d.get("ci_high"), errors="coerce")
+    d["p"] = pd.to_numeric(d.get("p"), errors="coerce")
+    d = d.sort_values("trend_component", key=lambda s: s.map({"linear": 0, "quadratic": 1})).reset_index(drop=True)
+    fig, ax = plt.subplots(figsize=(8.8, 4.6))
+    y = np.arange(len(d))
+    colors = np.where(d["p"].fillna(1.0) < 0.05, PALETTE["blue"], PALETTE["gray"])
+    ax.axvline(0, color=PALETTE["muted"], linewidth=1.0, linestyle="--")
+    ax.hlines(y, d["ci_low"], d["ci_high"], color=colors, linewidth=2)
+    ax.scatter(d["coef"], y, color=colors, s=34, zorder=3)
+    labels = [f"b={float(r['coef']):.2f} [{float(r['ci_low']):.2f}, {float(r['ci_high']):.2f}] | p={float(r['p']):.3f}" if np.isfinite(r['coef']) and np.isfinite(r['ci_low']) and np.isfinite(r['ci_high']) and np.isfinite(r['p']) else "" for _, r in d.iterrows()]
+    annotate_right_ci_labels(ax, y, d["ci_high"].tolist(), labels, color=PALETTE["ink"], pad_frac=0.04)
+    ax.set_yticks(y)
+    ax.set_yticklabels(d["trend_component_label"])
+    ax.set_xlabel("WWR trend coefficient (95% CI)")
+    ax.set_title(f"{group_var} | {family_title} | {outcome} WWR trend tests")
+    soften_axes(ax, grid_axis="x")
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    _export_png_data(d, out_png)
+    plt.close(fig)
+
+
+def _plot_wwr_trend_shape(trend_map_df: pd.DataFrame, trend_df: pd.DataFrame, out_png: Path, group_var: str, outcome: str, family_title: str):
+    if trend_map_df is None or trend_map_df.empty or trend_df is None or trend_df.empty:
+        return
+    try:
+        import matplotlib.pyplot as plt
+    except Exception:
+        return
+
+    apply_paper_style()
+    tm = trend_map_df.copy().sort_values("WWR")
+    linear_row = trend_df.loc[trend_df["trend_component"] == "linear"].head(1)
+    quadratic_row = trend_df.loc[trend_df["trend_component"] == "quadratic"].head(1)
+    linear_est = float(linear_row["coef"].iloc[0]) if len(linear_row) else 0.0
+    quadratic_est = float(quadratic_row["coef"].iloc[0]) if len(quadratic_row) else 0.0
+    tm["trend_score"] = linear_est * pd.to_numeric(tm["WWR_linear"], errors="coerce") + quadratic_est * pd.to_numeric(tm["WWR_quadratic"], errors="coerce")
+    direction = str(trend_df["trend_direction"].iloc[0]) if "trend_direction" in trend_df.columns and len(trend_df) else "no_clear_trend"
+    peak_idx = tm["trend_score"].idxmax() if tm["trend_score"].notna().any() else None
+    trough_idx = tm["trend_score"].idxmin() if tm["trend_score"].notna().any() else None
+
+    fig, ax = plt.subplots(figsize=(8.8, 4.8))
+    ax.plot(tm["WWR"], tm["trend_score"], color=PALETTE["blue"], linewidth=2.2, marker="o", markersize=5)
+    if peak_idx is not None:
+        ax.scatter([tm.loc[peak_idx, "WWR"]], [tm.loc[peak_idx, "trend_score"]], color=PALETTE["orange"], s=54, zorder=4)
+    if trough_idx is not None and trough_idx != peak_idx:
+        ax.scatter([tm.loc[trough_idx, "WWR"]], [tm.loc[trough_idx, "trend_score"]], color=PALETTE["green"], s=54, zorder=4)
+    for _, row in tm.iterrows():
+        ax.text(float(row["WWR"]), float(row["trend_score"]), f"  {int(round(float(row['WWR'])))}", va="center", ha="left", fontsize=8, color=PALETTE["ink"])
+    ax.axhline(0, color=PALETTE["muted"], linewidth=0.9, linestyle="--")
+    subtitle = {
+        "linear_increase": "Linear increase",
+        "linear_decrease": "Linear decrease",
+        "mid_point_peak": "Mid-point peak (45 highest)",
+        "mid_point_trough": "Mid-point trough (45 lowest)",
+        "no_clear_trend": "No clear linear/quadratic trend",
+    }.get(direction, direction)
+    ax.set_title(f"{group_var} | {family_title} | {outcome} WWR trend shape\n{subtitle}")
+    ax.set_xlabel("WWR")
+    ax.set_ylabel("Linear + quadratic trend score")
+    soften_axes(ax, grid_axis="both")
+    fig.tight_layout()
+    tm_export = tm.copy()
+    tm_export.insert(0, "trend_direction", direction)
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=300, bbox_inches="tight")
+    _export_png_data(tm_export, out_png)
+    plt.close(fig)
+
+
+def _write_trend_readme(gdir: Path):
+    text = """WWR trend add-on for the inferential mainline
+
+Purpose
+-------
+This folder-level note explains how the new WWR trend outputs should be read alongside the existing three LMM families.
+
+What is tested?
+---------------
+The trend layer adds two ordered WWR components to each family-specific model:
+- WWR_linear: ordered monotonic trend from the smallest WWR level to the largest
+- WWR_quadratic: mid-point curvature term that asks whether the middle WWR level (typically 45) is higher/lower than the edges
+
+Operational interpretation
+--------------------------
+- significant positive WWR_linear -> linear increase as WWR rises
+- significant negative WWR_linear -> linear decrease as WWR rises
+- significant negative WWR_quadratic -> mid-point peak (the middle WWR level is relatively highest)
+- significant positive WWR_quadratic -> mid-point trough (the middle WWR level is relatively lowest)
+- if neither component is clearly significant -> no clear ordered WWR trend
+
+How to read files
+-----------------
+Inside each family folder:
+- wwr_trend_tests_<outcome>.csv
+  exact coefficient table for linear and quadratic WWR trend components
+- wwr_trend_coding_<outcome>.csv
+  the ordered coding used for each observed WWR level
+- evidence_wwr_trend_terms_<outcome>.png
+  compact CI plot for the linear/quadratic terms
+- evidence_wwr_trend_shape_<outcome>.png
+  shape sketch showing whether the fitted trend looks monotonic, peak-at-middle, or trough-at-middle
+
+Important scope note
+--------------------
+These trend files summarize the ordered WWR pattern at the omnibus family level. They complement, but do not replace,
+interaction-specific contrasts and AOI/group-specific simple effects in the main contrast tables.
+"""
+    (gdir / "README_WWR_trends.txt").write_text(text, encoding="utf-8")
+
+
 def _model_family_specs(group_var: str) -> list[dict]:
     return [
         {
@@ -998,6 +1194,7 @@ def _model_family_specs(group_var: str) -> list[dict]:
             "family_title": "Main effects",
             "family_terms_label": "WWR + Complexity + Group",
             "formula_rhs": f"C(class_name) * (WWR_z + Complexity_z + C({group_var}))",
+            "trend_formula_rhs": f"C(class_name) * (WWR_linear + WWR_quadratic + Complexity_z + C({group_var}))",
             "export_contrasts": False,
         },
         {
@@ -1006,6 +1203,7 @@ def _model_family_specs(group_var: str) -> list[dict]:
             "family_title": "Two-way interactions",
             "family_terms_label": "WWR*Complexity + WWR*Group + Complexity*Group",
             "formula_rhs": f"C(class_name) * (WWR_z*Complexity_z + WWR_z*C({group_var}) + Complexity_z*C({group_var}))",
+            "trend_formula_rhs": f"C(class_name) * (WWR_linear + WWR_quadratic + Complexity_z + C({group_var}) + WWR_linear:Complexity_z + WWR_quadratic:Complexity_z + WWR_linear:C({group_var}) + WWR_quadratic:C({group_var}) + Complexity_z:C({group_var}))",
             "export_contrasts": True,
         },
         {
@@ -1014,6 +1212,7 @@ def _model_family_specs(group_var: str) -> list[dict]:
             "family_title": "Three-way interaction",
             "family_terms_label": "WWR*Complexity*Group",
             "formula_rhs": f"C(class_name) * WWR_z * Complexity_z * C({group_var})",
+            "trend_formula_rhs": f"C(class_name) * (WWR_linear + WWR_quadratic) * Complexity_z * C({group_var})",
             "export_contrasts": True,
         },
     ]
@@ -1054,7 +1253,7 @@ Recommended reading order
    - model_stability_summary.csv
    - evidence_stability_overview_{group_var}.png
    - evidence_model_fit_overview_{group_var}.png
-   - for each primary outcome: model_fit -> fixef -> forest/evidence_fixef_key_terms -> contrasts/evidence_contrasts (if exported)
+   - for each primary outcome: model_fit -> fixef -> wwr_trend_tests / evidence_wwr_trend_terms / evidence_wwr_trend_shape -> contrasts/evidence_contrasts (if exported)
 
 Primary / headline outcomes
 ---------------------------
@@ -1083,6 +1282,8 @@ How files relate to each other
   Fit quality, R², convergence, sample size, and stability fields for one outcome within one model family.
 - fixef_<outcome>.csv
   Fixed-effect table with coefficient, SE, Wald z, p, and 95% CI.
+- wwr_trend_tests_<outcome>.csv / wwr_trend_coding_<outcome>.csv
+  Ordered WWR trend layer: linear rise/fall plus quadratic mid-point peak/trough test.
 - ranef_<outcome>.csv
   Random-effect variance decomposition.
 - contrasts_<outcome>.csv
@@ -1091,6 +1292,8 @@ How files relate to each other
   Compact audit/appendix forest plot.
 - evidence_fixef_key_terms_<outcome>.png
   Cleaner summary of the key non-intercept fixed effects.
+- evidence_wwr_trend_terms_<outcome>.png / evidence_wwr_trend_shape_<outcome>.png
+  Fast visual answer to whether WWR mainly increases/decreases linearly or peaks/troughs at the middle level.
 - evidence_contrasts_<outcome>.png
   Cleaner summary of the main contrasts when that family exports contrasts.
 - *_data.csv companions
@@ -1112,6 +1315,19 @@ Contrast note
 -------------
 Contrasts are estimated from the fixed-effect design matrix while averaging over observed round proportions when round is included.
 This keeps round as a nuisance adjustment rather than forcing a single arbitrary round level.
+
+WWR trend note
+--------------
+The same three model families now also export an ordered WWR trend layer for the main outcomes.
+Read `wwr_trend_tests_<outcome>.csv` when you need an explicit answer to whether WWR mainly shows:
+- linear increase
+- linear decrease
+- mid-point peak (typically WWR45 highest)
+- mid-point trough (typically WWR45 lowest)
+
+The coding is exported in `wwr_trend_coding_<outcome>.csv`, and the compact visual summaries are:
+- `evidence_wwr_trend_terms_<outcome>.png`
+- `evidence_wwr_trend_shape_<outcome>.png`
 """
     (gdir / "README_LMM_report.txt").write_text(text, encoding="utf-8")
 
@@ -1206,6 +1422,7 @@ def _write_model_family_index(gdir: Path, group_var: str):
                 "family_title": spec["family_title"],
                 "terms": spec["family_terms_label"],
                 "formula_rhs": spec["formula_rhs"],
+                "trend_formula_rhs": spec.get("trend_formula_rhs", ""),
                 "contrasts_exported": bool(spec.get("export_contrasts", False)),
             }
         )
@@ -1400,6 +1617,7 @@ def main():
         gdir = _ensure_dir(outdir / f"groupvar_{gv}")
         _write_group_readme(gdir, gv)
         _write_stability_readme(gdir)
+        _write_trend_readme(gdir)
         _write_group_size_summary(df, gdir, gv)
         _write_model_family_index(gdir, gv)
 
@@ -1456,6 +1674,17 @@ def main():
                 if d["round"].notna().any():
                     formula += " + C(round)"
                 base_summary["formula"] = formula
+
+                trend_formula = None
+                trend_map_df = pd.DataFrame()
+                trend_subset = ycol in PRIMARY_TREND_OUTCOMES
+                if trend_subset:
+                    trend_map_df = _build_wwr_trend_rows(d, ycol, gv, spec["family_slug"], spec["family_title"], subset_note)
+                    if not trend_map_df.empty:
+                        d = d.merge(trend_map_df[["WWR", "WWR_linear", "WWR_quadratic"]].drop_duplicates(), on="WWR", how="left")
+                        trend_formula = f"{ycol} ~ {spec.get('trend_formula_rhs', spec['formula_rhs'])}"
+                        if d["round"].notna().any():
+                            trend_formula += " + C(round)"
 
                 try:
                     res, caught_warnings = fit_mixedlm(d, formula, group_col="participant_id", vc_scene_col="scene_id_model")
@@ -1516,6 +1745,29 @@ def main():
                             contrasts.insert(0, "family_title", spec["family_title"])
                             contrasts.insert(0, "stability_grade", stability["stability_grade"])
                             contrasts.to_csv(fam_dir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                    if trend_formula is not None and {"WWR_linear", "WWR_quadratic"}.issubset(set(d.columns)):
+                        try:
+                            trend_res, trend_warnings = fit_mixedlm(d, trend_formula, group_col="participant_id", vc_scene_col="scene_id_model")
+                            trend_fixef = _tidy_fixef(trend_res)
+                            trend_tests = _extract_wwr_trend_tests(trend_fixef, ycol, gv, spec["family_slug"], spec["family_title"], subset_note)
+                            if len(trend_tests):
+                                trend_tests.insert(0, "stability_grade", _collect_stability_signals(trend_res, trend_fixef, _extract_random_effects(trend_res, d, group_col="participant_id", vc_scene_col=vc_scene_col), trend_warnings)["stability_grade"])
+                                trend_tests.to_csv(fam_dir / f"wwr_trend_tests_{ycol}.csv", index=False, encoding="utf-8-sig")
+                                trend_map_df.to_csv(fam_dir / f"wwr_trend_coding_{ycol}.csv", index=False, encoding="utf-8-sig")
+
+                        except Exception as trend_e:
+                            (fam_dir / f"wwr_trend_{ycol}.txt").write_text(
+                                "\n".join(
+                                    [
+                                        f"FAILED trend outcome={ycol}",
+                                        f"Model family: {spec['family_title']} ({spec['family_slug']})",
+                                        f"Trend formula: {trend_formula}",
+                                        repr(trend_e),
+                                    ]
+                                ) + "\n",
+                                encoding="utf-8",
+                            )
 
                     _forest_plot(
                         fixef,
@@ -1587,6 +1839,21 @@ def main():
                 except Exception:
                     continue
                 _plot_fixef_terms_overview(fixef_df, fam_dir / f"evidence_fixef_key_terms_{outcome}.png", gv, outcome)
+
+            for tp in sorted(fam_dir.glob("wwr_trend_tests_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("wwr_trend_tests_", ""))):
+                outcome = tp.stem.replace("wwr_trend_tests_", "")
+                coding_fp = fam_dir / f"wwr_trend_coding_{outcome}.csv"
+                try:
+                    trend_df = pd.read_csv(tp, encoding="utf-8-sig")
+                except Exception:
+                    continue
+                _plot_wwr_trend_terms(trend_df, fam_dir / f"evidence_wwr_trend_terms_{outcome}.png", gv, outcome, spec["family_title"])
+                if coding_fp.exists():
+                    try:
+                        coding_df = pd.read_csv(coding_fp, encoding="utf-8-sig")
+                        _plot_wwr_trend_shape(coding_df, trend_df, fam_dir / f"evidence_wwr_trend_shape_{outcome}.png", gv, outcome, spec["family_title"])
+                    except Exception:
+                        pass
 
             for cp in sorted(fam_dir.glob("contrasts_*.csv"), key=lambda p: _outcome_sort_key(p.stem.replace("contrasts_", ""))):
                 outcome = cp.stem.replace("contrasts_", "")
