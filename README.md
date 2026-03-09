@@ -44,7 +44,7 @@ Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the t
 - Multiple separated polygons under one AOI class
 - Metrics output by polygon and by class:
   - TFD (Total Fixation Duration)
-  - TFF (Time to First Fixation)
+  - TTFF (Time to First Fixation)
   - FC (Fixation Count)
   - FFD (First Fixation Duration)
   - MFD (Mean Fixation Duration)
@@ -59,7 +59,7 @@ Python toolkit for indoor pingpong-space eye-tracking analysis, aligned to the t
 - 同一 AOI 类支持多个分离区域
 - 指标输出支持“子区域级”和“类别级”：
   - TFD（Total Fixation Duration，总注视时长）
-  - TFF（Time to First Fixation，首次注视时间）
+  - TTFF（Time to First Fixation，首次注视时间）
   - FC（Fixation Count，注视次数）
   - FFD（First Fixation Duration，首次注视时长）
   - MFD（Mean Fixation Duration，平均注视时长）
@@ -450,7 +450,7 @@ Output files / 输出文件：
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总，论文常用）
 
-Note: canonical metric columns now use `FC / FFD / MFD / MPD / RFF / TFD / TFF`.
+Note: canonical metric columns now use `FC / FFD / MFD / MPD / RFF / TFD / TTFF`.
 Legacy aliases such as `fixation_count / TTFF_ms / dwell_time_ms / RF` are still kept temporarily for backward compatibility.
 
 **Group summaries (SportFreq / Experience)**
@@ -465,30 +465,30 @@ python scripts/summarize_aoi_groups.py \
 ```
 
 Outputs:
-- `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TFF/TFD summaries)
+- `outputs_aoi_groups/aoi_group_summary.csv` (visited rate + conditional TTFF/TFD summaries)
 - `outputs_aoi_groups/aoi_with_groups.csv` (analysis-ready merged long table)
 
 **What are `aoi_overlays/` and `plots/`? (quick)**
 - `outdir/aoi_overlays/<scene_id>.png`: AOI *definition* audit figures. Polygons from `aoi.json` are drawn on the background image to verify AOI location/shape and coordinate consistency. These figures do **not** include gaze/fixation points and do **not** represent group differences.
-- `outdir/plots/*.png`: AOI *result* figures (group summaries). These plots visualize group-level outcomes such as `visited_rate`, and conditional `TFF` / `TFD` given `visited==1` (two-part reporting idea). Numeric labels on bars show the aggregated values (%, ms).
+- `outdir/plots/*.png`: AOI *result* figures (group summaries). These plots visualize group-level outcomes such as `visited_rate`, and conditional `TTFF` / `TFD` given `visited==1` (two-part reporting idea). Numeric labels on bars show the aggregated values (%, ms).
 
 ### Step E. Read Results / 解读结果
 
 - `TFD`: total fixation duration in AOI (recommended: aggregate by fixation) / AOI 总注视时长（推荐按 fixation 去重聚合）
-- `TFF`: time to first fixation / 首次注视时间
+- `TTFF`: time to first fixation / 首次注视时间
 - `FC`: fixation count / 注视次数
 - `FFD`: first fixation duration / 首次注视时长
 - `MFD`: mean fixation duration / 平均注视时长
 - `RFF`: re-fixation frequency / 重注视频率
 - `MPD`: mean pupil diameter / 平均瞳孔直径
-- `visited`: whether the AOI was visited in this trial/scene (1=yes, 0=no). If `visited==0`, then `TFF` is NaN by definition. / 本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TFF` 按定义为 NaN。
+- `visited`: whether the AOI was visited in this trial/scene (1=yes, 0=no). If `visited==0`, then `TTFF` is NaN by definition. / 本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF` 按定义为 NaN。
 - `polygon_count`: number of polygons under class / 该类别下子区域数量
 
 **New options (recommended)**
 - `--point_source fixation`: use `Fixation Point X/Y` for AOI hit testing (aligns better with fixation-based dwell/TTFF)
-- `--dwell_empty_as_zero`: set TFD=0.0 when visited==0 (keeps TFF as NaN)
+- `--dwell_empty_as_zero`: set TFD=0.0 when visited==0 (keeps TTFF as NaN)
 - `--image_match error`: if aoi.json includes image width/height and you pass --screen_w/--screen_h, stop on mismatch (default)
-- `--trial_start_ms` / `--trial_start_col`: control TFF baseline t0 (optional; default t0=min timestamp)
+- `--trial_start_ms` / `--trial_start_col`: control TTFF baseline t0 (optional; default t0=min timestamp)
 - `--time_segments {warn,error,ignore}`: detect timestamp discontinuities (multi-trial risk) and warn/error
 - `--report_time_segments`: export `timestamp_segments_summary.csv` (per file in single-run; per participant×scene in batch)
 - `--min_valid_ratio`: trial-level tracking-rate threshold; exports `exclusion_log.csv` / `batch_exclusion_log.csv` when set
@@ -497,7 +497,7 @@ Outputs:
 
 **How to describe these checks in a paper (template)**
 - *AOI size consistency*: We ensured AOI definitions were drawn on the same background image size as the eye-tracking coordinates (mismatched AOI image size vs. screen size was treated as an error).
-- *TFF missingness*: If an AOI was not visited, `TFF` was undefined and recorded as missing (NaN); visit probability and conditional TFF were analyzed separately (two-part strategy).
+- *TFF missingness*: If an AOI was not visited, `TTFF` was undefined and recorded as missing (NaN); visit probability and conditional TTFF were analyzed separately (two-part strategy).
 - *Tracking-rate inclusion*: We computed a trial-level valid ratio based on screen bounds and (optionally) validity flags, and logged trial exclusions when valid_ratio fell below a pre-defined threshold.
 - *Multi-trial protection*: We flagged potential multi-segment recordings by detecting timestamp discontinuities (negative jumps or large gaps) and reported a segment count summary.
 - *AOI overlap*: We checked overlaps between AOI classes in screen space and reported overlap counts/ratios when present.
@@ -612,22 +612,22 @@ pip install -r requirements.txt
 - Verify AOIs are drawn on the exact mapping image
 - Check outlier gaze points (negative or huge values)
 
-### Q4. `TFF` is NaN
+### Q4. `TTFF` is NaN
 No gaze entered that AOI class in that trial/scene (`visited==0`). This is expected behavior.
 
 Recommended reporting (paper-friendly):
-- Report both TFF (conditioned on `visited==1`) AND the non-visit probability:
+- Report both TTFF (conditioned on `visited==1`) AND the non-visit probability:
   - `p_not_visited = P(visited==0)` per condition × AOI
 - For inferential stats, use a two-part approach:
   1) Model `visited` (binary) with a logit model (preferably GLMM with participant random intercept)
-  2) Model `TFF` on the subset where `visited==1`
+  2) Model `TTFF` on the subset where `visited==1`
 
 See: `scripts/summarize_aoi_visit_rate.py`
 
 ### (New) Diagnostics + two-part modeling helpers
 
 - Distribution diagnostics: `scripts/aoi_distribution_diagnostics.py`
-- Two-part modeling helper (visited + conditional TFF/TFD/FC): `scripts/model_aoi_two_part.py`
+- Two-part modeling helper (visited + conditional TTFF/TFD/FC): `scripts/model_aoi_two_part.py`
 
 ---
 
@@ -746,7 +746,7 @@ outputs_organized/
    │  └─ summary_experience_condition.csv
    └─ plots/
       ├─ sportfreq_scene_visited_rate.png
-      ├─ sportfreq_scene_TFF.png
+      ├─ sportfreq_scene_TTFF.png
       ├─ sportfreq_scene_TFD.png
       ├─ sportfreq_scene_FC.png
       ├─ sportfreq_scene_FFD.png
@@ -754,15 +754,15 @@ outputs_organized/
       ├─ sportfreq_scene_RFF.png
       ├─ sportfreq_scene_MPD.png
       ├─ sportfreq_condition_visited_rate.png
-      ├─ sportfreq_condition_TFF.png
+      ├─ sportfreq_condition_TTFF.png
       ├─ sportfreq_condition_TFD.png
       ├─ sportfreq_condition_FC.png
       ├─ experience_scene_visited_rate.png
-      ├─ experience_scene_TFF.png
+      ├─ experience_scene_TTFF.png
       ├─ experience_scene_TFD.png
       ├─ experience_scene_FC.png
       ├─ experience_condition_visited_rate.png
-      ├─ experience_condition_TFF.png
+      ├─ experience_condition_TTFF.png
       ├─ experience_condition_TFD.png
       └─ experience_condition_FC.png
 ```

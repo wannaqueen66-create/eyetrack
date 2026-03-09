@@ -183,7 +183,7 @@ def _write_views(df_class: pd.DataFrame, df_poly: pd.DataFrame | None, outdir: P
 def _group_summary(df: pd.DataFrame, group_col: str, level: str = "scene") -> pd.DataFrame:
     rows = []
     tfd_col = _metric_col(df, "TFD", "dwell_time_ms")
-    tff_col = _metric_col(df, "TFF", "TTFF_ms")
+    tff_col = _metric_col(df, "TTFF", "TFF", "TTFF_ms")
     fc_col = _metric_col(df, "FC", "fixation_count")
     ffd_col = _metric_col(df, "FFD")
     mfd_col = _metric_col(df, "MFD")
@@ -229,7 +229,7 @@ def _group_summary(df: pd.DataFrame, group_col: str, level: str = "scene") -> pd
                 row[extra] = key_map[extra]
         if tff_col:
             tt = _safe_num(sub_v.get(tff_col))
-            row["TFF_mean_given_visited"] = float(tt.mean()) if tt.notna().any() else np.nan
+            row["TTFF_mean_given_visited"] = float(tt.mean()) if tt.notna().any() else np.nan
         if tfd_col:
             td = _safe_num(sub.get(tfd_col))
             row["TFD_mean_all"] = float(td.mean()) if td.notna().any() else np.nan
@@ -442,7 +442,7 @@ def main():
 
         metrics = [
             ("visited_rate", "Visited rate"),
-            ("TFF_mean_given_visited", "TFF (visited trials)"),
+            ("TTFF_mean_given_visited", "TTFF (visited trials)"),
             ("TFD_mean_given_visited", "TFD (visited trials)"),
             ("FC_mean_given_visited", "FC (visited trials)"),
             ("FFD_mean_given_visited", "FFD (visited trials)"),

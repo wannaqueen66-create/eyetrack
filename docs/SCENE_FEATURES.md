@@ -12,7 +12,7 @@ Everything else is optional and will just be carried through into `analysis2_ana
 ### `scripts/mixed_effects_indoor_pingpong.py`
 Requires from merged table:
 - `participant_id`
-- outcome columns (`TFD`, `TFF`, `FC`) from AOI table
+- outcome columns (`TFD`, `TTFF`, `FC`) from AOI table
 - at least one predictor column from:
   - `table_density`
   - `distance_to_table_center_m`

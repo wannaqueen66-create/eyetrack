@@ -9,7 +9,7 @@ standardized effect for each outcome.
 
 Outcomes:
 - visited (binary)
-- TFF (conditional on visited==1)
+- TTFF (conditional on visited==1)
 - TFD (conditional on visited==1)
 - FC (conditional on visited==1; modeled on log1p scale)
 
@@ -18,7 +18,7 @@ Predictors:
 - Complexity
 
 Input columns expected (minimum):
-- participant_id, scene_id, class_name, visited, TFF, TFD, FC
+- participant_id, scene_id, class_name, visited, TTFF, TFD, FC
 Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
 
 WWR/Complexity source priority:
@@ -210,8 +210,12 @@ def main():
     df = pd.read_csv(args.analysis_csv)
 
     # Basic required columns
-    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TTFF" not in df.columns and "TFF" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
+    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFF" not in df.columns and "TTFF" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
     if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
         df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
     if "FC" not in df.columns and "fixation_count" in df.columns:

@@ -33,7 +33,7 @@
 - 同一 AOI 类支持多个分离区域（如三张球桌同属 `pingpong_table`）
 - 输出 AOI 指标：
   - 总注视时长 `TFD`（Total Fixation Duration）
-  - 首次注视时间 `TFF`（Time to First Fixation）
+  - 首次注视时间 `TTFF`（Time to First Fixation）
   - 注视次数 `FC`（Fixation Count）
   - 首次注视时长 `FFD`（First Fixation Duration）
   - 平均注视时长 `MFD`（Mean Fixation Duration）
@@ -291,7 +291,7 @@ python scripts/run_aoi_metrics.py \
 - `outputs/aoi_metrics_by_polygon.csv`（每个子区域）
 - `outputs/aoi_metrics_by_class.csv`（类别汇总）
 
-说明：主列名统一采用 `FC / FFD / MFD / MPD / RFF / TFD / TFF`。
+说明：主列名统一采用 `FC / FFD / MFD / MPD / RFF / TFD / TTFF`。
 为兼容旧流程，结果中仍暂时保留 `fixation_count / TTFF_ms / dwell_time_ms / RF` 等旧别名列。
 
 **按组汇总（SportFreq / Experience）**
@@ -306,32 +306,32 @@ python scripts/summarize_aoi_groups.py \
 ```
 
 输出：
-- `outputs_aoi_groups/aoi_group_summary.csv`（visited 访问率 + 条件化 TTFF/dwell 等汇总）
+- `outputs_aoi_groups/aoi_group_summary.csv`（visited 访问率 + 条件化 TTFF/TFD 等汇总）
 - `outputs_aoi_groups/aoi_with_groups.csv`（用于建模的合并长表）
 
 **`aoi_overlays/` 和 `plots/` 分别是什么？（快速说明）**
 - `outdir/aoi_overlays/<scene_id>.png`：AOI **定义审计图**。把 `aoi.json` 里的多边形叠加到场景底图上，用于核对 AOI 位置/形状/坐标系是否一致。该图**不包含** gaze/fixation 点，也**不表示**组间差异或显著性。
-- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TFF` / `TFD` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
+- `outdir/plots/*.png`：AOI **结果报告图**（按组汇总）。用于展示组层面的 `visited_rate`，以及在 `visited==1` 条件下的 `TTFF` / `TFD` 等（two-part 思路：先看“进没进”，再看“进了以后多快/多久”）。柱子上的数字为汇总统计量（单位通常为 % 或 ms）。
 
 ### 步骤 E：看论文常用结果
 
 重点看 `outputs/aoi_metrics_by_class.csv`：
 
 - `TFD`：该类 AOI 总注视时长（推荐按 fixation 去重聚合，避免重复累计）
-- `TFF`：首次注视时间
+- `TTFF`：首次注视时间
 - `FC`：注视次数
 - `FFD`：首次注视时长
 - `MFD`：平均注视时长
 - `RFF`：重注视频率
 - `MPD`：平均瞳孔直径
-- `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TFF` 按定义为 NaN。
+- `visited`：本次试次/场景是否进入该 AOI（1=是，0=否）。当 `visited==0` 时，`TTFF` 按定义为 NaN。
 - `polygon_count`：该类包含的区域数量
 
 **新增选项（推荐）**
 - `--point_source fixation`：用 `Fixation Point X/Y` 做 AOI 命中判定（与 fixation-based 指标更一致）
-- `--dwell_empty_as_zero`：当 `visited==0` 时将 `TFD` 记为 0.0（`TFF` 仍为 NaN）
+- `--dwell_empty_as_zero`：当 `visited==0` 时将 `TFD` 记为 0.0（`TTFF` 仍为 NaN）
 - `--image_match error`：若 aoi.json 含底图宽高且你传入 --screen_w/--screen_h，则宽高不一致时直接报错停止（默认）
-- `--trial_start_ms` / `--trial_start_col`：控制 TFF 的基准 t0（可选；默认 t0=最小时间戳）
+- `--trial_start_ms` / `--trial_start_col`：控制 TTFF 的基准 t0（可选；默认 t0=最小时间戳）
 - `--time_segments {warn,error,ignore}`：检测时间戳断点/多段（多 trial 风险）并 warn/error
 - `--report_time_segments`：导出 `timestamp_segments_summary.csv`（单文件=每个 CSV 一行；批处理=每个 participant×scene 一行）
 - `--min_valid_ratio`：trial-level 追踪率阈值；设置后会输出 `exclusion_log.csv` / `batch_exclusion_log.csv`
@@ -340,7 +340,7 @@ python scripts/summarize_aoi_groups.py \
 
 **论文写法模板（可直接改动使用）**
 - *AOI 尺寸一致性*：我们要求 AOI 标注所用底图的像素尺寸与眼动坐标系一致（aoi.json 记录的 image 宽高与 screen_w/screen_h 不一致时按错误处理）。
-- *TFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TFF` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TFF。
+- *TFF 缺失机制*：当 AOI 未被进入（visited=0）时，`TTFF` 按定义不可得并记录为缺失（NaN）；后续采用 two-part 思路分别建模访问概率与条件化 TTFF。
 - *追踪率纳入规则*：基于越界与（可选）Validity 字段计算 trial-level 的 valid_ratio，并在 valid_ratio 低于阈值时落盘 exclusion log（避免不同条件下追踪丢失造成系统性偏倚）。
 - *多段记录保护*：通过检测时间戳断点（负跳变或大间隔）标记潜在多段/多 trial 的 CSV，并输出 segment 汇总表供排查。
 - *AOI 重叠*：对不同 AOI 类在屏幕空间的重叠进行检测，并在存在时报告重叠的数量/比例。
@@ -442,21 +442,21 @@ pip install -r requirements.txt
 - 确认 AOI 是在正确的映射底图上画的
 - 检查 gaze 坐标是否有大量异常值
 
-### 4）`TFF` 为 NaN
+### 4）`TTFF` 为 NaN
 
 - 原因：该试次/场景中该 AOI 没有被注视到（`visited==0`），这是**预期行为**；当然数据质量或 AOI 标注偏移也可能导致“看起来不合理的未注视”。
 - 建议论文报告方式（更强、更可解释）：
-  1) 在 `visited==1` 的子样本上报告/建模 `TFF`
+  1) 在 `visited==1` 的子样本上报告/建模 `TTFF`
   2) 同时报告“未进入比例”`p_not_visited = P(visited==0)`（每个条件×AOI）
   3) 推断统计建议用“两部模型”：
      - 第一步：对 `visited` 做二项 logit（最好用 GLMM：被试随机截距）
-     - 第二步：对 `TFF`（仅 visited==1）做线性混合/或 log 变换后建模
+     - 第二步：对 `TTFF`（仅 visited==1）做线性混合/或 log 变换后建模
 
 可用脚本：`scripts/summarize_aoi_visit_rate.py`
 
 补充脚本（分布诊断 + 两部建模辅助）：
 - 分布诊断：`scripts/aoi_distribution_diagnostics.py`
-- 两部建模辅助（visited + 条件化 TFF/TFD/FC）：`scripts/model_aoi_two_part.py`
+- 两部建模辅助（visited + 条件化 TTFF/TFD/FC）：`scripts/model_aoi_two_part.py`
 
 ---
 
@@ -529,7 +529,7 @@ outputs_organized/
    │  └─ summary_experience_condition.csv
    └─ plots/
       ├─ sportfreq_scene_visited_rate.png
-      ├─ sportfreq_scene_TFF.png
+      ├─ sportfreq_scene_TTFF.png
       ├─ sportfreq_scene_TFD.png
       ├─ sportfreq_scene_FC.png
       ├─ sportfreq_scene_FFD.png
@@ -537,15 +537,15 @@ outputs_organized/
       ├─ sportfreq_scene_RFF.png
       ├─ sportfreq_scene_MPD.png
       ├─ sportfreq_condition_visited_rate.png
-      ├─ sportfreq_condition_TFF.png
+      ├─ sportfreq_condition_TTFF.png
       ├─ sportfreq_condition_TFD.png
       ├─ sportfreq_condition_FC.png
       ├─ experience_scene_visited_rate.png
-      ├─ experience_scene_TFF.png
+      ├─ experience_scene_TTFF.png
       ├─ experience_scene_TFD.png
       ├─ experience_scene_FC.png
       ├─ experience_condition_visited_rate.png
-      ├─ experience_condition_TFF.png
+      ├─ experience_condition_TTFF.png
       ├─ experience_condition_TFD.png
       └─ experience_condition_FC.png
 ```

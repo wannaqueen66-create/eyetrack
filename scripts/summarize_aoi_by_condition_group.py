@@ -8,7 +8,7 @@ Inputs
 - --aoi_class_csv: batch_aoi_metrics_by_class.csv from scripts/batch_aoi_metrics.py
   Expected to include (after latest patch):
     participant_id, class_name, scene_id_raw, round, WWR, Complexity, condition_id
-  Plus AOI metrics columns like TFD, TFF, FC, FFD, MFD, RFF, MPD, visited.
+  Plus AOI metrics columns like TFD, TTFF, FC, FFD, MFD, RFF, MPD, visited.
   Legacy aliases (dwell_time_ms, TTFF_ms, fixation_count, RF) are still accepted.
 
 - --group_manifest: group_manifest.csv with participant id column (default: name)
@@ -187,7 +187,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
             ax.set_xticks(wwr_levels)
             ax.set_xlabel("WWR")
             if j == 0:
-                ax.set_ylabel(metric_label(outcome) if outcome in ['FC','TFF','FFD','TFD','MFD','RFF','MPD'] else outcome)
+                ax.set_ylabel(metric_label(outcome) if outcome in ['FC','TTFF','TFF','FFD','TFD','MFD','RFF','MPD'] else outcome)
             soften_axes(ax)
 
     # one legend
@@ -246,7 +246,7 @@ def main():
 
     # outcomes
     dwell_col = _pick_col(df, "TFD", "dwell_time_ms")
-    ttff_col = _pick_col(df, "TFF", "TTFF_ms")
+    ttff_col = _pick_col(df, "TTFF", "TFF", "TTFF_ms")
     fc_col = _pick_col(df, "FC", "fixation_count")
 
     outcomes = []
@@ -270,7 +270,7 @@ def main():
     if ttff_col:
         df["TFF"] = _safe_num(df[ttff_col])
         df["tff_y"] = np.log1p(df["TFF"].clip(lower=0))
-        outcomes += [("TFF", "Time to First Fixation (TFF)"), ("tff_y", "log1p(TFF)")]
+        outcomes += [("TTFF", "Time to First Fixation (TTFF)"), ("tff_y", "log1p(TTFF)")]
 
     if fc_col:
         df["FC"] = _safe_num(df[fc_col]).clip(lower=0)

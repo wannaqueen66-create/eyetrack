@@ -3,7 +3,7 @@
 
 This script generates quick diagnostics for common AOI outcomes:
 - TFD (often right-skewed)
-- TFF (defined only when visited==1)
+- TTFF (defined only when visited==1)
 - FC (count; often overdispersed)
 Legacy aliases (`dwell_time_ms`, `TTFF_ms`, `fixation_count`) are still accepted.
 
@@ -61,8 +61,12 @@ def main():
 
     os.makedirs(args.outdir, exist_ok=True)
 
-    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TTFF" not in df.columns and "TFF" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
+    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFF" not in df.columns and "TTFF" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
     if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
         df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
     if "FC" not in df.columns and "fixation_count" in df.columns:
@@ -71,7 +75,7 @@ def main():
     rows = []
     targets = [
         ("TFD", None),
-        ("TFF", "visited"),
+        ("TTFF", "visited"),
         ("FC", None),
     ]
 
@@ -112,7 +116,7 @@ def main():
         f.write(f"Input: `{path}`\n\n")
         f.write("Generated histograms (raw and log1p) and `aoi_distribution_summary.csv`.\n\n")
         f.write("Typical reporting guidance (align with this repo):\n")
-        f.write("- `TFF` is modeled on trials with `visited==1` (two-part approach).\n")
+        f.write("- `TTFF` is modeled on trials with `visited==1` (two-part approach).\n")
         f.write("- `TFD` is often right-skewed; log1p transform is commonly appropriate.\n")
         f.write("- `FC` is a count variable; consider Poisson/NB models (overdispersion check).\n")
 

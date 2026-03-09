@@ -29,8 +29,12 @@ def main():
 
     if 'TFD' not in df.columns and 'dwell_time_ms' in df.columns:
         df['TFD'] = pd.to_numeric(df['dwell_time_ms'], errors='coerce')
-    if 'TFF' not in df.columns and 'TTFF_ms' in df.columns:
-        df['TFF'] = pd.to_numeric(df['TTFF_ms'], errors='coerce')
+    if 'TTFF' not in df.columns and 'TFF' in df.columns:
+        df['TTFF'] = pd.to_numeric(df['TFF'], errors='coerce')
+    if 'TTFF' not in df.columns and 'TTFF_ms' in df.columns:
+        df['TTFF'] = pd.to_numeric(df['TTFF_ms'], errors='coerce')
+    if 'TFF' not in df.columns and 'TTFF' in df.columns:
+        df['TFF'] = pd.to_numeric(df['TTFF'], errors='coerce')
     if 'FC' not in df.columns and 'fixation_count' in df.columns:
         df['FC'] = pd.to_numeric(df['fixation_count'], errors='coerce')
 
@@ -49,21 +53,21 @@ def main():
         fig.savefig(os.path.join(args.outdir, 'fig1_tfd_by_condition.png'), dpi=300)
         plt.close(fig)
 
-    # Figure 2: TFF vs table density
-    if 'table_density' in df.columns and 'TFF' in df.columns:
+    # Figure 2: TTFF vs table density
+    if 'table_density' in df.columns and 'TTFF' in df.columns:
         fig, ax = plt.subplots(figsize=(6.4, 4.2))
         sns.regplot(
             data=df,
             x='table_density',
-            y='TFF',
+            y='TTFF',
             ax=ax,
             color=PALETTE['orange'],
             scatter_kws={'alpha':0.55, 's':24, 'edgecolor':'white', 'linewidth':0.4},
             line_kws={'linewidth':1.8}
         )
-        ax.set_title('TFF vs Table Density', pad=10)
+        ax.set_title('TTFF vs Table Density', pad=10)
         ax.set_xlabel('Table density')
-        ax.set_ylabel(metric_label('TFF'))
+        ax.set_ylabel(metric_label('TTFF'))
         soften_axes(ax)
         fig.tight_layout()
         fig.savefig(os.path.join(args.outdir, 'fig2_tff_vs_table_density.png'), dpi=300)

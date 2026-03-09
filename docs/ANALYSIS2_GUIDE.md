@@ -18,7 +18,7 @@ At minimum, the research bundle should include:
 
 3. **Task3: two-part models**
    - visited
-   - TFF | visited==1
+   - TTFF | visited==1
    - TFD | visited==1
    - FC | visited==1
 
@@ -61,7 +61,7 @@ Use canonical abbreviations:
 - MPD
 - RFF
 - TFD
-- TFF
+- TTFF
 
-Avoid using legacy names like `TTFF`, `TTFF_ms`, and `dwell_time_ms` in new outputs.
-新输出中避免继续使用 `TTFF`、`TTFF_ms` 与 `dwell_time_ms` 作为主列名。
+Use `TTFF` as the primary output name; keep legacy aliases like `TFF` / `TTFF_ms` / `dwell_time_ms` only for backward compatibility.
+新输出统一使用 `TTFF` 作为主列名；`TFF` / `TTFF_ms` / `dwell_time_ms` 仅作为向后兼容别名保留。

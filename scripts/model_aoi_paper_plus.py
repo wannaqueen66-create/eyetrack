@@ -3,14 +3,14 @@
 
 What this script adds compared with baseline scripts:
 - visited: logistic GLM (with participant fixed effect)
-- TFF / TFD: MixedLM on visited==1 subset (optional log1p transform)
+- TTFF / TFD: MixedLM on visited==1 subset (optional log1p transform)
 - FC: GEE Poisson/NB on visited==1 subset
 - optional interaction terms
 - tidy coefficient table CSV + BH-FDR q-values
 - PNG coefficient forest plots per outcome + combined dominance chart
 
 Input expected columns (minimum):
-- participant_id, class_name, visited, TFF, TFD, FC
+- participant_id, class_name, visited, TTFF, TFD, FC
 - predictor columns (numeric)
 Legacy aliases (`TTFF_ms`, `dwell_time_ms`, `fixation_count`) are still accepted.
 """
@@ -200,8 +200,12 @@ def main():
 
     df = pd.read_csv(args.analysis_csv)
 
-    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TTFF" not in df.columns and "TFF" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
+    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFF" not in df.columns and "TTFF" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
     if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
         df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
     if "FC" not in df.columns and "fixation_count" in df.columns:

@@ -285,7 +285,7 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
         'samples': samples,
         'visited': visited,
         'FC': fc,
-        'TFF': float(ttff) if pd.notna(ttff) else np.nan,
+        'TTFF': float(ttff) if pd.notna(ttff) else np.nan,
         'FFD': float(ffd) if pd.notna(ffd) else np.nan,
         'TFD': float(tfd) if pd.notna(tfd) else np.nan,
         'MFD': float(mfd) if pd.notna(mfd) else np.nan,
@@ -295,7 +295,7 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
 
     # Long-name canonical aliases
     out['Fixation Count'] = out['FC']
-    out['Time to First Fixation'] = out['TFF']
+    out['Time to First Fixation'] = out['TTFF']
     out['First Fixation Duration'] = out['FFD']
     out['Total Fixation Duration'] = out['TFD']
     out['Mean Fixation Duration'] = out['MFD']
@@ -304,8 +304,8 @@ def _metric_pack(df: pd.DataFrame, sub: pd.DataFrame, mask: np.ndarray, t0: floa
 
     # Backward-compatible legacy aliases
     out['fixation_count'] = out['FC']
-    out['TTFF'] = out['TFF']
-    out['TTFF_ms'] = out['TFF']
+    out['TFF'] = out['TTFF']
+    out['TTFF_ms'] = out['TTFF']
     out['dwell_time_ms'] = out['TFD']
     out['RF'] = out['RFF']
 
@@ -435,7 +435,8 @@ def compute_metrics(
         "rff_definition": "RFF = number of AOI re-entry episodes after first entry (based on fixation sequence).",
         "metric_naming": {
             "FC": "Fixation Count",
-            "TFF": "Time to First Fixation",
+            "TTFF": "Time to First Fixation",
+            "TFF": "Time to First Fixation (legacy alias)",
             "FFD": "First Fixation Duration",
             "MFD": "Mean Fixation Duration",
             "MPD": "Mean Pupil Diameter",

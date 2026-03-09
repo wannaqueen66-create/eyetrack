@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
-"""Summarize AOI visit probability (p_not_visited) and conditional TFF.
+"""Summarize AOI visit probability (p_not_visited) and conditional TTFF.
 
-This script is meant to complement TFF handling:
-- TFF is NaN when an AOI was never visited in a trial/scene.
+This script is meant to complement TTFF handling:
+- TTFF is NaN when an AOI was never visited in a trial/scene.
 - We therefore report both:
   1) p_not_visited = P(visited==0)
-  2) TFF stats conditioned on visited==1
+  2) TTFF stats conditioned on visited==1
 
 Input:
 - aoi_class_csv: typically outputs from batch_aoi_metrics.py
-  columns must include: participant_id, scene_id, class_name, visited, TFF
+  columns must include: participant_id, scene_id, class_name, visited, TTFF
   legacy alias `TTFF_ms` is still accepted
 
 Condition definition:
@@ -74,7 +74,7 @@ def parse_scene(scene_id: str, rx: Optional[re.Pattern]) -> Tuple[str, str]:
 
 
 def main():
-    ap = argparse.ArgumentParser(description="Summarize p_not_visited and TFF (given visited)")
+    ap = argparse.ArgumentParser(description="Summarize p_not_visited and TTFF (given visited)")
     ap.add_argument("--aoi_class_csv", required=True, help="AOI metrics by class CSV (e.g., batch_aoi_metrics_by_class.csv)")
     ap.add_argument("--scene_map_csv", default=None, help="Optional CSV mapping scene_id -> condition[,round]")
     ap.add_argument("--long_csv", default=None, help="Optional long-format master table. If provided, will try to map SceneID->Condition/WWR/Complexity.")
@@ -89,10 +89,14 @@ def main():
 
     df = pd.read_csv(args.aoi_class_csv)
 
-    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TTFF" not in df.columns and "TFF" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
+    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFF" not in df.columns and "TTFF" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
 
-    required = {"participant_id", "scene_id", "class_name", "visited", "TFF"}
+    required = {"participant_id", "scene_id", "class_name", "visited", "TTFF"}
     miss = required - set(df.columns)
     if miss:
         raise ValueError(f"Input missing columns: {sorted(miss)}")
@@ -144,7 +148,7 @@ def main():
 
     # numeric coercions
     out["visited"] = pd.to_numeric(out["visited"], errors="coerce").fillna(0).astype(int)
-    out["TFF"] = pd.to_numeric(out["TFF"], errors="coerce")
+    out["TTFF"] = pd.to_numeric(out["TTFF"], errors="coerce")
 
     grp_cols = ["condition", "class_name"]
     if args.by_round:
@@ -154,14 +158,14 @@ def main():
         n = len(g)
         n_visited = int(g["visited"].sum())
         p_not = float(1.0 - (n_visited / n)) if n else np.nan
-        tff_vis = g.loc[g["visited"] == 1, "TFF"].dropna()
+        ttff_vis = g.loc[g["visited"] == 1, "TTFF"].dropna()
         return pd.Series(
             {
                 "n_trials": int(n),
                 "n_visited": int(n_visited),
                 "p_not_visited": p_not,
-                "TFF_mean_ms_given_visited": float(tff_vis.mean()) if len(tff_vis) else np.nan,
-                "TFF_median_ms_given_visited": float(tff_vis.median()) if len(tff_vis) else np.nan,
+                "TTFF_mean_ms_given_visited": float(ttff_vis.mean()) if len(ttff_vis) else np.nan,
+                "TTFF_median_ms_given_visited": float(ttff_vis.median()) if len(ttff_vis) else np.nan,
             }
         )
 

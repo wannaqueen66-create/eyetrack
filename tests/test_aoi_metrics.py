@@ -28,6 +28,7 @@ def test_dwell_row_vs_fixation():
     assert float(poly_fix.loc[0, 'dwell_time_ms']) == 150.0
 
     # TTFF should be 0 (first AOI hit at t=0)
+    assert float(poly_fix.loc[0, 'TTFF']) == 0.0
     assert float(poly_fix.loc[0, 'TFF']) == 0.0
     assert float(poly_fix.loc[0, 'TTFF_ms']) == 0.0
 
@@ -78,5 +79,6 @@ def test_ttff_trial_start_ms_override():
     })
     aoi = [PolygonAOI('A', 1, [(0, 0), (10, 0), (10, 10), (0, 10)])]
     poly, cls = compute_metrics(df, aoi, dwell_mode='fixation', trial_start_ms=100)
+    assert float(poly.loc[0, 'TTFF']) == 20.0
     assert float(poly.loc[0, 'TFF']) == 20.0
     assert float(poly.loc[0, 'TTFF_ms']) == 20.0

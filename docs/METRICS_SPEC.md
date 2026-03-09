@@ -11,7 +11,7 @@ This file defines the canonical AOI metric names for `eyetrack`.
 - **MPD** = Mean Pupil Diameter
 - **RFF** = Re-fixation Frequency
 - **TFD** = Total Fixation Duration
-- **TFF** = Time to First Fixation
+- **TTFF** = Time to First Fixation
 
 ## Canonical long names / 标准英文全称
 
@@ -21,17 +21,17 @@ This file defines the canonical AOI metric names for `eyetrack`.
 - `Mean Pupil Diameter`
 - `Re-fixation Frequency`
 - `Total Fixation Duration`
-- `Time to First Fixation`
+- `Time to First Fixation` (`TTFF`)
 
 ## Legacy aliases kept for backward compatibility / 保留的旧别名
 
 - `fixation_count` → `FC`
-- `TTFF` / `TTFF_ms` → `TFF`
+- `TFF` / `TTFF_ms` → `TTFF`
 - `dwell_time_ms` → `TFD`
 - `RF` → `RFF`
 
-New code should prefer canonical abbreviations.
-新代码应优先使用标准缩写列名。
+New code should prefer canonical abbreviations, with `TFF` retained only as a legacy compatibility alias.
+新代码应优先使用标准缩写列名，`TFF` 仅作为兼容旧流程的历史别名保留。
 
 ## Definitions / 定义
 
@@ -59,7 +59,7 @@ Number of AOI re-entry episodes after the first entry, based on fixation sequenc
 Total fixation duration in the AOI.
 AOI 总注视时长。
 
-### TFF
+### TTFF
 Time from trial start to the first fixation entering the AOI.
 从 trial 起点到首次进入 AOI 的时间。
 

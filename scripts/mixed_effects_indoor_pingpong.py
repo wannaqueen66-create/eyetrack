@@ -40,8 +40,12 @@ def main():
 
     if 'TFD' not in dfm.columns and 'dwell_time_ms' in dfm.columns:
         dfm['TFD'] = pd.to_numeric(dfm['dwell_time_ms'], errors='coerce')
-    if 'TFF' not in dfm.columns and 'TTFF_ms' in dfm.columns:
-        dfm['TFF'] = pd.to_numeric(dfm['TTFF_ms'], errors='coerce')
+    if 'TTFF' not in dfm.columns and 'TFF' in dfm.columns:
+        dfm['TTFF'] = pd.to_numeric(dfm['TFF'], errors='coerce')
+    if 'TTFF' not in dfm.columns and 'TTFF_ms' in dfm.columns:
+        dfm['TTFF'] = pd.to_numeric(dfm['TTFF_ms'], errors='coerce')
+    if 'TFF' not in dfm.columns and 'TTFF' in dfm.columns:
+        dfm['TFF'] = pd.to_numeric(dfm['TTFF'], errors='coerce')
     if 'FC' not in dfm.columns and 'fixation_count' in dfm.columns:
         dfm['FC'] = pd.to_numeric(dfm['fixation_count'], errors='coerce')
 

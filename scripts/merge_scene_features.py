@@ -19,19 +19,25 @@ def main():
     aoi = pd.read_csv(args.aoi_class_csv)
     feat = pd.read_csv(args.scene_features_csv)
 
-    req_aoi = {'participant_id', 'scene_id', 'class_name', 'TFD', 'TFF', 'FC'}
+    req_aoi_base = {'participant_id', 'scene_id', 'class_name', 'TFD', 'FC'}
+    if not req_aoi_base.issubset(set(aoi.columns)):
+        raise ValueError(f'aoi csv missing columns: {sorted(req_aoi_base - set(aoi.columns))}')
+    if not ({'TTFF', 'TFF'} & set(aoi.columns)):
+        raise ValueError("aoi csv missing columns: ['TTFF'] (legacy alias 'TFF' also accepted)")
     req_feat = {'participant_id', 'scene_id'}
 
-    if not req_aoi.issubset(set(aoi.columns)):
-        raise ValueError(f'aoi csv missing columns: {sorted(req_aoi - set(aoi.columns))}')
     if not req_feat.issubset(set(feat.columns)):
         raise ValueError(f'scene feature csv missing columns: {sorted(req_feat - set(feat.columns))}')
 
     out = aoi.merge(feat, on=['participant_id', 'scene_id'], how='left')
 
     # Keep canonical short names while preserving backward-compatible aliases if needed downstream.
-    if 'TTFF_ms' not in out.columns and 'TFF' in out.columns:
-        out['TTFF_ms'] = out['TFF']
+    if 'TTFF' not in out.columns and 'TFF' in out.columns:
+        out['TTFF'] = out['TFF']
+    if 'TFF' not in out.columns and 'TTFF' in out.columns:
+        out['TFF'] = out['TTFF']
+    if 'TTFF_ms' not in out.columns and 'TTFF' in out.columns:
+        out['TTFF_ms'] = out['TTFF']
     if 'dwell_time_ms' not in out.columns and 'TFD' in out.columns:
         out['dwell_time_ms'] = out['TFD']
     if 'fixation_count' not in out.columns and 'FC' in out.columns:

@@ -24,7 +24,7 @@ Outcomes implemented
 -------------------
 1) tfd_y: log1p(TFD)
 2) share_logit: logit( share_of_total_fixation_duration_within_trial )  (exploratory allocation proxy)
-3) tff_y: log1p(TFF) on visited==1
+3) tff_y: log1p(TTFF) on visited==1
 4) fc_y: log1p(FC) on visited==1 (approximate; count-GLMM is better but out of scope)
 
 Model form (statsmodels MixedLM)
@@ -183,7 +183,7 @@ def main():
 
     # pick metric columns
     dwell_col = _pick_col(df, "TFD", "dwell_time_ms")
-    ttff_col = _pick_col(df, "TFF", "TTFF_ms")
+    ttff_col = _pick_col(df, "TTFF", "TFF", "TTFF_ms")
     fc_col = _pick_col(df, "FC", "fixation_count")
 
     need = ["participant_id", "class_name"]

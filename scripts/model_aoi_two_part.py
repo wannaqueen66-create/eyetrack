@@ -5,7 +5,7 @@ Part 1: whether the AOI was visited (binary)
 - visited ~ predictors + (1 | participant_id)   [approx GLMM]
 
 Part 2: conditional outcomes given visited==1
-- TFF (Time to First Fixation; often skewed) -> optional log1p transform
+- TTFF (Time to First Fixation; often skewed) -> optional log1p transform
 - TFD (Total Fixation Duration) -> optional log1p transform
 - FC (Fixation Count) -> GEE Poisson/NB (clustered by participant)
 
@@ -46,10 +46,10 @@ def _safe_write(path: str, text: str):
 
 def main():
     ap = argparse.ArgumentParser(description="Two-part models for AOI metrics")
-    ap.add_argument("--analysis_csv", required=True, help="Merged analysis table (must include participant_id, visited, TFF, TFD, FC; legacy aliases still accepted)")
+    ap.add_argument("--analysis_csv", required=True, help="Merged analysis table (must include participant_id, visited, TTFF, TFD, FC; legacy aliases still accepted)")
     ap.add_argument("--outdir", default="outputs_models_two_part")
     ap.add_argument("--predictors", default=None, help="Comma-separated predictor columns. If omitted, use built-in heuristic.")
-    ap.add_argument("--log1p_tff", action="store_true", help="Fit TFF on log1p(TFF)")
+    ap.add_argument("--log1p_tff", action="store_true", help="Fit TTFF on log1p(TTFF)")
     ap.add_argument("--log1p_tfd", action="store_true", help="Fit TFD on log1p(TFD)")
     ap.add_argument("--log1p_ttff", action="store_true", help="Legacy alias of --log1p_tff")
     ap.add_argument("--log1p_dwell", action="store_true", help="Legacy alias of --log1p_tfd")
@@ -60,8 +60,12 @@ def main():
     df = pd.read_csv(args.analysis_csv)
 
     # canonicalize metric columns
-    if "TFF" not in df.columns and "TTFF_ms" in df.columns:
-        df["TFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TTFF" not in df.columns and "TFF" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TFF"], errors="coerce")
+    if "TTFF" not in df.columns and "TTFF_ms" in df.columns:
+        df["TTFF"] = pd.to_numeric(df["TTFF_ms"], errors="coerce")
+    if "TFF" not in df.columns and "TTFF" in df.columns:
+        df["TFF"] = pd.to_numeric(df["TTFF"], errors="coerce")
     if "TFD" not in df.columns and "dwell_time_ms" in df.columns:
         df["TFD"] = pd.to_numeric(df["dwell_time_ms"], errors="coerce")
     if "FC" not in df.columns and "fixation_count" in df.columns:
