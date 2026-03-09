@@ -523,30 +523,40 @@ outputs_organized/
 │     └─ <scene_id>_polygon.csv
 └─ grouped/
    ├─ tables/
-   │  ├─ summary_sportfreq.csv
-   │  └─ summary_experience.csv
+   │  ├─ summary_sportfreq_scene.csv
+   │  ├─ summary_sportfreq_condition.csv
+   │  ├─ summary_experience_scene.csv
+   │  └─ summary_experience_condition.csv
    └─ plots/
-      ├─ sportfreq_visited_rate.png
-      ├─ sportfreq_TFF.png
-      ├─ sportfreq_TFD.png
-      ├─ sportfreq_FC.png
-      ├─ sportfreq_FFD.png
-      ├─ sportfreq_MFD.png
-      ├─ sportfreq_RFF.png
-      ├─ sportfreq_MPD.png
-      ├─ experience_visited_rate.png
-      ├─ experience_TFF.png
-      ├─ experience_TFD.png
-      ├─ experience_FC.png
-      ├─ experience_FFD.png
-      ├─ experience_MFD.png
-      ├─ experience_RFF.png
-      └─ experience_MPD.png
+      ├─ sportfreq_scene_visited_rate.png
+      ├─ sportfreq_scene_TFF.png
+      ├─ sportfreq_scene_TFD.png
+      ├─ sportfreq_scene_FC.png
+      ├─ sportfreq_scene_FFD.png
+      ├─ sportfreq_scene_MFD.png
+      ├─ sportfreq_scene_RFF.png
+      ├─ sportfreq_scene_MPD.png
+      ├─ sportfreq_condition_visited_rate.png
+      ├─ sportfreq_condition_TFF.png
+      ├─ sportfreq_condition_TFD.png
+      ├─ sportfreq_condition_FC.png
+      ├─ experience_scene_visited_rate.png
+      ├─ experience_scene_TFF.png
+      ├─ experience_scene_TFD.png
+      ├─ experience_scene_FC.png
+      ├─ experience_condition_visited_rate.png
+      ├─ experience_condition_TFF.png
+      ├─ experience_condition_TFD.png
+      └─ experience_condition_FC.png
 ```
 
 > 说明：不再输出 2×2 交叉分组（SportFreq×Experience）。
 >
-> 若 `group_manifest.csv` 中包含类似 `trial01_scene` 的列，分组 PNG 会优先直接使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制；当前默认按轮次 1→2、轮次内 `WWR15→WWR45→WWR75`、每个 WWR 内 `C0→C1` 排序，并在两轮之间加分隔线。对于原始 scene_id 中类似 `C1W45` / `C0W15` 的命名，脚本也会尽量自动归一化为 `WWR45_C1` / `WWR15_C0`。注意：同名场景在第1轮和第2轮会保留为两个独立位置，不会因为标签相同而被合并到一起。
+> 现在会同时输出 **scene-level** 与 **condition-level** 两套汇总/PNG：
+> - `*_scene_*.png`：保留 12 个场景位置，适合检查每一轮中的具体场景差异；
+> - `*_condition_*.png`：按 WWR×Complexity 条件汇总，适合在你明确希望跨轮次合并时使用。
+>
+> 若 `group_manifest.csv` 中包含类似 `trial01_scene` 的列，分组 PNG 会优先使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会把横轴命名成 `R1 WWR45_C1` / `R2 WWR45_C1` 这类形式，因此即便两轮条件名相同，也会作为两个独立场景位置显示，不会再错误地全部变成同一个名字。对于原始 scene_id 中类似 `C1W45` / `C0W15` 的命名，脚本也会尽量自动归一化为 `WWR45_C1` / `WWR15_C0`。
 
 ## 10. Building and Environment 图形规范参数表
 

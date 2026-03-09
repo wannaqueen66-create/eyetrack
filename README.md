@@ -740,32 +740,40 @@ outputs_organized/
 │     └─ <scene_id>_polygon.csv
 └─ grouped/
    ├─ tables/
-   │  ├─ summary_sportfreq.csv
-   │  └─ summary_experience.csv
+   │  ├─ summary_sportfreq_scene.csv
+   │  ├─ summary_sportfreq_condition.csv
+   │  ├─ summary_experience_scene.csv
+   │  └─ summary_experience_condition.csv
    └─ plots/
-      ├─ sportfreq_visited_rate.png
-      ├─ sportfreq_TTFF.png
-      ├─ sportfreq_TFD.png
-      ├─ sportfreq_FC.png
-      ├─ sportfreq_FFD.png
-      ├─ sportfreq_MFD.png
-      ├─ sportfreq_RF.png
-      ├─ sportfreq_MPD.png
-      ├─ experience_visited_rate.png
-      ├─ experience_TTFF.png
-      ├─ experience_TFD.png
-      ├─ experience_FC.png
-      ├─ experience_FFD.png
-      ├─ experience_MFD.png
-      ├─ experience_RF.png
-      └─ experience_MPD.png
+      ├─ sportfreq_scene_visited_rate.png
+      ├─ sportfreq_scene_TFF.png
+      ├─ sportfreq_scene_TFD.png
+      ├─ sportfreq_scene_FC.png
+      ├─ sportfreq_scene_FFD.png
+      ├─ sportfreq_scene_MFD.png
+      ├─ sportfreq_scene_RFF.png
+      ├─ sportfreq_scene_MPD.png
+      ├─ sportfreq_condition_visited_rate.png
+      ├─ sportfreq_condition_TFF.png
+      ├─ sportfreq_condition_TFD.png
+      ├─ sportfreq_condition_FC.png
+      ├─ experience_scene_visited_rate.png
+      ├─ experience_scene_TFF.png
+      ├─ experience_scene_TFD.png
+      ├─ experience_scene_FC.png
+      ├─ experience_condition_visited_rate.png
+      ├─ experience_condition_TFF.png
+      ├─ experience_condition_TFD.png
+      └─ experience_condition_FC.png
 ```
 
 Notes / 说明：
 - Grouped output currently includes only `SportFreq` and `Experience` (no 2×2 cross-group export).
 - 当前分组仅输出 `SportFreq` 与 `Experience`，不导出 2×2 交叉分组。
-- If `group_manifest.csv` contains columns like `trial01_scene`, grouped PNGs will directly prefer those scene labels (e.g. `WWR45_C1`) and use trial order for plotting; current default order is round 1→2, within each round `WWR15→WWR45→WWR75`, and within each WWR `C0→C1`, with a separator line between the two rounds.
-- 如果 `group_manifest.csv` 含有类似 `trial01_scene` 的列，分组 PNG 会优先直接使用这些列中的场景名（如 `WWR45_C1`），并按 trial 顺序绘制；当前默认按轮次 1→2、轮次内 `WWR15→WWR45→WWR75`、每个 WWR 内 `C0→C1` 排序，并在两轮之间加分隔线。
+- The optimizer now exports both **scene-level** and **condition-level** summaries/PNGs. Use `*_scene_*.png` when you need all 12 scene slots preserved; use `*_condition_*.png` when you intentionally want the repeated WWR×Complexity conditions collapsed across rounds.
+- 优化脚本现在会同时导出 **scene-level** 与 **condition-level** 的表和 PNG。需要保留 12 个场景位置时请看 `*_scene_*.png`；如果你是有意把两轮重复的 WWR×Complexity 条件合并，再看 `*_condition_*.png`。
+- If `group_manifest.csv` contains columns like `trial01_scene`, grouped PNGs will prefer those scene labels (e.g. `WWR45_C1`) and plot by trial order. Scene-level plots prepend round tags such as `R1 WWR45_C1` / `R2 WWR45_C1`, so repeated conditions from round 1 vs round 2 are visually distinct and never collapsed into one x-axis slot.
+- 如果 `group_manifest.csv` 含有类似 `trial01_scene` 的列，分组 PNG 会优先使用这些场景标签（如 `WWR45_C1`），并按 trial 顺序绘制。scene-level 图会在标签前加上轮次前缀，如 `R1 WWR45_C1` / `R2 WWR45_C1`，从而明确区分第 1 轮与第 2 轮，避免在横轴上被错误合并。
 
 ## 11. Building and Environment Figure Style Parameters / B&E图形规范参数表
 
