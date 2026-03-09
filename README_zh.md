@@ -161,6 +161,7 @@ python scripts/run_colab_one_command.py \
 运行后会产出：
 - `研究输出_YYYYMMDD_HHMMSS/01_AOI与描述统计/`：AOI 结果整理 + 分组描述统计
 - `研究输出_YYYYMMDD_HHMMSS/02_LMM模型/`：allocation LMM 结果 + 面向解释的 LMM 可视化 PNG
+  - 其中 `allocation_lmm/groupvar_Experience/` 与 `allocation_lmm/groupvar_SportFreq/` 会额外包含：固定效应表、随机效应方差表、模型拟合信息表、关键 simple effects/contrasts、固定效应 forest plot
 - `研究输出_YYYYMMDD_HHMMSS/03_TwoPart模型/`：合并分析表下游的 two-part model 结果
 - `研究输出_YYYYMMDD_HHMMSS/04_诊断信息/`：重叠 / 有效率 / 分布等诊断输出
 - `研究输出_YYYYMMDD_HHMMSS/00_AOI原始批处理/`：底层 AOI 批处理表格、overlay 与合并结果
@@ -495,6 +496,11 @@ python scripts/plot_aoi_lmm_explanatory.py \
 - `window`（窗户）
 - `equipment`（器材）
 
+当前 LMM 固定效应结构：
+- `C(class_name) * WWR_z * Complexity_z * C(GroupVar) + C(round)`
+- 随机项：`participant_id` 随机截距
+- 若有 `scene_id_raw` / `scene_id`，再加一个 scene-level variance component
+
 默认输出的指标：
 - `share_pct`（**主推荐**）：每个 trial 内该 AOI 占总 TFD 的百分比，可直接看作“注意分配占比”
 - `TFD`
@@ -518,6 +524,21 @@ python scripts/plot_aoi_lmm_explanatory.py \
   - `TFD`：看绝对停留量是否同步变化；
   - `TTFF`：看差异是否来自“更早看过去”；
   - `FC`：看差异是否来自“更频繁回看”。
+
+统计报告建议阅读顺序：
+1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/model_fit_<outcome>.csv`
+   - 包含 `AIC/BIC/logLik/nobs/converged`，以及近似 `marginal R²` / `conditional R²`
+2. 再看 `fixef_<outcome>.csv`
+   - 固定效应表：`coef / SE / Wald z / p / 95% CI`
+3. 再看 `contrasts_<outcome>.csv`
+   - 围绕 `WWR × Complexity × Group` 导出的关键 simple effects / contrasts
+4. 再看 `ranef_<outcome>.csv`
+   - 随机效应/方差分解：被试随机截距、scene 方差分量（若有）、残差方差
+5. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应
+
+当前脚本导出的 R² 定义为 Gaussian mixed model 下的 Nakagawa-style 近似：
+- `marginal R² = Var(Xβ) / [Var(Xβ) + ΣVar(random) + Var(residual)]`
+- `conditional R² = [Var(Xβ) + ΣVar(random)] / [Var(Xβ) + ΣVar(random) + Var(residual)]`
 
 建议按 B&E 论文标准继续：
 

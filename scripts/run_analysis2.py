@@ -86,7 +86,7 @@ def write_structure_readme(
         "子目录说明:",
         f"- {task1.name}/organized_outputs/: optimize_aoi_outputs.py 整理后的AOI结果",
         f"- {task1.name}/condition_group_summary/: WWR × Complexity × Group 描述统计汇总",
-        f"- {task2.name}/allocation_lmm/: allocation LMM 模型输出",
+        f"- {task2.name}/allocation_lmm/: allocation LMM 模型输出（含 fixef / ranef / model_fit / contrasts / forest plots）",
         f"- {task2.name}/allocation_lmm_visuals/: 面向解释的 LMM 图形",
         f"- {task3.name}/two_part_models/: two-part 模型结果",
         f"- {diag.name}/distribution/: AOI 分布诊断",

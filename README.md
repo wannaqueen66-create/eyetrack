@@ -310,6 +310,8 @@ Before the pipeline starts, Colab now prints a scene-precheck summary that inclu
 Outputs:
 - `研究输出_YYYYMMDD_HHMMSS/01_AOI与描述统计/` organized AOI results + grouped summaries
 - `研究输出_YYYYMMDD_HHMMSS/02_LMM模型/` allocation LMM results + explanatory visuals
+  - `allocation_lmm/groupvar_Experience/` and `allocation_lmm/groupvar_SportFreq/`
+  - now includes fixed-effect tables, random-effect variance tables, model-fit tables, key contrasts/simple effects, and fixed-effect forest plots
 - `研究输出_YYYYMMDD_HHMMSS/03_TwoPart模型/` merged analysis table downstream two-part model results
 - `研究输出_YYYYMMDD_HHMMSS/04_诊断信息/` overlap / valid-ratio / distribution diagnostics
 - `研究输出_YYYYMMDD_HHMMSS/00_AOI原始批处理/` raw AOI batch outputs (including overlays / merged tables)
@@ -665,9 +667,19 @@ It will fit models for BOTH population group variables:
 - `Experience` (High/Low)
 - `SportFreq` (High/Low)
 
+Current fixed-effect structure:
+- `C(class_name) * WWR_z * Complexity_z * C(GroupVar) + C(round)`
+- random intercept by `participant_id`
+- additional scene-level variance component when `scene_id_raw` / `scene_id` is available
+
 Outputs (per group variable):
-- `model_*.txt` (model summaries)
-- `fixef_*.csv` (tidy fixed-effect tables)
+- `model_*.txt` (raw model summaries for audit)
+- `fixef_*.csv` (fixed-effect tables: coef / SE / Wald z / p / 95% CI)
+- `ranef_*.csv` (random-effect variance components: participant intercept, scene variance component when available, residual variance)
+- `model_fit_*.csv` (AIC / BIC / logLik / nobs / convergence / approximate marginal+conditional R²)
+- `contrasts_*.csv` (key simple effects around WWR × Complexity × Group)
+- `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first)
+- `README_LMM_report.txt` (how to read the folder)
 
 ### Explanatory PNGs for allocation interpretation / 面向“注意分配变化”解释的 PNG
 
@@ -704,6 +716,12 @@ How to read them:
 - If the two group lines separate, cross, or change slope differently across WWR, that visually supports a condition × group interaction in attention allocation.
 - Then inspect `scene_group_profile_<GroupVar>_share_pct.png` to see whether the same pattern is stable across round-specific scene slots (`R1/R2`), rather than only after collapsing conditions.
 - Use `TFD`, `TTFF`, and `FC` PNGs as supporting figures: `TFD` shows absolute dwell, while `TTFF` and `FC` help explain whether a redistribution pattern is driven by earlier entry or more repeated fixations.
+- For the statistical report itself, go to `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/` and read in this order:
+  1. `model_fit_<outcome>.csv` (AIC/BIC/logLik/nobs/convergence + marginal/conditional R²)
+  2. `fixef_<outcome>.csv` (full fixed-effect table)
+  3. `contrasts_<outcome>.csv` (simple effects for reviewer-facing interaction follow-up)
+  4. `ranef_<outcome>.csv` (random-effect variance decomposition)
+  5. `forest_fixef_<outcome>.png` (compact visual summary of strongest fixed effects)
 
 #### Descriptive tables + interaction PNGs / 描述性汇总表 + 交互图
 
