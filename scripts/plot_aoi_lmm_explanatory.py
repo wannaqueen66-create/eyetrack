@@ -44,7 +44,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.figure_style import apply_paper_style, soften_axes, PALETTE
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_value_label, annotate_series_smart
 from src.aoi_metrics import normalize_aoi_class_name
 from src.manifest_scene_order import attach_manifest_trial_metadata
 
@@ -363,34 +363,11 @@ def _ordered_aois(vals) -> list[str]:
 
 
 def _format_metric_value(metric: str, value: float) -> str:
-    if not np.isfinite(value):
-        return ""
-    if metric == "share_pct":
-        return f"{value:.1f}%"
-    if metric in {"TFD", "TTFF"}:
-        return f"{value:.0f}"
-    if metric == "FC":
-        return f"{value:.1f}"
-    return f"{value:.2f}"
+    return metric_value_label(metric, value)
 
 
 def _annotate_series(ax, xs, ys, metric: str, color: str):
-    points = [(float(x), float(y)) for x, y in zip(xs, ys) if np.isfinite(x) and np.isfinite(y)]
-    if not points:
-        return
-    for idx, (x, y) in enumerate(points):
-        dy = 6 if idx % 2 == 0 else -10
-        ax.annotate(
-            _format_metric_value(metric, y),
-            xy=(x, y),
-            xytext=(0, dy),
-            textcoords="offset points",
-            ha="center",
-            va="bottom" if dy >= 0 else "top",
-            fontsize=7,
-            color=color,
-            bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.75),
-        )
+    annotate_series_smart(ax, xs, ys, metric=metric, color=color, max_labels=4)
 
 
 def _export_plot_companion(summary: pd.DataFrame, outdir: Path, stem: str):
@@ -416,7 +393,7 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
     groups = _ordered_groups(summary["group_value"])
     nrows = max(1, len(COMPLEXITY_ORDER))
     ncols = max(1, len(aois))
-    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4.5 * ncols, 3.6 * nrows), sharey=True, sharex=True)
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4.8 * ncols, 3.8 * nrows), sharey=True, sharex=True)
     if not isinstance(axes, np.ndarray):
         axes = np.array([[axes]])
     elif axes.ndim == 1:
@@ -438,20 +415,20 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
                 lo = s2["ci_low"].astype(float).tolist()
                 hi = s2["ci_high"].astype(float).tolist()
                 color = COLOR_MAP.get(g, PALETTE["gray"])
-                ax.plot(xs, ys, marker="o", color=color, label=GROUP_LABELS.get(g, g))
-                ax.fill_between(xs, lo, hi, color=color, alpha=0.16, linewidth=0)
+                ax.plot(xs, ys, marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=2.0)
+                ax.fill_between(xs, lo, hi, color=color, alpha=0.12, linewidth=0)
                 _annotate_series(ax, xs, ys, metric=metric, color=color)
             ax.set_xticks(SCENE_ORDER_DEFAULT)
             ax.set_xlabel("Window-to-wall ratio WWR (%)")
             if j == 0:
                 ax.set_ylabel(METRIC_LABELS.get(metric, metric))
-            ax.set_title(f"{_aoi_label(aoi)} | {complexity}")
+            ax.set_title(f"{_aoi_label(aoi)} · {complexity}", pad=8)
             soften_axes(ax)
 
     handles, labels = axes[0, 0].get_legend_handles_labels()
     if handles:
         fig.legend(handles, labels, loc="upper right", frameon=False, title=GROUPVAR_LABELS.get(group_var, group_var))
-    fig.suptitle(f"{GROUPVAR_LABELS.get(group_var, group_var)} × scene condition effects on AOI {METRIC_TITLES.get(metric, metric)}", y=1.02, fontsize=12)
+    fig.suptitle(f"{GROUPVAR_LABELS.get(group_var, group_var)} × scene condition effects on AOI {METRIC_TITLES.get(metric, metric)}", y=1.01, fontsize=12)
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
@@ -470,7 +447,7 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
     summary = _sort_scene_df(summary)
     aois = _ordered_aois(summary["aoi_key"])
     groups = _ordered_groups(summary["group_value"])
-    fig, axes = plt.subplots(nrows=len(aois), ncols=1, figsize=(12, 2.9 * len(aois)), sharex=True, sharey=False)
+    fig, axes = plt.subplots(nrows=len(aois), ncols=1, figsize=(12.4, 3.0 * len(aois)), sharex=True, sharey=False)
     if not isinstance(axes, np.ndarray):
         axes = np.array([axes])
 
@@ -487,8 +464,8 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
             s2["x"] = s2["scene_label"].map(xpos)
             s2 = s2.sort_values("x")
             color = COLOR_MAP.get(g, PALETTE["gray"])
-            ax.plot(s2["x"], s2["mean"], marker="o", color=color, label=GROUP_LABELS.get(g, g))
-            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=color, alpha=0.12, linewidth=0)
+            ax.plot(s2["x"], s2["mean"], marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=2.0)
+            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=color, alpha=0.10, linewidth=0)
             _annotate_series(ax, s2["x"].tolist(), s2["mean"].tolist(), metric=metric, color=color)
         ax.set_title(_aoi_label(aoi), loc="left")
         ax.set_ylabel(METRIC_LABELS.get(metric, metric))

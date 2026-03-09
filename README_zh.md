@@ -47,6 +47,12 @@
 - `grouped_overall`
 - `grouped_experience`
 
+主线 PNG 风格说明：
+- `main` 上的核心 PNG 已统一为更接近 Origin / Building and Environment 期刊气质的清爽投稿风格。
+- 影响范围包括：描述性 grouped PNG、解释型 LMM PNG、evidence PNG，以及 fixed-effect forest plot。
+- 重点优化了配色、留白、网格线、标题/图例层级，以及数值标签的避免重叠策略。
+- 为了兼顾可读性与结果保真，关键 PNG 旁仍保留对应的 `*_data.csv`，当图内不再铺满所有数值标签时，仍可直接对照精确结果。
+
 #### `02_显著性分析_Significance`
 这是现在的**显著性分析主线**。
 

@@ -74,7 +74,7 @@ from scipy import stats
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from src.aoi_metrics import normalize_aoi_class_series, normalize_aoi_class_name
-from src.figure_style import apply_paper_style, soften_axes, PALETTE
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, annotate_right_ci_labels
 
 
 AOI_PRIORITY = ["table", "window", "equipment"]
@@ -720,21 +720,17 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str, stability_gr
         lambda r: f"b={float(r['coef']):.2f} [{float(r['ci_low']):.2f}, {float(r['ci_high']):.2f}]" if pd.notna(r['coef']) and pd.notna(r['ci_low']) and pd.notna(r['ci_high']) else "",
         axis=1,
     )
-    fig_h = max(4.0, 0.45 * len(dfp) + 1.8)
+    apply_paper_style()
+    fig_h = max(4.2, 0.48 * len(dfp) + 1.9)
     xmin = float(np.nanmin(dfp["ci_low"])) if dfp["ci_low"].notna().any() else -1.0
     xmax = float(np.nanmax(dfp["ci_high"])) if dfp["ci_high"].notna().any() else 1.0
-    span = max(xmax - xmin, 1.0)
-    fig, ax = plt.subplots(figsize=(11.5, fig_h))
-    ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
+    fig, ax = plt.subplots(figsize=(11.8, fig_h))
+    ax.axvline(0, color=PALETTE["muted"], linewidth=1.0, linestyle="--")
     y = np.arange(len(dfp))
-    colors = np.where(dfp["p"].fillna(1.0) < 0.05, "#2C7FB8", "#9E9E9E")
+    colors = np.where(dfp["p"].fillna(1.0) < 0.05, PALETTE["blue"], PALETTE["gray"])
     ax.hlines(y, dfp["ci_low"], dfp["ci_high"], color=colors, linewidth=2)
     ax.scatter(dfp["coef"], y, color=colors, s=30, zorder=3)
-    for yi, (_, row) in enumerate(dfp.iterrows()):
-        if row["effect_ci_label"]:
-            xpos = float(row["ci_high"]) + 0.03 * span
-            ax.text(xpos, yi, row["effect_ci_label"], va="center", ha="left", fontsize=7, color="#333333")
-    ax.set_xlim(xmin - 0.08 * span, xmax + 0.55 * span)
+    annotate_right_ci_labels(ax, y, dfp["ci_high"].tolist(), dfp["effect_ci_label"].tolist(), color=PALETTE["ink"], pad_frac=0.03)
     ax.set_yticks(y)
     ax.set_yticklabels(dfp["term"])
     ax.set_xlabel("Coefficient estimate (95% CI)")
@@ -743,9 +739,7 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str, stability_gr
         dfp["stability_grade"] = stability_grade
     else:
         ax.set_title(title)
-    ax.grid(axis="x", alpha=0.2)
-    for spine in ["top", "right"]:
-        ax.spines[spine].set_visible(False)
+    soften_axes(ax, grid_axis="x")
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")
@@ -926,17 +920,21 @@ def _plot_contrasts_overview(contrasts_df: pd.DataFrame, out_png: Path, group_va
         sub = sub.iloc[::-1].reset_index(drop=True)
         y = np.arange(len(sub))
         colors = np.where(pd.to_numeric(sub["p"], errors="coerce").fillna(1.0) < 0.05, PALETTE["orange"], PALETTE["gray"])
-        ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
+        ax.axvline(0, color=PALETTE["muted"], linewidth=1.0, linestyle="--")
         ax.hlines(y, sub["ci_low"], sub["ci_high"], color=colors, linewidth=2)
         ax.scatter(sub["estimate"], y, color=colors, s=28, zorder=3)
+        label_texts = []
         for yi, row in sub.iterrows():
             if np.isfinite(row["estimate"]) and np.isfinite(row["ci_low"]) and np.isfinite(row["ci_high"]):
-                ax.text(float(row["ci_high"]) + 0.02 * max(1.0, float(np.nanmax(sub["ci_high"]) - np.nanmin(sub["ci_low"]))), yi, f"{float(row['estimate']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}]", fontsize=7, va="center")
+                label_texts.append(f"{float(row['estimate']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}]")
+            else:
+                label_texts.append("")
+        annotate_right_ci_labels(ax, y, sub["ci_high"].tolist(), label_texts, color=PALETTE["ink"], pad_frac=0.025)
         ax.set_yticks(y)
         ax.set_yticklabels(sub["display_label"])
         ax.set_xlabel("Contrast estimate (95% CI)")
         ax.set_title(fam.replace("_", " "))
-        soften_axes(ax)
+        soften_axes(ax, grid_axis="x")
         export_parts.append(sub)
 
     fig.suptitle(f"{group_var} | {outcome} reviewer-friendly contrasts", y=1.02, fontsize=12)
@@ -975,17 +973,16 @@ def _plot_fixef_terms_overview(fixef_df: pd.DataFrame, out_png: Path, group_var:
     fig, ax = plt.subplots(figsize=(11.5, max(4.8, 0.42 * len(top) + 1.8)))
     y = np.arange(len(top))
     colors = np.where(top["p"].fillna(1.0) < 0.05, PALETTE["blue"], PALETTE["gray"])
-    ax.axvline(0, color="#888888", linewidth=1.0, linestyle="--")
+    ax.axvline(0, color=PALETTE["muted"], linewidth=1.0, linestyle="--")
     ax.hlines(y, top["ci_low"], top["ci_high"], color=colors, linewidth=2)
     ax.scatter(top["coef"], y, color=colors, s=30, zorder=3)
-    for yi, row in top.iterrows():
-        label = f"{float(row['coef']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}] | {row['sig_flag']}"
-        ax.text(float(row["ci_high"]) + 0.03 * max(1.0, float(np.nanmax(top["ci_high"]) - np.nanmin(top["ci_low"]))), yi, label, fontsize=7, va="center")
+    label_texts = [f"{float(row['coef']):.2f} [{float(row['ci_low']):.2f}, {float(row['ci_high']):.2f}] | {row['sig_flag']}" for _, row in top.iterrows()]
+    annotate_right_ci_labels(ax, y, top["ci_high"].tolist(), label_texts, color=PALETTE["ink"], pad_frac=0.03)
     ax.set_yticks(y)
     ax.set_yticklabels(top["term"])
     ax.set_xlabel("Fixed-effect estimate (95% CI)")
     ax.set_title(f"{group_var} | {outcome} key fixed effects")
-    soften_axes(ax)
+    soften_axes(ax, grid_axis="x")
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300, bbox_inches="tight")

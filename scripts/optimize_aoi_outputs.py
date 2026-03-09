@@ -28,7 +28,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label, annotate_series_smart, metric_value_label
 from src.aoi_metrics import normalize_aoi_class_series
 from src.manifest_scene_order import attach_manifest_trial_metadata, normalize_condition_token
 
@@ -266,11 +266,8 @@ def _format_group_metric_label(metric: str, value: float) -> str:
         return ""
     if "visited_rate" in metric:
         return f"{value * 100:.1f}%"
-    if any(tok in metric for tok in ["TTFF", "TFD", "FFD", "MFD", "MPD"]):
-        return f"{value:.0f}"
-    if any(tok in metric for tok in ["FC", "RFF"]):
-        return f"{value:.2f}"
-    return f"{value:.2f}"
+    metric_base = metric.replace('_mean_given_visited','').replace('_mean_all','')
+    return metric_value_label(metric_base, value)
 
 
 def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, title: str):
@@ -310,11 +307,11 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     if not groups:
         groups = sorted(agg["group_value"].astype(str).unique())
 
-    width = 0.8 / max(1, len(groups))
+    width = 0.72 / max(1, len(groups))
     x = np.arange(len(plot_slots))
 
-    fig_w = max(12.0, 0.85 * len(plot_slots) + 3.0)
-    fig, ax = plt.subplots(figsize=(fig_w, 4.8))
+    fig_w = max(12.6, 0.9 * len(plot_slots) + 3.2)
+    fig, ax = plt.subplots(figsize=(fig_w, 5.0))
     palette_map = {"Low": PALETTE["blue"], "High": PALETTE["orange"]}
     fallback_palette = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"], PALETTE["purple"]]
 
@@ -327,7 +324,9 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
-        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.84, edgecolor='white', linewidth=0.8)
+        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.9, edgecolor='white', linewidth=0.8)
+        vals_for_group = []
+        xs_for_group = []
         for rect, val, slot in zip(bars, y, plot_slots):
             plot_rows.append({
                 "plot_order_key": slot,
@@ -341,7 +340,9 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             if pd.isna(val):
                 continue
             ymax_all.append(val)
-            ax.text(rect.get_x() + rect.get_width() / 2, rect.get_height(), _format_group_metric_label(metric, val), ha="center", va="bottom", fontsize=7)
+            xs_for_group.append(rect.get_x() + rect.get_width() / 2)
+            vals_for_group.append(val)
+        annotate_series_smart(ax, xs_for_group, vals_for_group, metric=metric.replace('_mean_given_visited','').replace('_mean_all',''), color=color, max_labels=4)
 
     if round_boundaries is not None:
         for i in range(1, len(round_boundaries)):
@@ -356,7 +357,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     soften_axes(ax)
     if ymax_all:
         ymax = max(ymax_all)
-        ax.set_ylim(top=float(ymax) * 1.18 if float(ymax) > 0 else 1.0)
+        ax.set_ylim(top=float(ymax) * 1.22 if float(ymax) > 0 else 1.0)
     ax.legend(title="Group", frameon=False)
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)

@@ -13,7 +13,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label
+from src.figure_style import apply_paper_style, soften_axes, PALETTE, metric_label, annotate_series_smart
 from src.manifest_scene_order import attach_manifest_trial_metadata
 
 
@@ -86,7 +86,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
     aoi_levels = sorted(summary["class_name"].astype(str).unique().tolist())
     group_levels = [g for g in ["Low", "High"] if g in set(summary["group_value"].astype(str))] or sorted(summary["group_value"].astype(str).unique().tolist())
     wwr_levels = [15, 45, 75]
-    fig, axes = plt.subplots(nrows=max(1, len(group_levels)), ncols=max(1, len(aoi_levels)), figsize=(4.2 * max(1, len(aoi_levels)), 3.2 * max(1, len(group_levels))), sharey=True, sharex=True)
+    fig, axes = plt.subplots(nrows=max(1, len(group_levels)), ncols=max(1, len(aoi_levels)), figsize=(4.6 * max(1, len(aoi_levels)), 3.5 * max(1, len(group_levels))), sharey=True, sharex=True)
     if not isinstance(axes, np.ndarray):
         axes = np.array([[axes]])
     elif axes.ndim == 1:
@@ -111,8 +111,10 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
                         xs.append(w); ys.append(np.nan); lo.append(np.nan); hi.append(np.nan)
                     else:
                         rr = r.iloc[0]; xs.append(w); ys.append(float(rr["mean"])); lo.append(float(rr["ci_low"])); hi.append(float(rr["ci_high"]))
-                ax.plot(xs, ys, marker="o", linewidth=1.9, color=colors.get(cx, PALETTE['gray']), label=cx)
-                ax.fill_between(xs, lo, hi, color=colors.get(cx, PALETTE['gray']), alpha=0.16, linewidth=0)
+                line_color = colors.get(cx, PALETTE['gray'])
+                ax.plot(xs, ys, marker="o", linewidth=2.0, color=line_color, label=cx)
+                ax.fill_between(xs, lo, hi, color=line_color, alpha=0.12, linewidth=0)
+                annotate_series_smart(ax, xs, ys, metric=outcome, color=line_color, max_labels=3)
             ax.set_title(f"{group_var}={gv} | AOI={aoi}", pad=8); ax.set_xticks(wwr_levels); ax.set_xlabel("WWR")
             if j == 0:
                 ax.set_ylabel(metric_label(outcome) if outcome in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RFF', 'MPD'] else outcome)
@@ -120,7 +122,10 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
     handles, labels = axes[0, 0].get_legend_handles_labels()
     if handles:
         fig.legend(handles, labels, loc="upper right", frameon=False, title="Complexity")
-    fig.suptitle(title, y=1.01, fontsize=12); fig.tight_layout(); out_png.parent.mkdir(parents=True, exist_ok=True); fig.savefig(out_png, dpi=220, bbox_inches="tight")
+    fig.suptitle(title, y=1.01, fontsize=12)
+    fig.tight_layout()
+    out_png.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_png, dpi=320, bbox_inches="tight")
 
 
 def main():

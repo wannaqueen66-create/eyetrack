@@ -47,6 +47,12 @@ What is highlighted on `main`:
 - `grouped_overall`
 - `grouped_experience`
 
+Mainline PNG styling note:
+- The core PNG figures on `main` are now unified to a cleaner journal-facing style closer to Origin / Building and Environment conventions.
+- This affects the descriptive grouped PNGs, explanatory LMM PNGs, evidence PNGs, and fixed-effect forest plots.
+- The goal is cleaner spacing, calmer palette, lighter grids, more consistent titles/legends, and fewer overlapping numeric labels.
+- Companion `*_data.csv` files remain available beside key PNGs so exact values are preserved even when in-figure labels are intentionally reduced.
+
 #### `02_显著性分析_Significance`
 Primary reading path for inferential outputs.
 
