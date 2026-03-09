@@ -673,12 +673,14 @@ Current fixed-effect structure:
 - additional scene-level variance component when `scene_id_raw` / `scene_id` is available
 
 Outputs (per group variable):
+- `model_stability_summary.csv` (**read this first**; one row per outcome with `stable / caution / unstable` triage)
+- `README_model_stability.txt` (grading rules + how to use the triage)
 - `model_*.txt` (raw model summaries for audit)
 - `fixef_*.csv` (fixed-effect tables: coef / SE / Wald z / p / 95% CI)
 - `ranef_*.csv` (random-effect variance components: participant intercept, scene variance component when available, residual variance)
-- `model_fit_*.csv` (AIC / BIC / logLik / nobs / convergence / approximate marginal+conditional R²)
+- `model_fit_*.csv` (AIC / BIC / logLik / nobs / convergence / approximate marginal+conditional R² + stability fields)
 - `contrasts_*.csv` (key simple effects around WWR × Complexity × Group)
-- `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first, now with inline `b [95% CI]` labels)
+- `forest_fixef_*.png` (fixed-effect forest plots, strongest terms first, now with inline `b [95% CI]` labels and a stability tag in the title)
 - `forest_fixef_*_data.csv` (companion table for each forest plot, same term order as the PNG)
 - `README_LMM_report.txt` (how to read the folder)
 
@@ -724,11 +726,12 @@ How to read them:
 - Then inspect `scene_group_profile_<GroupVar>_share_pct.png` to see whether the same pattern is stable across round-specific scene slots (`R1/R2`), rather than only after collapsing conditions.
 - Use `TFD`, `TTFF`, and `FC` PNGs as supporting figures: `TFD` shows absolute dwell, while `TTFF` and `FC` help explain whether a redistribution pattern is driven by earlier entry or more repeated fixations.
 - For the statistical report itself, go to `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/` and read in this order:
-  1. `model_fit_<outcome>.csv` (AIC/BIC/logLik/nobs/convergence + marginal/conditional R²)
-  2. `fixef_<outcome>.csv` (full fixed-effect table)
-  3. `contrasts_<outcome>.csv` (simple effects for reviewer-facing interaction follow-up)
-  4. `ranef_<outcome>.csv` (random-effect variance decomposition)
-  5. `forest_fixef_<outcome>.png` (compact visual summary of strongest fixed effects)
+  1. `model_stability_summary.csv` (**main triage table**; use `stable` as primary candidates, `caution` with explicit warning language, `unstable` as supplementary/diagnostic)
+  2. `model_fit_<outcome>.csv` (AIC/BIC/logLik/nobs/convergence + marginal/conditional R² + stability fields)
+  3. `fixef_<outcome>.csv` (full fixed-effect table)
+  4. `contrasts_<outcome>.csv` (simple effects for reviewer-facing interaction follow-up)
+  5. `ranef_<outcome>.csv` (random-effect variance decomposition)
+  6. `forest_fixef_<outcome>.png` (compact visual summary of strongest fixed effects, title includes stability tag)
 
 #### Descriptive tables + interaction PNGs / 描述性汇总表 + 交互图
 
@@ -745,6 +748,11 @@ It exports:
 - `outputs_aoi_summary/tables/summary_<GroupVar>_<outcome>.csv`
 - `outputs_aoi_summary/plots/plot_<GroupVar>_<outcome>.png`
 
+> Stability grading used by `model_stability_summary.csv`:
+> - `stable`: converged and no major Hessian / singular-fit / SE-CI anomaly detected
+> - `caution`: converged, but warnings suggest boundary/singular random effects, near-zero random variance, or softer optimizer concerns
+> - `unstable`: non-converged, Hessian non-PD, or fixed-effect SE/CI output is abnormal
+>
 > Note: binary/count outcomes are better modeled via GLMM in R (lme4/glmmTMB).
 > The modeling script focuses on LMM-style exploratory analysis on transformed outcomes.
 

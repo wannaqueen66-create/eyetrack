@@ -532,16 +532,23 @@ python scripts/plot_aoi_lmm_explanatory.py \
   - `FC`：看差异是否来自“更频繁回看”。
 
 统计报告建议阅读顺序：
-1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/model_fit_<outcome>.csv`
-   - 包含 `AIC/BIC/logLik/nobs/converged`，以及近似 `marginal R²` / `conditional R²`
-2. 再看 `fixef_<outcome>.csv`
+1. 先看 `02_LMM模型/allocation_lmm/groupvar_<GroupVar>/model_stability_summary.csv`
+   - 这是**主稳定性汇总表**；优先把 `stable` 当作主结果候选，`caution` 需带警示语，`unstable` 更适合作为补充/诊断结果
+2. 再看 `model_fit_<outcome>.csv`
+   - 包含 `AIC/BIC/logLik/nobs/converged`、近似 `marginal R²` / `conditional R²`，以及稳定性字段
+3. 再看 `fixef_<outcome>.csv`
    - 固定效应表：`coef / SE / Wald z / p / 95% CI`
-3. 再看 `contrasts_<outcome>.csv`
+4. 再看 `contrasts_<outcome>.csv`
    - 围绕 `WWR × Complexity × Group` 导出的关键 simple effects / contrasts
-4. 再看 `ranef_<outcome>.csv`
+5. 再看 `ranef_<outcome>.csv`
    - 随机效应/方差分解：被试随机截距、scene 方差分量（若有）、残差方差
-5. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应（图上已带 `b [95% CI]` 数值标签）
+6. 最后用 `forest_fixef_<outcome>.png` 快速浏览最强固定效应（图标题会带 stability 标签，图上已带 `b [95% CI]` 数值标签）
    - 若需逐项核对图中数值，对应查看同目录的 `forest_fixef_<outcome>_data.csv`
+
+当前脚本额外会自动做稳定性分级：
+- `stable`：已收敛，且未见明显 Hessian / 奇异拟合 / SE-CI 异常
+- `caution`：已收敛，但存在 boundary/singular、随机效应方差接近 0、或较轻的优化 warning
+- `unstable`：未收敛，或 Hessian 非正定，或固定效应 SE/CI 明显异常
 
 当前脚本导出的 R² 定义为 Gaussian mixed model 下的 Nakagawa-style 近似：
 - `marginal R² = Var(Xβ) / [Var(Xβ) + ΣVar(random) + Var(residual)]`

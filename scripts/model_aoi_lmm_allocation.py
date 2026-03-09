@@ -83,6 +83,8 @@ OUTCOME_LABELS = {
     "ttff_y": "log1p(TTFF), visited==1",
     "fc_y": "log1p(FC), visited==1",
 }
+CI_ALPHA_DEFAULT = 0.05
+RANDOM_VAR_TOL = 1e-8
 
 
 def _safe_num(s: pd.Series) -> pd.Series:
@@ -146,11 +148,131 @@ def _ensure_dir(path: str | Path) -> Path:
     return p
 
 
-def _ci_from_estimate(estimate: float, se: float, alpha: float = 0.05) -> tuple[float, float]:
+def _ci_from_estimate(estimate: float, se: float, alpha: float = CI_ALPHA_DEFAULT) -> tuple[float, float]:
     if not (np.isfinite(estimate) and np.isfinite(se)):
         return (np.nan, np.nan)
     zcrit = stats.norm.ppf(1 - alpha / 2)
     return (estimate - zcrit * se, estimate + zcrit * se)
+
+
+def _safe_float(x) -> float:
+    try:
+        v = float(x)
+    except Exception:
+        return np.nan
+    return v if np.isfinite(v) else np.nan
+
+
+def _is_bad_se_or_ci(fixef_df: pd.DataFrame) -> bool:
+    if fixef_df is None or fixef_df.empty:
+        return False
+    bad_se = (~np.isfinite(pd.to_numeric(fixef_df.get("se"), errors="coerce"))).any()
+    ci_low = pd.to_numeric(fixef_df.get("ci_low"), errors="coerce")
+    ci_high = pd.to_numeric(fixef_df.get("ci_high"), errors="coerce")
+    bad_ci_missing = (~np.isfinite(ci_low) | ~np.isfinite(ci_high)).any()
+    bad_ci_order = (ci_low > ci_high).fillna(False).any()
+    return bool(bad_se or bad_ci_missing or bad_ci_order)
+
+
+def _collect_stability_signals(
+    res,
+    fixef_df: pd.DataFrame,
+    random_df: pd.DataFrame,
+    captured_warnings: list[warnings.WarningMessage],
+    alpha: float = CI_ALPHA_DEFAULT,
+) -> dict:
+    warning_texts = [str(w.message).strip() for w in captured_warnings if getattr(w, "message", None) is not None]
+    warning_text = " | ".join([w for w in warning_texts if w])
+    lower_warning_text = warning_text.lower()
+
+    converged = bool(getattr(res, "converged", False))
+    method = str(getattr(res, "method", "") or "")
+    scale = _safe_float(getattr(res, "scale", np.nan))
+
+    random_df_local = random_df.copy() if random_df is not None else pd.DataFrame()
+    non_resid = random_df_local.loc[random_df_local.get("component", pd.Series(dtype=str)) != "residual"].copy() if len(random_df_local) else pd.DataFrame()
+    random_vars = pd.to_numeric(non_resid.get("variance"), errors="coerce") if len(non_resid) else pd.Series(dtype=float)
+    near_zero_random = bool(len(random_vars) and (random_vars.fillna(np.nan) <= RANDOM_VAR_TOL).all())
+    any_zero_random = bool(len(random_vars) and (random_vars.fillna(np.nan) <= RANDOM_VAR_TOL).any())
+
+    hessian_non_pd = any(
+        key in lower_warning_text
+        for key in ["hessian", "not positive definite", "non positive definite", "non-positive definite"]
+    )
+    singular_warning = any(
+        key in lower_warning_text
+        for key in ["singular", "boundary", "on the boundary", "random effects covariance is singular"]
+    )
+    grad_warning = any(
+        key in lower_warning_text
+        for key in ["gradient", "optimization failed", "failed to converge", "did not converge", "maximum likelihood optimization failed"]
+    )
+    se_or_ci_issue = _is_bad_se_or_ci(fixef_df)
+
+    notes: list[str] = []
+    severe_reasons: list[str] = []
+    caution_reasons: list[str] = []
+
+    if not converged:
+        severe_reasons.append("not_converged")
+        notes.append("Model result reports converged=False.")
+    if hessian_non_pd:
+        severe_reasons.append("hessian_non_pd")
+        notes.append("Optimizer/model warnings mention Hessian not positive definite.")
+    if se_or_ci_issue:
+        severe_reasons.append("se_or_ci_abnormal")
+        notes.append("At least one fixed effect has non-finite SE/CI or CI bounds reversed.")
+
+    if singular_warning:
+        caution_reasons.append("random_effects_singular_or_boundary")
+        notes.append("Warnings suggest singular or boundary random-effects fit.")
+    if near_zero_random:
+        caution_reasons.append("random_effect_variance_near_zero")
+        notes.append("All non-residual random-effect variance components are near zero.")
+    elif any_zero_random:
+        caution_reasons.append("some_random_effect_variance_near_zero")
+        notes.append("At least one non-residual random-effect variance component is near zero.")
+    if grad_warning and converged:
+        caution_reasons.append("optimizer_warning")
+        notes.append("Warnings mention gradient/optimizer issues despite converged=True.")
+    if not np.isfinite(scale) or scale <= 0:
+        caution_reasons.append("residual_scale_non_positive")
+        notes.append("Residual scale is non-finite or non-positive.")
+    if alpha != CI_ALPHA_DEFAULT:
+        caution_reasons.append("ci_alpha_non_default")
+        notes.append(f"CI alpha={alpha:g} differs from repo default {CI_ALPHA_DEFAULT:g}.")
+    else:
+        notes.append(f"CI alpha uses default {CI_ALPHA_DEFAULT:g} (95% CI).")
+
+    if severe_reasons:
+        grade = "unstable"
+    elif caution_reasons:
+        grade = "caution"
+    else:
+        grade = "stable"
+        notes.append("No major convergence, Hessian, singular-fit, or SE/CI anomalies detected.")
+
+    grade_rank = {"stable": 1, "caution": 2, "unstable": 3}[grade]
+    trigger_codes = severe_reasons + [x for x in caution_reasons if x not in severe_reasons]
+
+    return {
+        "stability_grade": grade,
+        "stability_grade_rank": grade_rank,
+        "stability_reasons": "; ".join(trigger_codes),
+        "stability_notes": " ".join(dict.fromkeys(notes)),
+        "warnings_text": warning_text,
+        "warning_count": len(warning_texts),
+        "converged": converged,
+        "hessian_non_pd": hessian_non_pd,
+        "optimizer_warning": grad_warning,
+        "singular_or_boundary_warning": singular_warning,
+        "random_effects_all_near_zero": near_zero_random,
+        "random_effects_any_near_zero": any_zero_random,
+        "se_or_ci_abnormal": se_or_ci_issue,
+        "ci_alpha": alpha,
+        "fit_method": method,
+        "scale": scale,
+    }
 
 
 def _rename_test_column(df: pd.DataFrame) -> pd.DataFrame:
@@ -292,7 +414,16 @@ def _approx_r2(res, random_df: pd.DataFrame) -> dict:
     return out
 
 
-def _model_fit_table(res, df_model: pd.DataFrame, formula: str, outcome: str, group_var: str, subset_note: str, random_df: pd.DataFrame) -> pd.DataFrame:
+def _model_fit_table(
+    res,
+    df_model: pd.DataFrame,
+    formula: str,
+    outcome: str,
+    group_var: str,
+    subset_note: str,
+    random_df: pd.DataFrame,
+    stability: dict | None = None,
+) -> pd.DataFrame:
     r2 = _approx_r2(res, random_df)
     row = {
         "outcome": outcome,
@@ -317,6 +448,8 @@ def _model_fit_table(res, df_model: pd.DataFrame, formula: str, outcome: str, gr
         "r2_method": r2["r2_method"],
         "r2_note": r2["r2_note"],
     }
+    if stability:
+        row.update(stability)
     return pd.DataFrame([row])
 
 
@@ -325,14 +458,14 @@ def fit_mixedlm(df: pd.DataFrame, formula: str, group_col: str, vc_scene_col: st
     if vc_scene_col and vc_scene_col in df.columns:
         vc = {"scene": f"0 + C({vc_scene_col})"}
 
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
         if vc:
             model = smf.mixedlm(formula, data=df, groups=df[group_col], vc_formula=vc)
         else:
             model = smf.mixedlm(formula, data=df, groups=df[group_col])
         res = model.fit(reml=False, method="lbfgs")
-    return res
+    return res, list(caught)
 
 
 def _parse_factor_levels(term: str, factor_name: str) -> str | None:
@@ -552,7 +685,7 @@ def _build_contrasts(res, df_model: pd.DataFrame, outcome: str, group_var: str) 
     return out
 
 
-def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str):
+def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str, stability_grade: str | None = None):
     if fixef_df.empty:
         return
     try:
@@ -584,7 +717,11 @@ def _forest_plot(fixef_df: pd.DataFrame, out_png: Path, title: str):
     ax.set_yticks(y)
     ax.set_yticklabels(dfp["term"])
     ax.set_xlabel("Coefficient estimate (95% CI)")
-    ax.set_title(title)
+    if stability_grade:
+        ax.set_title(f"{title} | stability: {stability_grade}")
+        dfp["stability_grade"] = stability_grade
+    else:
+        ax.set_title(title)
     ax.grid(axis="x", alpha=0.2)
     for spine in ["top", "right"]:
         ax.spines[spine].set_visible(False)
@@ -600,6 +737,10 @@ def _write_group_readme(gdir: Path, group_var: str):
 
 Files in this folder
 --------------------
+- model_stability_summary.csv
+  One-row-per-model stability triage table. Read this first.
+- README_model_stability.txt
+  Explains the grading rules and the recommended reading order.
 - model_<outcome>.txt
   Raw statsmodels MixedLM summary for audit / troubleshooting.
 - fixef_<outcome>.csv
@@ -607,22 +748,27 @@ Files in this folder
 - ranef_<outcome>.csv
   Random-effect variance components (participant intercept, scene variance component if available, residual variance).
 - model_fit_<outcome>.csv
-  Model fit information including AIC, BIC, logLik, nobs, convergence, and approximate marginal/conditional R².
+  Model fit information including AIC, BIC, logLik, nobs, convergence, approximate marginal/conditional R², and embedded stability fields.
 - contrasts_<outcome>.csv
   Key simple effects around WWR × Complexity × {group_var}, exported as linear contrasts from the fixed-effect covariance matrix.
 - forest_fixef_<outcome>.png
-  Forest plot of the strongest fixed effects by |z|, now with inline effect/CI labels.
+  Forest plot of the strongest fixed effects by |z|, with inline effect/CI labels and a stability tag in the title.
 - forest_fixef_<outcome>_data.csv
   Companion table for the forest plot (same terms/order and rendered labels).
 
 How to interpret
 ----------------
-1. Start with model_fit_<outcome>.csv
-   - r2_marginal: variance explained by fixed effects only.
-   - r2_conditional: variance explained by fixed + random effects.
-2. Then inspect fixef_<outcome>.csv for the full coefficient table.
+1. Start with model_stability_summary.csv and identify whether each outcome is stable / caution / unstable.
+2. For stable models, then inspect model_fit_<outcome>.csv and fixef_<outcome>.csv.
 3. Use contrasts_<outcome>.csv for reviewer-facing simple-effects reporting around the target interaction.
 4. Use ranef_<outcome>.csv to report variance decomposition / random intercept components.
+5. If a model is caution/unstable, treat it as supplementary unless you can justify the warnings.
+
+Stability grades
+----------------
+- stable: no major convergence, Hessian, singular-fit, or SE/CI anomalies detected.
+- caution: fit converged, but warnings suggest singular/boundary random effects, near-zero random variances, or other softer optimizer concerns.
+- unstable: non-converged, Hessian non-PD, or SE/CI output is abnormal/non-finite.
 
 R² definition
 -------------
@@ -636,6 +782,51 @@ Contrasts are estimated from the fixed-effect design matrix while averaging over
 This keeps round as a nuisance adjustment rather than forcing a single arbitrary round level.
 """
     (gdir / "README_LMM_report.txt").write_text(text, encoding="utf-8")
+
+
+def _write_stability_readme(outdir: Path):
+    text = f"""Model stability grading for AOI allocation LMM outputs
+
+Purpose
+-------
+This file helps you decide which model outputs are safe to use as the main statistical narrative,
+and which ones should be treated as supplementary / cautionary.
+
+Recommended reading order
+-------------------------
+1. Open each group folder's model_stability_summary.csv first.
+2. Prioritize rows with stability_grade=stable as main-result candidates.
+3. Treat stability_grade=caution as usable with explicit warning language.
+4. Treat stability_grade=unstable as supplementary / diagnostic unless re-fit or alternative modeling resolves the issue.
+
+Current grading logic
+---------------------
+- stable:
+  - converged=True
+  - no Hessian non-PD warning
+  - no abnormal SE/CI output
+  - no singular/boundary random-effects warning
+- caution:
+  - converged=True, but at least one softer warning exists, such as:
+    - singular/boundary random-effects fit
+    - some/all random-effect variance components near zero
+    - optimizer/gradient warning despite converged=True
+    - CI alpha not using the default {CI_ALPHA_DEFAULT:g}
+- unstable:
+  - converged=False, or
+  - Hessian reported as non-positive-definite, or
+  - fixed-effect SE/CI output is non-finite / malformed
+
+Important caveat
+----------------
+These grades are triage labels for the current Python MixedLM outputs only. They do not replace substantive judgment,
+and they do not make transformed LMMs equivalent to a dedicated GLMM for binary/count outcomes.
+
+Count / binary note
+-------------------
+For visited / count-like outcomes, a GLMM in R (e.g. lme4/glmmTMB) is still preferable for final confirmatory inference.
+"""
+    (outdir / "README_model_stability.txt").write_text(text, encoding="utf-8")
 
 
 def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
@@ -751,12 +942,16 @@ def main():
         f"min_rows: {args.min_rows}",
         "group vars: " + ",".join(group_vars),
         f"vc_scene_col: {vc_scene_col}",
-        "outputs: fixef / ranef / model_fit / contrasts / forest plot / raw summary txt",
+        f"stability_ci_alpha_default: {CI_ALPHA_DEFAULT}",
+        f"stability_random_var_tol: {RANDOM_VAR_TOL}",
+        "outputs: model_stability_summary / fixef / ranef / model_fit / contrasts / forest plot / raw summary txt",
     ]
 
     for gv in group_vars:
         gdir = _ensure_dir(outdir / f"groupvar_{gv}")
         _write_group_readme(gdir, gv)
+        _write_stability_readme(gdir)
+        stability_rows: list[dict] = []
 
         for ycol, subset_note in outcomes:
             if ycol not in df.columns:
@@ -770,19 +965,46 @@ def main():
             d[gv] = d[gv].apply(_norm_hilo)
             d = d.dropna(subset=[gv])
 
+            base_summary = {
+                "group_var": gv,
+                "outcome": ycol,
+                "outcome_label": OUTCOME_LABELS.get(ycol, ycol),
+                "subset": subset_note,
+                "n": int(len(d)),
+                "formula": "",
+                "stability_grade": "unstable",
+                "stability_grade_rank": 3,
+                "stability_reasons": "not_run",
+                "stability_notes": "Model was not fit.",
+            }
+
             if len(d) < args.min_rows:
                 (gdir / f"model_{ycol}.txt").write_text(
                     f"SKIP: too few rows for outcome={ycol} (n={len(d)}; min_rows={args.min_rows})\n",
                     encoding="utf-8",
                 )
+                base_summary.update(
+                    {
+                        "stability_reasons": "too_few_rows",
+                        "stability_notes": f"Skipped because n={len(d)} < min_rows={args.min_rows}.",
+                        "warning_count": 0,
+                    }
+                )
+                stability_rows.append(base_summary)
                 continue
 
             formula = f"{ycol} ~ C(class_name) * WWR_z * Complexity_z * C({gv})"
             if d["round"].notna().any():
                 formula += " + C(round)"
+            base_summary["formula"] = formula
 
             try:
-                res = fit_mixedlm(d, formula, group_col="participant_id", vc_scene_col="scene_id_model")
+                res, caught_warnings = fit_mixedlm(d, formula, group_col="participant_id", vc_scene_col="scene_id_model")
+
+                fixef = _tidy_fixef(res)
+                ranef = _extract_random_effects(res, d, group_col="participant_id", vc_scene_col=vc_scene_col)
+                stability = _collect_stability_signals(res, fixef, ranef, caught_warnings)
+
                 (gdir / f"model_{ycol}.txt").write_text(
                     "\n".join(
                         [
@@ -792,6 +1014,11 @@ def main():
                             f"Formula: {formula}",
                             f"n={len(d)}",
                             f"vc_scene_col={vc_scene_col}",
+                            f"stability_grade={stability['stability_grade']}",
+                            f"stability_reasons={stability['stability_reasons']}",
+                            f"warning_count={stability['warning_count']}",
+                            "Warnings:",
+                            stability["warnings_text"] or "(none)",
                             "",
                             str(res.summary()),
                         ]
@@ -800,25 +1027,45 @@ def main():
                     encoding="utf-8",
                 )
 
-                fixef = _tidy_fixef(res)
+                fixef.insert(0, "stability_grade", stability["stability_grade"])
                 fixef.insert(0, "group_var", gv)
                 fixef.insert(0, "outcome", ycol)
                 fixef.insert(0, "n", int(len(d)))
                 fixef.to_csv(gdir / f"fixef_{ycol}.csv", index=False, encoding="utf-8-sig")
 
-                ranef = _extract_random_effects(res, d, group_col="participant_id", vc_scene_col=vc_scene_col)
+                ranef.insert(0, "stability_grade", stability["stability_grade"])
                 ranef.insert(0, "group_var", gv)
                 ranef.insert(0, "outcome", ycol)
                 ranef.to_csv(gdir / f"ranef_{ycol}.csv", index=False, encoding="utf-8-sig")
 
-                fitdf = _model_fit_table(res, d, formula, ycol, gv, subset_note, ranef)
+                fitdf = _model_fit_table(res, d, formula, ycol, gv, subset_note, ranef, stability=stability)
                 fitdf.to_csv(gdir / f"model_fit_{ycol}.csv", index=False, encoding="utf-8-sig")
 
                 contrasts = _build_contrasts(res, d, ycol, gv)
                 if len(contrasts):
+                    contrasts.insert(0, "stability_grade", stability["stability_grade"])
                     contrasts.to_csv(gdir / f"contrasts_{ycol}.csv", index=False, encoding="utf-8-sig")
 
-                _forest_plot(fixef, gdir / f"forest_fixef_{ycol}.png", f"{gv} | {ycol} fixed effects")
+                _forest_plot(
+                    fixef,
+                    gdir / f"forest_fixef_{ycol}.png",
+                    f"{gv} | {ycol} fixed effects",
+                    stability_grade=stability["stability_grade"],
+                )
+
+                stability_row = base_summary.copy()
+                stability_row.update(stability)
+                stability_row.update(
+                    {
+                        "n_participants": int(d["participant_id"].nunique(dropna=True)),
+                        "n_scenes": int(d["scene_id_model"].nunique(dropna=True)) if "scene_id_model" in d.columns else np.nan,
+                        "n_aoi_classes": int(d["class_name"].nunique(dropna=True)),
+                        "aic": float(getattr(res, "aic", np.nan)),
+                        "bic": float(getattr(res, "bic", np.nan)),
+                        "logLik": float(getattr(res, "llf", np.nan)),
+                    }
+                )
+                stability_rows.append(stability_row)
             except Exception as e:
                 (gdir / f"model_{ycol}.txt").write_text(
                     "\n".join(
@@ -833,6 +1080,21 @@ def main():
                     + "\n",
                     encoding="utf-8",
                 )
+                base_summary.update(
+                    {
+                        "stability_reasons": "fit_failed",
+                        "stability_notes": repr(e),
+                        "warning_count": 0,
+                    }
+                )
+                stability_rows.append(base_summary)
+
+        if stability_rows:
+            stab_df = pd.DataFrame(stability_rows)
+            sort_cols = [c for c in ["stability_grade_rank", "outcome"] if c in stab_df.columns]
+            if sort_cols:
+                stab_df = stab_df.sort_values(sort_cols, ascending=[True] * len(sort_cols))
+            stab_df.to_csv(gdir / "model_stability_summary.csv", index=False, encoding="utf-8-sig")
 
     (outdir / "RUNINFO.txt").write_text("\n".join(runinfo) + "\n", encoding="utf-8")
     print("Saved:", outdir)
