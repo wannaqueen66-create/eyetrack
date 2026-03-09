@@ -12,7 +12,7 @@ def main():
     ap = argparse.ArgumentParser(description="Colab-friendly research-bundle pipeline for eyetrack")
     ap.add_argument("--scenes_root_orig", default="/content/drive/MyDrive/映射")
     ap.add_argument("--group_manifest", default=None)
-    ap.add_argument("--scene_features_csv", default=None)
+    ap.add_argument("--scene_features_csv", default=None, help="Optional; if omitted, run_analysis2.py will auto-generate scene_features.csv from scene folders + AOI JSON")
     ap.add_argument("--repo_dir", default="/content/eyetrack")
     ap.add_argument("--aoi_json_mode", default="image_stem")
     ap.add_argument("--min_valid_ratio", default="0.6")

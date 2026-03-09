@@ -50,10 +50,22 @@ def main():
         if c not in dfm.columns:
             raise ValueError(f'Missing required column: {c}')
 
-    # choose available predictors
-    predictors = [c for c in ['table_density', 'distance_to_table_center_m', 'illum_lux', 'crowding_level', 'occlusion_ratio'] if c in dfm.columns]
+    # choose available predictors (prefer physically meaningful manual fields when present,
+    # but also accept auto-generated AOI/image-derived fields so the Colab one-command flow can run)
+    predictor_candidates = [
+        'table_density',
+        'distance_to_table_center_m',
+        'table_center_offset_ratio',
+        'illum_lux',
+        'crowding_level',
+        'occlusion_ratio',
+        'aoi_coverage_ratio',
+        'non_table_aoi_coverage_ratio',
+        'WWR',
+    ]
+    predictors = [c for c in predictor_candidates if c in dfm.columns]
     if not predictors:
-        raise ValueError('No predictor columns found. Provide at least one scene feature predictor.')
+        raise ValueError('No predictor columns found. Provide at least one scene feature predictor (manual or auto-generated).')
 
     rhs = ' + '.join(predictors)
 

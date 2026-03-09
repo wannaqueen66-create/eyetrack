@@ -1,0 +1,15 @@
+#!/usr/bin/env python3
+"""Simple Colab one-command entry for the eyetrack research bundle.
+
+Alias of run_colab_analysis2_pipeline.py, kept to make README instructions obvious.
+"""
+
+from __future__ import annotations
+
+import runpy
+from pathlib import Path
+
+
+if __name__ == "__main__":
+    target = Path(__file__).resolve().with_name("run_colab_analysis2_pipeline.py")
+    runpy.run_path(str(target), run_name="__main__")
