@@ -156,6 +156,30 @@ python scripts/run_colab_one_command.py \
 - `研究输出_时间戳/01_QC后_AfterQC/01_描述性分析_Descriptive`
 - `研究输出_时间戳/01_QC后_AfterQC/02_显著性分析_Significance`
 
+### 每套 `02_显著性分析_Significance` 内部建议阅读顺序
+全样本与 QC 后两套结果，建议都按同一顺序读：
+
+1. `allocation_lmm/groupvar_Experience/model_stability_summary.csv`  
+   先做稳定性分诊，先分清哪些 outcome 可以当主结果、哪些只能谨慎引用。
+2. `allocation_lmm/groupvar_Experience/evidence_stability_overview_Experience.png`  
+   这是给论文/审稿沟通最快的一张稳定性总览图。
+3. 先只看主显著性指标：`share_pct`、`share_logit`、`FC_share`、`fc_share_logit`、`FC_rate`、`tfd_y`、`ttff_y`、`fc_y`。
+4. 对每个主指标，再按一个固定包读取：
+   - `model_fit_<outcome>.csv` → 模型是否可用
+   - `fixef_<outcome>.csv` → fixed effects 主表
+   - `contrasts_<outcome>.csv` → 围绕 WWR × Complexity × Group 的 simple effects / contrasts
+   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → 面向论文和审稿回复的证据图
+5. `allocation_lmm_visuals/`  
+   作为解释图、辅图来读，不要替代核心统计表。
+6. `two_part_models/`  
+   当 scene feature 问题是主问题时再并入主线；否则可放补充。
+7. `ffd_y`、`mfd_y`、`rff_y`、`MPD` 这些探索性指标，优先放补充或机制讨论。
+
+### `overall` 与 `Experience` 在显著性主线里的关系
+- `overall` 继续保留在**描述性主线**里，适合交代水平、分布、整体形态。
+- 当前 **显著性主线** 主要围绕 `allocation_lmm/` 中的 `Experience`（其次是 `SportFreq`）展开。
+- 也就是说：`grouped_overall` 不应直接和显著性主结果混成一条证据链；overall 负责背景，Experience LMM 负责主统计结论。
+
 ---
 
 ## main 主线目前可见的 AOI 指标
@@ -174,7 +198,7 @@ python scripts/run_colab_one_command.py \
 
 ### 哪些适合主显著性主线，哪些更适合描述/探索
 
-**当前 main 上更推荐作为主显著性阅读入口的指标：**
+**Tier 1：主结果显著性指标（当前 `main` 上推荐的 headline 顺序）**
 - `share_pct` / `share_logit`（基于 TFD 的注意分配占比）
 - `FC_share` / `fc_share_logit`（基于 FC 的注意分配占比）
 - `FC_rate`
@@ -182,15 +206,31 @@ python scripts/run_colab_one_command.py \
 - `TTFF`
 - `FC`
 
-这些指标最贴合当前主线里“分配 / 时延 / 绝对注意量”的问题。
+这些指标最贴合当前主线里“分配 / 时延 / 绝对注意量”三类问题。若你想给论文正文和审稿回复建立一条稳定、可复用的主结果梯队，优先用这一层。
 
-**当前更建议先作为描述性或探索性支持指标使用的：**
+**Tier 2：补充 / 探索 / 机制支持指标**
 - `FFD`
 - `MFD`
 - `RFF`
 - `MPD`
 
-它们现在已经进入底表和描述性输出，也接入了探索性的 LMM 风格输出；但一般不建议直接把它们当成第一主结论，除非你的研究问题本来就明确围绕这些机制指标展开。
+它们已经进入底表、描述性输出，也接入了探索性的 LMM 风格输出；但在当前 `main` 上，更适合作为支持性或探索性结果，而不是第一主结论。
+
+### 读 LMM 文件时建议对照的 outcome 命名
+显著性目录里的部分文件名会使用模型内部 outcome 名：
+
+- `share_pct` = TFD 注意分配占比（百分比形式）
+- `share_logit` = logit 变换后的 TFD 注意分配占比
+- `FC_share` = FC 注意分配占比（原比例）
+- `fc_share_logit` = logit 变换后的 FC 注意分配占比
+- `FC_rate` = 每秒 FC 速率
+- `tfd_y` = `log1p(TFD)`
+- `ttff_y` = `visited==1` 条件下的 `log1p(TTFF)`
+- `fc_y` = `visited==1` 条件下的 `log1p(FC)`
+- `ffd_y` = `visited==1` 条件下的 `log1p(FFD)`，探索性
+- `mfd_y` = `visited==1` 条件下的 `log1p(MFD)`，探索性
+- `rff_y` = `log1p(RFF)`，探索性
+- `MPD` = 原始平均瞳孔直径，探索性
 
 ### 指标定义与处理口径
 
@@ -252,6 +292,7 @@ python scripts/run_colab_one_command.py \
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
 
 标准命名与定义也可参考：`docs/METRICS_SPEC.md`。
+显著性主线的固定阅读顺序可参考：`docs/SIGNIFICANCE_MAINLINE.md`。
 
 ## 最小环境准备
 

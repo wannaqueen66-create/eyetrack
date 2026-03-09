@@ -155,6 +155,32 @@ Start at:
 - `研究输出_时间戳/01_QC后_AfterQC/01_描述性分析_Descriptive`
 - `研究输出_时间戳/01_QC后_AfterQC/02_显著性分析_Significance`
 
+### Recommended inferential reading order inside each `02_显著性分析_Significance`
+Use the same reading order for both full-sample and after-QC tracks:
+
+1. `allocation_lmm/groupvar_Experience/model_stability_summary.csv`  
+   First triage table. Decide which outcomes are stable / caution / unstable before quoting effects.
+2. `allocation_lmm/groupvar_Experience/evidence_stability_overview_Experience.png`  
+   Fast reviewer-facing summary of which outcomes are safe as main-result candidates.
+3. Primary outcomes only: `share_pct`, `share_logit`, `FC_share`, `fc_share_logit`, `FC_rate`, `tfd_y`, `ttff_y`, `fc_y`  
+   Read them in that order unless your paper question needs a different emphasis.
+4. For each primary outcome, read the files as a linked packet:
+   - `model_fit_<outcome>.csv` → whether the model fit is usable
+   - `fixef_<outcome>.csv` → omnibus fixed effects / coefficient table
+   - `contrasts_<outcome>.csv` → reviewer-facing simple effects around WWR × Complexity × Group
+   - `evidence_model_fit_overview_Experience.png` / `evidence_fixef_key_terms_<outcome>.png` / `evidence_contrasts_<outcome>.png` → fast communication PNGs
+5. `allocation_lmm_visuals/`  
+   Use as explanatory companion figures, not as the first evidence source.
+6. `two_part_models/`  
+   Use when scene-feature questions are central and the track generated them.
+7. Exploratory outcomes (`ffd_y`, `mfd_y`, `rff_y`, `MPD`)  
+   Keep for supplement / mechanism discussion unless they are the explicit study target.
+
+### About `overall` vs `Experience` on the inferential mainline
+- `overall` remains part of the **descriptive** mainline and is useful for level/shape/context.
+- The **inferential mainline** currently centers on `Experience` (and secondarily `SportFreq`) in `allocation_lmm/`.
+- In other words: do **not** mix `grouped_overall` descriptive summaries with the main statistical claim path. Use overall for context, Experience LMM for inferential claims.
+
 ---
 
 ## AOI metrics now surfaced on `main`
@@ -173,7 +199,7 @@ The current mainline bottom tables and descriptive outputs can expose the follow
 
 ### Which metrics are mainline-priority vs supplementary
 
-**Primary / recommended for main inferential reading on `main`:**
+**Tier 1: main-result inferential outcomes (preferred headline order on `main`):**
 - `share_pct` / `share_logit` (TFD allocation share)
 - `FC_share` / `fc_share_logit` (FC allocation share)
 - `FC_rate`
@@ -181,15 +207,31 @@ The current mainline bottom tables and descriptive outputs can expose the follow
 - `TTFF`
 - `FC`
 
-These are the metrics most directly aligned with allocation / latency / absolute-attention questions in the current mainline significance workflow.
+These are the metrics most directly aligned with the main paper questions in the current workflow: allocation, latency, and absolute attention. If you need one stable main-result ladder for manuscript text and reviewer response, use this tier first.
 
-**Secondary / exploratory / descriptive-first metrics:**
+**Tier 2: supplementary / exploratory / mechanism-facing outcomes:**
 - `FFD`
 - `MFD`
 - `RFF`
 - `MPD`
 
-These are now included in bottom tables and descriptive outputs, and are also wired into exploratory LMM-style outputs where data allow. But they should usually be treated as supportive or mechanism-oriented metrics rather than the first confirmatory headline.
+These are useful and already connected to the pipeline, but on the current `main` branch they should usually be interpreted as supportive or exploratory rather than the first confirmatory headline.
+
+### Recommended outcome-name mapping when reading LMM outputs
+The significance folders use transformed/internal model outcome names in several filenames:
+
+- `share_pct` = TFD allocation share in percentage form
+- `share_logit` = logit-transformed TFD allocation share
+- `FC_share` = FC allocation share in raw proportion form
+- `fc_share_logit` = logit-transformed FC allocation share
+- `FC_rate` = FC per-second rate
+- `tfd_y` = `log1p(TFD)`
+- `ttff_y` = `log1p(TTFF)` on `visited==1` rows
+- `fc_y` = `log1p(FC)` on `visited==1` rows
+- `ffd_y` = `log1p(FFD)` on `visited==1` rows, exploratory
+- `mfd_y` = `log1p(MFD)` on `visited==1` rows, exploratory
+- `rff_y` = `log1p(RFF)`, exploratory
+- `MPD` = raw mean pupil diameter, exploratory
 
 ### Definitions and handling choices
 
@@ -251,6 +293,7 @@ After `python scripts/run_analysis2.py ...`, the new metrics are easiest to insp
 - `研究输出_时间戳/*/02_显著性分析_Significance/allocation_lmm_visuals/png/`
 
 For canonical names and definitions, also see `docs/METRICS_SPEC.md`.
+For the fixed inferential reading order on `main`, also see `docs/SIGNIFICANCE_MAINLINE.md`.
 
 ## Minimal setup
 

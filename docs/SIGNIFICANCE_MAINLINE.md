@@ -1,0 +1,108 @@
+# Significance mainline on `main`
+
+This note fixes the inferential reading order for the current `main` branch.
+Use the same structure for both:
+
+- `00_全样本_AllSample/02_显著性分析_Significance`
+- `01_QC后_AfterQC/02_显著性分析_Significance`
+
+## 1. What is the inferential mainline?
+
+The current inferential mainline is:
+
+- `allocation_lmm/`
+  - especially `groupvar_Experience/`
+- plus `allocation_lmm_visuals/` as explanatory companion figures
+- plus `two_part_models/` only when scene-feature questions are central
+
+`grouped_overall` belongs to the **descriptive** mainline, not the inferential mainline.
+Use it for context and pattern description, not as the main statistical claim path.
+
+## 2. Primary vs supplementary outcomes
+
+### Primary / main-result outcomes
+Recommended headline order:
+
+1. `share_pct`
+2. `share_logit`
+3. `FC_share`
+4. `fc_share_logit`
+5. `FC_rate`
+6. `tfd_y`
+7. `ttff_y`
+8. `fc_y`
+
+Interpretive logic:
+- `share_pct` / `share_logit`: TFD-based allocation
+- `FC_share` / `fc_share_logit`: FC-based allocation
+- `FC_rate`: time-standardized count intensity
+- `tfd_y`: absolute attention amount
+- `ttff_y`: latency to first entry
+- `fc_y`: absolute fixation count
+
+### Supplementary / exploratory outcomes
+- `ffd_y`
+- `mfd_y`
+- `rff_y`
+- `MPD`
+
+These are useful for support, mechanism discussion, or supplement tables, but should not be the first headline unless they are the explicit study target.
+
+## 3. Required reading order within each group folder
+
+Recommended entry:
+
+1. `model_stability_summary.csv`
+2. `evidence_stability_overview_<GroupVar>.png`
+3. For each primary outcome:
+   - `model_fit_<outcome>.csv`
+   - `fixef_<outcome>.csv`
+   - `contrasts_<outcome>.csv`
+   - `evidence_fixef_key_terms_<outcome>.png`
+   - `evidence_contrasts_<outcome>.png`
+4. `evidence_model_fit_overview_<GroupVar>.png`
+5. `ranef_<outcome>.csv` when variance decomposition is needed
+6. `forest_fixef_<outcome>.png` for compact audit / appendix support
+
+## 4. How the main evidence pieces map to each other
+
+For one outcome, treat the files as one packet:
+
+- `model_fit_<outcome>.csv`
+  - answers: did the model fit, what is the sample base, what is the approximate R², is it converged/stable?
+- `fixef_<outcome>.csv`
+  - answers: which fixed effects are estimated, with coefficient / SE / z / p / CI
+- `contrasts_<outcome>.csv`
+  - answers: what are the simple effects around WWR × Complexity × Group, in reviewer-friendly form
+- `evidence_fixef_key_terms_<outcome>.png`
+  - visual summary of key fixed effects
+- `evidence_contrasts_<outcome>.png`
+  - visual summary of contrasts
+- `*_data.csv`
+  - exact exported data behind the PNGs
+
+So the practical workflow is:
+
+- use `model_stability_summary.csv` to decide whether an outcome is eligible for the main text
+- use `model_fit_<outcome>.csv` + `fixef_<outcome>.csv` for the core statistical claim
+- use `contrasts_<outcome>.csv` for simple-effect wording and reviewer response
+- use evidence PNGs for compact communication in manuscript drafting / supplement / rebuttal
+
+## 5. Experience vs overall
+
+On `main`, keep this separation clear:
+
+- `overall` = descriptive path
+- `Experience` LMM = inferential main path
+- `SportFreq` LMM = secondary inferential path
+
+If a result is introduced from `grouped_overall`, phrase it as descriptive background.
+If a result is introduced as a statistical claim, route it through the LMM outputs.
+
+## 6. Stability rule for manuscript use
+
+- `stable` → default main-result candidate
+- `caution` → usable with explicit caution language
+- `unstable` → supplement / diagnostic unless the model is reworked
+
+For paper writing and reviewer response, do not quote a strong inferential claim before checking stability first.

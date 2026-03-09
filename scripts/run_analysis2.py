@@ -156,11 +156,19 @@ def write_track_readme(
         "",
         "主线子目录说明:",
         f"- {task1.name}/organized_outputs/: optimize_aoi_outputs.py 整理后的 AOI 结果",
-        f"- {task1.name}/grouped_overall/: 不分组或全样本层面的描述性整理",
-        f"- {task1.name}/grouped_experience/: Experience 分组描述性汇总（主推）",
+        f"- {task1.name}/grouped_overall/: 不分组或全样本层面的描述性整理（描述性主线，不直接承担主显著性结论）",
+        f"- {task1.name}/grouped_experience/: Experience 分组描述性汇总（描述性主入口）",
         f"- {task2.name}/allocation_lmm/: allocation LMM 模型输出（含 stability / fixef / ranef / model_fit / contrasts / evidence PNGs）",
-        f"- {task2.name}/allocation_lmm_visuals/: 面向解释的显著性分析图形",
-        f"- {task2.name}/two_part_models/: two-part 模型结果（若已生成）",
+        f"- {task2.name}/allocation_lmm_visuals/: 面向解释的显著性分析图形（辅图，不替代核心统计表）",
+        f"- {task2.name}/two_part_models/: two-part 模型结果（若已生成；更适合作为 scene-feature 扩展线或补充）",
+        "",
+        "显著性主线建议阅读顺序（全样本 / QC后完全一致）:",
+        f"1. {task2.name}/allocation_lmm/groupvar_Experience/model_stability_summary.csv",
+        f"2. {task2.name}/allocation_lmm/groupvar_Experience/evidence_stability_overview_Experience.png",
+        "3. 先看主显著性指标: share_pct / share_logit / FC_share / fc_share_logit / FC_rate / tfd_y / ttff_y / fc_y",
+        "4. 对每个主指标，固定按 model_fit -> fixef -> contrasts -> evidence PNG 的顺序读取",
+        "5. exploratory 指标 ffd_y / mfd_y / rff_y / MPD 优先作为补充或机制支持结果",
+        "6. overall 主要用于描述性背景；显著性主结论优先来自 Experience LMM 主线",
     ]
     if excluded_participants:
         lines += [
@@ -197,6 +205,12 @@ def write_top_level_readme(out_root: Path, excluded_participants: list[str], qc_
         "- QC后结果不是只在图上隐藏被试，而是基于过滤后的 participant manifest 整套重跑。",
         f"- QC 排除名单配置文件: {qc_config_path.relative_to(REPO_ROOT).as_posix()}",
         "- 每套结果内部继续保留“描述性分析 / 显著性分析 / 附录”结构。",
+        "",
+        "显著性主线统一口径:",
+        "- 全样本与 QC后两套结果，显著性分析都按同一阅读顺序解释。",
+        "- overall 属于描述性主线；显著性主结论优先从 allocation_lmm/groupvar_Experience 读取。",
+        "- 主显著性指标优先级: share_pct / share_logit / FC_share / fc_share_logit / FC_rate / tfd_y / ttff_y / fc_y。",
+        "- FFD / MFD / RFF / MPD 默认归入补充或探索性结果。",
     ]
     if excluded_participants:
         lines += ["", "本次 QC 排除对象:", *[f"- {name}" for name in excluded_participants]]

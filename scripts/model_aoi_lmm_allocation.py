@@ -993,6 +993,52 @@ def _plot_fixef_terms_overview(fixef_df: pd.DataFrame, out_png: Path, group_var:
 def _write_group_readme(gdir: Path, group_var: str):
     text = f"""AOI allocation LMM report: {group_var}
 
+What is the main line here?
+---------------------------
+This folder is the inferential mainline for {group_var}.
+Read it in a fixed order instead of jumping between tables and PNGs.
+
+Recommended reading order
+-------------------------
+1. model_stability_summary.csv
+   First triage table. Decide which outcomes are stable / caution / unstable.
+2. evidence_stability_overview_{group_var}.png
+   Fast reviewer-facing overview of which outcomes are main-result candidates.
+3. Main-result outcomes first:
+   - share_pct / share_logit
+   - FC_share / fc_share_logit
+   - FC_rate
+   - tfd_y
+   - ttff_y
+   - fc_y
+4. For each main-result outcome, read one linked packet:
+   - model_fit_<outcome>.csv
+   - fixef_<outcome>.csv
+   - contrasts_<outcome>.csv
+   - evidence_fixef_key_terms_<outcome>.png
+   - evidence_contrasts_<outcome>.png
+5. Use ranef_<outcome>.csv when you need variance decomposition / random-effect reporting.
+6. Treat ffd_y / mfd_y / rff_y / MPD as supplementary or exploratory unless they are the explicit target of the study.
+
+How files relate to each other
+------------------------------
+- model_fit_<outcome>.csv
+  Tells you whether the model fit is usable and how much variation is explained.
+- fixef_<outcome>.csv
+  Omnibus fixed-effect coefficient table; use this for the main parameter evidence.
+- contrasts_<outcome>.csv
+  Simple-effects / reviewer-facing contrast table around WWR × Complexity × {group_var}.
+- evidence_model_fit_overview_{group_var}.png
+  One-figure summary of fit quality across outcomes.
+- evidence_fixef_key_terms_<outcome>.png
+  Figure version of the key non-intercept fixed effects for one outcome.
+- evidence_contrasts_<outcome>.png
+  Figure version of the main contrasts for one outcome.
+- forest_fixef_<outcome>.png
+  Compact fixed-effect forest plot for audit / appendix / quick scanning.
+- *_data.csv companions
+  Exact tabular export behind the evidence PNGs.
+
 Files in this folder
 --------------------
 - model_stability_summary.csv
