@@ -27,7 +27,7 @@ def main():
     if not os.path.exists(args.repo_dir):
         raise SystemExit(f"Missing repo_dir: {args.repo_dir}")
 
-    run_tag = datetime.now().strftime("research_bundle_%Y%m%d_%H%M%S")
+    run_tag = datetime.now().strftime("研究输出_%Y%m%d_%H%M%S")
     out_root = os.path.join(args.scenes_root_orig, run_tag)
     os.makedirs(out_root, exist_ok=True)
 
@@ -43,7 +43,7 @@ def main():
     if args.scene_features_csv:
         cmd += ["--scene_features_csv", args.scene_features_csv]
 
-    print("即将输出 research bundle / OUT_ROOT:", out_root)
+    print("即将输出研究总目录 / OUT_ROOT:", out_root)
     print("Running:", " ".join(cmd))
     subprocess.run(cmd, cwd=args.repo_dir, check=True)
     print("DONE:", out_root)

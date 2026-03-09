@@ -10,6 +10,7 @@ IMG_EXTS = {'.png', '.jpg', '.jpeg', '.webp'}
 NON_SCENE_PATTERNS = [
     r'^AOI输出(?:_|$)',
     r'^research_bundle(?:_|$)',
+    r'^研究输出(?:_|$)',
     r'^输出结果(?:_|$)',
     r'^results?(?:_|$)',
     r'^colab(?:_|$)',

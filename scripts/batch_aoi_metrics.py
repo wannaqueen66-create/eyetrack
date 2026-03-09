@@ -206,6 +206,7 @@ def main():
             patterns = [
                 r'^AOI输出(?:_|$)',
                 r'^research_bundle(?:_|$)',
+                r'^研究输出(?:_|$)',
                 r'^输出结果(?:_|$)',
                 r'^results?(?:_|$)',
                 r'^colab(?:_|$)',

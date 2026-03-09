@@ -9,7 +9,7 @@ import sys
 
 def main():
     ap = argparse.ArgumentParser(description="Optimize merged AOI outputs into organized PNG/table views")
-    ap.add_argument("--merged_outdir", required=True, help="Path like .../输出结果_AOI_合并")
+    ap.add_argument("--merged_outdir", required=True, help="Path like .../研究输出_AOI批处理_xxx/01_AOI原始结果/按分辨率合并结果")
     ap.add_argument("--group_manifest", required=True)
     ap.add_argument("--group_id_col", default="name")
     ap.add_argument("--outdir", default=None, help="Default: <merged_outdir>/optimized_outputs")

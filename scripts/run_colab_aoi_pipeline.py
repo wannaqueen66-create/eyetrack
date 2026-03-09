@@ -8,11 +8,17 @@ import shutil
 import subprocess
 import sys
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from PIL import Image
 
 from colab_scene_scan import print_scan_report
+
+
+RAW_ROOT_DIRNAME = "01_AOI原始结果"
+MERGED_DIRNAME = "按分辨率合并结果"
+PER_SIZE_PREFIX = "按分辨率分组"
 
 
 def is_formal_scene_folder(folder: str) -> bool:
@@ -82,6 +88,28 @@ def run_batch(repo_dir: str, group_manifest: str, min_valid_ratio: str, aoi_json
     subprocess.run(cmd, cwd=repo_dir, check=True)
 
 
+def write_aoi_readme(out_root: str, out_merged: str, size_outdirs: list[str]):
+    readme_path = os.path.join(out_root, "README_研究输出说明.txt")
+    lines = [
+        "eyetrack AOI 批处理输出说明",
+        "",
+        f"总目录: {os.path.basename(out_root)}",
+        "",
+        "推荐查看顺序:",
+        f"1. {RAW_ROOT_DIRNAME}/{MERGED_DIRNAME}/ -> 合并后的 AOI 主结果",
+        f"2. {RAW_ROOT_DIRNAME}/{PER_SIZE_PREFIX}_宽x高/ -> 各分辨率原始批处理结果",
+        "",
+        "说明:",
+        "- 该脚本是 AOI-only 批处理入口，不包含 research/LMM/two-part 建模结果。",
+        "- 若需要一键生成 AOI + 描述统计 + LMM + two-part，请改用 scripts/run_colab_one_command.py。",
+        "- 旧版 AOI输出_时间戳 / 输出结果_AOI_* 命名已统一收敛到当前结构。",
+        "",
+        f"合并目录: {out_merged}",
+        f"分辨率子目录数量: {len(size_outdirs)}",
+    ]
+    Path(readme_path).write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
 def main():
     ap = argparse.ArgumentParser(description="Colab-friendly AOI batch pipeline for mixed-size scenes")
     ap.add_argument("--scenes_root_orig", default="/content/drive/MyDrive/映射")
@@ -103,12 +131,13 @@ def main():
     if not os.path.exists(group_manifest):
         raise SystemExit(f"Missing group_manifest: {group_manifest}")
 
-    run_tag = datetime.now().strftime("AOI输出_%Y%m%d_%H%M%S")
+    run_tag = datetime.now().strftime("研究输出_AOI批处理_%Y%m%d_%H%M%S")
     out_root = os.path.join(args.scenes_root_orig, run_tag)
-    os.makedirs(out_root, exist_ok=True)
-    out_merged = os.path.join(out_root, "输出结果_AOI_合并")
+    raw_root = os.path.join(out_root, RAW_ROOT_DIRNAME)
+    out_merged = os.path.join(raw_root, MERGED_DIRNAME)
+    os.makedirs(out_merged, exist_ok=True)
 
-    print("即将输出 AOI bundle / OUT_ROOT:", out_root)
+    print("即将输出 AOI 批处理总目录 / OUT_ROOT:", out_root)
 
     shutil.rmtree(args.filtered_root, ignore_errors=True)
     os.makedirs(args.filtered_root, exist_ok=True)
@@ -138,7 +167,7 @@ def main():
 
     size_outdirs = []
     for (w, h), scenes in sorted(size_to_scenes.items()):
-        outdir = os.path.join(out_root, f"输出结果_AOI_{w}x{h}")
+        outdir = os.path.join(raw_root, f"{PER_SIZE_PREFIX}_{w}x{h}")
         size_outdirs.append(outdir)
         run_batch(args.repo_dir, group_manifest, args.min_valid_ratio, args.aoi_json_mode, args.filtered_root, outdir, w, h, scenes)
 
@@ -194,6 +223,8 @@ def main():
         ]
         print("\nRunning:", " ".join(cmd))
         subprocess.run(cmd, cwd=args.repo_dir, check=True)
+
+    write_aoi_readme(out_root, out_merged, size_outdirs)
 
     print("\n=== DONE ===")
     print("Merged class csv:", ok_class)
