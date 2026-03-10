@@ -143,6 +143,25 @@ Colab 推荐用于**无需本地/VPS 配环境**的快速试跑。
 >
 > Recommended / 现推荐：use the research-bundle one-command entry below. If `scene_features.csv` is missing, the repo will auto-generate one from the scene folders, AOI JSON, and background images.
 
+If you want the shortest from-scratch Colab run for the full `raw`-branch workflow, use:
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```bash
+!rm -rf /content/eyetrack
+!git clone --branch raw https://github.com/wannaqueen66-create/eyetrack.git /content/eyetrack
+%cd /content/eyetrack
+!pip -q install -r requirements.txt
+!python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+If the repo is already present at `/content/eyetrack`, you can also just run:
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \

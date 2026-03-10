@@ -109,6 +109,25 @@ python3 -m http.server 8080
 >
 > 现在推荐直接使用研究输出总入口：如果没有手工准备 `scene_features.csv`，仓库会自动根据场景目录、AOI JSON 和底图生成它。
 
+如果你想在 Colab 里**从零开始，用最少几条命令把 raw 分支的全量研究输出跑完**，直接用下面这组：
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```bash
+!rm -rf /content/eyetrack
+!git clone --branch raw https://github.com/wannaqueen66-create/eyetrack.git /content/eyetrack
+%cd /content/eyetrack
+!pip -q install -r requirements.txt
+!python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+如果仓库代码已经在 `/content/eyetrack`，也可以直接只跑主命令：
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \
