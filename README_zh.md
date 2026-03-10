@@ -101,6 +101,25 @@ python scripts/run_analysis2.py \
 
 ### Colab
 
+最短全量命令（在 Colab 里从零开始跑 `main`）：
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```bash
+!rm -rf /content/eyetrack
+!git clone --branch main https://github.com/wannaqueen66-create/eyetrack.git /content/eyetrack
+%cd /content/eyetrack
+!pip -q install -r requirements.txt
+!python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+如果仓库代码已经在 `/content/eyetrack`，也可以直接只跑主命令：
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \

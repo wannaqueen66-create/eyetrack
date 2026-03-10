@@ -101,6 +101,25 @@ python scripts/run_analysis2.py \
 
 ### Colab one-command run
 
+Shortest full-run setup from a fresh Colab session:
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```bash
+!rm -rf /content/eyetrack
+!git clone --branch main https://github.com/wannaqueen66-create/eyetrack.git /content/eyetrack
+%cd /content/eyetrack
+!pip -q install -r requirements.txt
+!python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+If the repo is already present at `/content/eyetrack`, you can also just run:
+
 ```bash
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \

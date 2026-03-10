@@ -10,6 +10,45 @@
 - 纯中文逐 Cell 说明版：
   https://colab.research.google.com/github/wannaqueen66-create/eyetrack/blob/main/notebooks/eyetrack_colab_quickstart_zh.ipynb
 
+### 当前 `main` 分支：最短全量主线命令
+
+如果你的目标是像 `raw` 分支那样，**用尽量少的几条 Colab 命令把当前 `main` 主线整套跑完**，直接用下面这组：
+
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+
+```bash
+!rm -rf /content/eyetrack
+!git clone --branch main https://github.com/wannaqueen66-create/eyetrack.git /content/eyetrack
+%cd /content/eyetrack
+!pip -q install -r requirements.txt
+!python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
+运行完成后，会在：
+
+```text
+/content/drive/MyDrive/映射/研究输出_YYYYMMDD_HHMMSS/
+```
+
+生成当前 `main` 主线的全量结果，包括：
+- `00_全样本_AllSample`
+- `01_QC后_AfterQC`
+- 各自内部的描述性分析 / 显著性分析 / 附录输出
+
+如果你已经手动 clone 过仓库，也可以直接只跑主命令：
+
+```bash
+cd /content/eyetrack
+python scripts/run_colab_one_command.py \
+  --scenes_root_orig /content/drive/MyDrive/映射 \
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+```
+
 ---
 
 ## 使用步骤（单文件）
