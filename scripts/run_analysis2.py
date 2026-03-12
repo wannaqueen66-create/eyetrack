@@ -204,6 +204,7 @@ def write_top_level_readme(out_root: Path, excluded_participants: list[str], qc_
         "",
         "说明:",
         "- QC后结果不是只在图上隐藏被试，而是基于过滤后的 participant manifest 整套重跑。",
+        "- QC后轨道会自动跳过已被 QC 排除、因此不再匹配过滤后 manifest 的场景 CSV；全样本轨道仍保留 unmatched_csv=error 以抓真实命名问题。",
         f"- QC 排除名单配置文件: {qc_config_path.relative_to(REPO_ROOT).as_posix()}",
         "- 每套结果内部继续保留“描述性分析 / 显著性分析 / 附录”结构。",
         "",
@@ -246,13 +247,14 @@ def build_single_track(
 
     if scenes_root:
         batch_out = raw_batch
+        unmatched_policy = "skip" if excluded_participants else "error"
         cmd = [
             sys.executable,
             str(SCRIPTS / "batch_aoi_metrics.py"),
             "--group_manifest", str(group_manifest),
             "--scenes_root", scenes_root,
             "--aoi_json_mode", aoi_json_mode,
-            "--unmatched_csv", "error",
+            "--unmatched_csv", unmatched_policy,
             "--outdir", str(batch_out),
             "--dwell_mode", "fixation",
             "--point_source", "fixation",
