@@ -1574,9 +1574,9 @@ def _prepare_data(args) -> tuple[pd.DataFrame, list[str], str | None]:
     if "MPD" in df.columns:
         df["MPD"] = _safe_num(df["MPD"])
 
-    group_vars = [gv for gv in ["Experience", "SportFreq"] if gv in df.columns]
+    group_vars = [gv for gv in ["Experience"] if gv in df.columns]
     if not group_vars:
-        raise SystemExit("No group variables found (Experience/SportFreq). Pass --group_manifest or ensure columns exist.")
+        raise SystemExit("No group variable found (Experience). Pass --group_manifest or ensure the Experience column exists.")
     return df, group_vars, vc_scene_col
 
 
