@@ -1453,9 +1453,9 @@ def _collect_packet_summary_rows(group_dir: Path, group_var: str) -> list[dict]:
         if stab.empty:
             continue
         stab = stab.copy()
-        stab.insert(0, "model_family", spec["family_slug"])
-        stab.insert(0, "family_dir", spec["family_key"])
-        stab.insert(0, "family_title", spec["family_title"])
+        stab["model_family"] = spec["family_slug"]
+        stab["family_dir"] = spec["family_key"]
+        stab["family_title"] = spec["family_title"]
         for col in ["group_var", "outcome", "outcome_label", "subset", "n", "formula", "stability_grade", "stability_grade_rank", "stability_reasons", "warning_count", "aic", "bic", "logLik"]:
             if col not in stab.columns:
                 stab[col] = np.nan
