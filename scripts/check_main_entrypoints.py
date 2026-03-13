@@ -21,7 +21,11 @@ REQUIRED_FILES = [
     REPO / 'scripts' / 'run_colab_one_command.py',
     REPO / 'scripts' / 'build_main_branch_figure_pack.py',
     REPO / 'scripts' / 'build_main_branch_writing_guide.py',
+    REPO / 'scripts' / 'build_main_branch_captions.py',
+    REPO / 'scripts' / 'build_main_branch_packet_summary.py',
+    REPO / 'scripts' / 'build_main_branch_results_manifest.py',
     REPO / 'scripts' / 'check_doc_consistency.py',
+    REPO / 'scripts' / 'run_smoke_checks.py',
 ]
 
 README_LINK_SOURCES = [REPO / 'README.md', REPO / 'README_zh.md']

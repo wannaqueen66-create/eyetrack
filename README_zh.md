@@ -168,6 +168,25 @@ python3 scripts/run_smoke_checks.py
 python3 scripts/build_main_branch_writing_guide.py --out-dir docs
 ```
 
+### 生成图注草稿
+
+```bash
+python3 scripts/build_main_branch_captions.py --out-dir docs
+```
+
+### 生成主 packet 速查表
+
+```bash
+python3 scripts/build_main_branch_packet_summary.py --out-dir docs
+```
+
+### 生成结果包 manifest
+
+```bash
+python3 scripts/build_main_branch_results_manifest.py \
+  --results-root /path/to/研究输出_YYYYMMDD_HHMMSS
+```
+
 ### 从已有结果包生成 figure pack
 
 ```bash

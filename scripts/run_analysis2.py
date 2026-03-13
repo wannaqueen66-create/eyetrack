@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import json
 import shlex
 import shutil
 import subprocess
@@ -44,6 +45,8 @@ REPORTS_DIRNAME = "98_附录_Appendix/notes"
 RAW_BATCH_DIRNAME = "98_附录_Appendix/raw_batch_outputs"
 QC_EXCLUSION_CONFIG_DEFAULT = CONFIGS / "excluded_participants_qc.csv"
 MANIFEST_ID_CANDIDATES = ("name", "participant_id", "id")
+PRIMARY_OUTCOMES = ["share_pct", "share_logit", "FC_share", "fc_share_logit", "FC_rate", "tfd_y", "ttff_y", "fc_y"]
+EXPLORATORY_OUTCOMES = ["ffd_y", "mfd_y", "rff_y", "MPD"]
 
 
 def run(cmd: list[str]):
@@ -217,6 +220,37 @@ def write_top_level_readme(out_root: Path, excluded_participants: list[str], qc_
     if excluded_participants:
         lines += ["", "本次 QC 排除对象:", *[f"- {name}" for name in excluded_participants]]
     (out_root / "README_研究输出说明.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_results_manifest(out_root: Path, qc_config_path: Path, excluded_participants: list[str]) -> Path:
+    payload = {
+        "results_root": str(out_root),
+        "qc_exclusion_csv": str(qc_config_path),
+        "excluded_participants": excluded_participants,
+        "primary_outcomes": PRIMARY_OUTCOMES,
+        "exploratory_outcomes": EXPLORATORY_OUTCOMES,
+        "tracks": {
+            "all_sample": {
+                "track_dirname": TRACK_ALL_DIRNAME,
+                "descriptive_dir": str(out_root / TRACK_ALL_DIRNAME / TASK1_DIRNAME),
+                "significance_dir": str(out_root / TRACK_ALL_DIRNAME / TASK2_DIRNAME),
+                "experience_index": str(out_root / TRACK_ALL_DIRNAME / TASK2_DIRNAME / "allocation_lmm" / "groupvar_Experience" / "tables" / "model_family_index.csv"),
+                "experience_packet_summary": str(out_root / TRACK_ALL_DIRNAME / TASK2_DIRNAME / "allocation_lmm" / "groupvar_Experience" / "tables" / "three_model_packet_summary.csv"),
+                "grouped_experience_png": str(out_root / TRACK_ALL_DIRNAME / TASK1_DIRNAME / "grouped_experience" / "png"),
+            },
+            "after_qc": {
+                "track_dirname": TRACK_QC_DIRNAME,
+                "descriptive_dir": str(out_root / TRACK_QC_DIRNAME / TASK1_DIRNAME),
+                "significance_dir": str(out_root / TRACK_QC_DIRNAME / TASK2_DIRNAME),
+                "experience_index": str(out_root / TRACK_QC_DIRNAME / TASK2_DIRNAME / "allocation_lmm" / "groupvar_Experience" / "tables" / "model_family_index.csv"),
+                "experience_packet_summary": str(out_root / TRACK_QC_DIRNAME / TASK2_DIRNAME / "allocation_lmm" / "groupvar_Experience" / "tables" / "three_model_packet_summary.csv"),
+                "grouped_experience_png": str(out_root / TRACK_QC_DIRNAME / TASK1_DIRNAME / "grouped_experience" / "png"),
+            },
+        },
+    }
+    out = out_root / "main_branch_results_manifest.json"
+    out.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    return out
 
 
 def build_single_track(
@@ -486,7 +520,9 @@ def main():
         )
 
     write_top_level_readme(out_root, excluded_participants, Path(args.qc_exclusion_csv))
+    manifest_path = write_results_manifest(out_root, Path(args.qc_exclusion_csv), excluded_participants)
     print("Saved research output bundle to:", out_root)
+    print("  - manifest:", manifest_path)
     print("  - full sample:", all_track_root)
     print("  - after QC:", out_root / TRACK_QC_DIRNAME)
 

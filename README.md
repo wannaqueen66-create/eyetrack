@@ -171,6 +171,25 @@ python3 scripts/run_smoke_checks.py
 python3 scripts/build_main_branch_writing_guide.py --out-dir docs
 ```
 
+### Build figure caption drafts
+
+```bash
+python3 scripts/build_main_branch_captions.py --out-dir docs
+```
+
+### Build packet summary cheat sheet
+
+```bash
+python3 scripts/build_main_branch_packet_summary.py --out-dir docs
+```
+
+### Build result-bundle manifest
+
+```bash
+python3 scripts/build_main_branch_results_manifest.py \
+  --results-root /path/to/研究输出_YYYYMMDD_HHMMSS
+```
+
 ### Build figure pack from a generated result bundle
 
 ```bash

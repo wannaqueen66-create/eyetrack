@@ -110,12 +110,22 @@ def main() -> int:
     ap.add_argument("--out-dir", type=Path, default=Path("figure_pack_main_branch"))
     args = ap.parse_args()
 
+    manifest_path = args.results_root / 'main_branch_results_manifest.json'
+    manifest_obj = None
+    if manifest_path.exists():
+        manifest_obj = json.loads(manifest_path.read_text(encoding='utf-8'))
+
     args.out_dir.mkdir(parents=True, exist_ok=True)
     summary = {}
     for slug, dirname in TRACKS:
         summary[slug] = build_track(args.results_root, slug, dirname, args.out_dir / slug)
-    (args.out_dir / "figure_pack_manifest_all.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"out_dir": str(args.out_dir), "tracks": list(summary.keys())}, ensure_ascii=False))
+    payload = {
+        'results_manifest': str(manifest_path) if manifest_path.exists() else None,
+        'results_manifest_loaded': manifest_obj is not None,
+        'tracks': summary,
+    }
+    (args.out_dir / "figure_pack_manifest_all.json").write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps({"out_dir": str(args.out_dir), "tracks": list(summary.keys()), "manifest_loaded": manifest_obj is not None}, ensure_ascii=False))
     return 0
 
 

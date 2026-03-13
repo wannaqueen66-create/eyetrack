@@ -27,6 +27,9 @@ def main() -> int:
     expect_ok("run_colab_one_command_help", [sys.executable, str(REPO / 'scripts' / 'run_colab_one_command.py'), '--help'], failures)
     expect_ok("build_main_branch_figure_pack_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_figure_pack.py'), '--help'], failures)
     expect_ok("build_main_branch_writing_guide_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_writing_guide.py'), '--help'], failures)
+    expect_ok("build_main_branch_captions_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_captions.py'), '--help'], failures)
+    expect_ok("build_main_branch_packet_summary_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_packet_summary.py'), '--help'], failures)
+    expect_ok("build_main_branch_results_manifest_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_results_manifest.py'), '--help'], failures)
     expect_ok("check_doc_consistency", [sys.executable, str(REPO / 'scripts' / 'check_doc_consistency.py')], failures)
     expect_ok("check_main_entrypoints", [sys.executable, str(REPO / 'scripts' / 'check_main_entrypoints.py')], failures)
 
@@ -37,9 +40,23 @@ def main() -> int:
             [sys.executable, str(REPO / 'scripts' / 'build_main_branch_writing_guide.py'), '--out-dir', str(out_dir)],
             failures,
         )
+        expect_ok(
+            'build_main_branch_captions_generate',
+            [sys.executable, str(REPO / 'scripts' / 'build_main_branch_captions.py'), '--out-dir', str(out_dir)],
+            failures,
+        )
+        expect_ok(
+            'build_main_branch_packet_summary_generate',
+            [sys.executable, str(REPO / 'scripts' / 'build_main_branch_packet_summary.py'), '--out-dir', str(out_dir)],
+            failures,
+        )
         generated = out_dir / 'MAIN_BRANCH_WRITING_GUIDE.md'
         if not generated.exists():
             failures.append('build_main_branch_writing_guide did not create MAIN_BRANCH_WRITING_GUIDE.md')
+        if not (out_dir / 'MAIN_BRANCH_FIGURE_CAPTIONS.md').exists():
+            failures.append('build_main_branch_captions did not create MAIN_BRANCH_FIGURE_CAPTIONS.md')
+        if not (out_dir / 'MAIN_BRANCH_PACKET_SUMMARY.md').exists():
+            failures.append('build_main_branch_packet_summary did not create MAIN_BRANCH_PACKET_SUMMARY.md')
 
     if failures:
         print('SMOKE CHECKS FAILED')

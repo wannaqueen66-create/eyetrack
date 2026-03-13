@@ -76,6 +76,12 @@ TEXT = """# Main-branch Writing Guide (eyetrack)
 4. 关键 trend / contrast 结果
 5. exploratory 指标或 two-part 扩展结果（如需要）
 6. 全样本结果作为稳健性/背景对照
+
+## 八、建议搭配使用的自动文档
+
+- `MAIN_BRANCH_PACKET_SUMMARY.md`：给自己快速回忆主 outcome 与阅读顺序
+- `MAIN_BRANCH_FIGURE_CAPTIONS.md`：给图注草稿和中英对照
+- `main_branch_results_manifest.json`：给 figure pack / writing 工具读取统一元数据
 """
 
 
