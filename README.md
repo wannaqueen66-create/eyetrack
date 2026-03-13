@@ -2,6 +2,16 @@
 
 Clean mainline for indoor pingpong-space eye-tracking analysis.
 
+[中文说明 / Chinese guide](./README_zh.md)
+
+[Project overview](./docs/PROJECT_OVERVIEW.md)
+
+[Results map](./RESULTS_MAP.md)
+
+[Results reading guide](./docs/RESULTS_READING_GUIDE.md)
+
+[中文结果阅读指南](./docs/RESULTS_READING_GUIDE.zh.md)
+
 This branch (`main`) now focuses on **two result tracks**, and inside each track keeps **two analysis blocks only**:
 
 1. `00_全样本_AllSample`

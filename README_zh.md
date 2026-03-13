@@ -1,5 +1,11 @@
 # eyetrack（主线精简版说明）
 
+- [English README](./README.md)
+- [项目总览](./docs/PROJECT_OVERVIEW.md)
+- [结果速查图](./RESULTS_MAP.md)
+- [Results reading guide (EN)](./docs/RESULTS_READING_GUIDE.md)
+- [结果阅读指南（中文）](./docs/RESULTS_READING_GUIDE.zh.md)
+
 这个仓库的 `main` 分支现在明确输出 **两套结果轨道**，并且每套内部继续只强调 **两大分析块**：
 
 1. `00_全样本_AllSample`
