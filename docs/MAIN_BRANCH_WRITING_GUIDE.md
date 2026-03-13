@@ -2,6 +2,8 @@
 
 这份提纲服务于当前眼动仓库 `main` 分支，不走旧 exploratory / raw 阅读面。
 
+> 适用范围：当前 clean-main 双轨结果包（`00_全样本_AllSample` / `01_QC后_AfterQC`）。
+
 ## 一、推荐的正文结果顺序
 
 1. 先交代双轨结构：全样本 + QC后

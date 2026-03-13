@@ -145,6 +145,42 @@ No new required command-line arguments were added for normal use. The QC re-run 
 
 ---
 
+## Maintenance commands
+
+### Main-doc consistency check
+
+```bash
+python3 scripts/check_doc_consistency.py
+```
+
+### Main-entrypoint health check
+
+```bash
+python3 scripts/check_main_entrypoints.py
+```
+
+### Lightweight smoke suite
+
+```bash
+python3 scripts/run_smoke_checks.py
+```
+
+### Build manuscript writing guide
+
+```bash
+python3 scripts/build_main_branch_writing_guide.py --out-dir docs
+```
+
+### Build figure pack from a generated result bundle
+
+```bash
+python3 scripts/build_main_branch_figure_pack.py \
+  --results-root /path/to/研究输出_YYYYMMDD_HHMMSS \
+  --out-dir /path/to/figure_pack_main_branch
+```
+
+---
+
 ## Current output structure
 
 ```text

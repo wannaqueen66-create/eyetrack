@@ -142,6 +142,42 @@ python scripts/run_colab_one_command.py \
 
 ---
 
+## 维护命令
+
+### 文档一致性检查
+
+```bash
+python3 scripts/check_doc_consistency.py
+```
+
+### main 入口健康检查
+
+```bash
+python3 scripts/check_main_entrypoints.py
+```
+
+### 轻量 smoke check
+
+```bash
+python3 scripts/run_smoke_checks.py
+```
+
+### 生成正文写作提纲
+
+```bash
+python3 scripts/build_main_branch_writing_guide.py --out-dir docs
+```
+
+### 从已有结果包生成 figure pack
+
+```bash
+python3 scripts/build_main_branch_figure_pack.py \
+  --results-root /path/to/研究输出_YYYYMMDD_HHMMSS \
+  --out-dir /path/to/figure_pack_main_branch
+```
+
+---
+
 ## main 分支下的新输出结构
 
 ```text
