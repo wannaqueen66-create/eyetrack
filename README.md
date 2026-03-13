@@ -104,9 +104,10 @@ Use it when you need:
 ```bash
 cd /root/.openclaw/workspace/eyetrack
 source .venv/bin/activate
-python scripts/run_analysis2.py \
+python scripts/run_mainline_bundle.py \
   --group_manifest /path/to/group_manifest.csv \
-  --scenes_root /path/to/scenes_root
+  --scenes_root /path/to/scenes_root \
+  --build_main_support_docs
 ```
 
 ### Colab one-command run
@@ -125,7 +126,8 @@ drive.mount('/content/drive')
 !pip -q install -r requirements.txt
 !python scripts/run_colab_one_command.py \
   --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --build_main_support_docs
 ```
 
 If the repo is already present at `/content/eyetrack`, you can also just run:
@@ -134,10 +136,11 @@ If the repo is already present at `/content/eyetrack`, you can also just run:
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \
   --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --build_main_support_docs
 ```
 
-No new required command-line arguments were added for normal use. The QC re-run is now built into the mainline orchestrator. If needed, the QC exclusion config can be overridden with:
+No new required command-line arguments were added for normal use. The after-QC re-run is now built into the mainline orchestrator. If needed, the QC exclusion config can be overridden with:
 
 ```bash
 --qc_exclusion_csv /path/to/excluded_participants_qc.csv
@@ -163,6 +166,28 @@ python3 scripts/check_main_entrypoints.py
 
 ```bash
 python3 scripts/run_smoke_checks.py
+```
+
+### Canonical clean-main run
+
+```bash
+python3 scripts/run_mainline_bundle.py --help
+```
+
+### Auto-build support docs after a full run
+
+Add this flag to the canonical run if you want the output folder to also include:
+- `main_branch_results_manifest.json`
+- `MAIN_BRANCH_FIGURE_CAPTIONS.md`
+- `MAIN_BRANCH_PACKET_SUMMARY.md`
+- `MAIN_BRANCH_WRITING_GUIDE.md`
+- `figure_pack_main_branch/`
+
+```bash
+python3 scripts/run_mainline_bundle.py \
+  --group_manifest /path/to/group_manifest.csv \
+  --scenes_root /path/to/scenes_root \
+  --build_main_support_docs
 ```
 
 ### Build manuscript writing guide
@@ -361,7 +386,7 @@ Caution: MPD is especially sensitive to hardware/export conventions and lighting
 
 ### Where to look after rerunning
 
-After `python scripts/run_analysis2.py ...`, the new metrics are easiest to inspect in:
+After `python scripts/run_mainline_bundle.py ...`, the new metrics are easiest to inspect in:
 
 **Bottom tables / raw AOI outputs**
 - `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_class.csv`
@@ -405,7 +430,8 @@ pip install -r requirements.txt
 
 ## Main entry scripts
 
-- `scripts/run_analysis2.py` — current mainline orchestrator (now emits full-sample + after-QC tracks)
+- `scripts/run_mainline_bundle.py` — current clean-main orchestrator (now emits full-sample + after-QC tracks)
+- `scripts/run_analysis2.py` — compatibility alias to the clean-main orchestrator
 - `scripts/run_colab_one_command.py` — preferred Colab entry
 - `scripts/run_aoi_metrics.py` — AOI metrics for single-run use
 - `scripts/run_minimal_aoi_bundle.py` — minimal four-input AOI bundle

@@ -3,9 +3,9 @@ import subprocess
 import sys
 
 
-def test_run_analysis2_help():
+def test_run_mainline_bundle_help():
     repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    cmd = [sys.executable, os.path.join(repo_root, 'scripts', 'run_analysis2.py'), '--help']
+    cmd = [sys.executable, os.path.join(repo_root, 'scripts', 'run_mainline_bundle.py'), '--help']
     out = subprocess.check_output(cmd, text=True)
     assert '--group_manifest' in out
     assert '--scenes_root' in out

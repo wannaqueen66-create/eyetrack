@@ -23,7 +23,9 @@ def expect_ok(name: str, cmd: list[str], failures: list[str]) -> None:
 def main() -> int:
     failures: list[str] = []
 
+    expect_ok("run_mainline_bundle_help", [sys.executable, str(REPO / 'scripts' / 'run_mainline_bundle.py'), '--help'], failures)
     expect_ok("run_analysis2_help", [sys.executable, str(REPO / 'scripts' / 'run_analysis2.py'), '--help'], failures)
+    expect_ok("run_colab_mainline_bundle_help", [sys.executable, str(REPO / 'scripts' / 'run_colab_mainline_bundle.py'), '--help'], failures)
     expect_ok("run_colab_one_command_help", [sys.executable, str(REPO / 'scripts' / 'run_colab_one_command.py'), '--help'], failures)
     expect_ok("build_main_branch_figure_pack_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_figure_pack.py'), '--help'], failures)
     expect_ok("build_main_branch_writing_guide_help", [sys.executable, str(REPO / 'scripts' / 'build_main_branch_writing_guide.py'), '--help'], failures)
@@ -65,7 +67,7 @@ def main() -> int:
         return 1
 
     print('SMOKE CHECKS PASSED')
-    print('Checked help interfaces, doc consistency, entrypoints, and writing-guide generation.')
+    print('Checked mainline/compat help interfaces, doc consistency, entrypoints, and support-doc generation.')
     return 0
 
 

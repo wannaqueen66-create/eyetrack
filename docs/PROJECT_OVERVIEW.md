@@ -56,6 +56,9 @@ This stage converts raw scene-level gaze/fixation data into AOI-level metrics su
 
 ### 3) Mainline orchestration
 Primary script:
+- `scripts/run_mainline_bundle.py`
+
+Compatibility alias:
 - `scripts/run_analysis2.py`
 
 This is the canonical mainline orchestrator for the current `main` branch.
@@ -170,6 +173,6 @@ If someone opens this repo for the first time, the recommended reading order is:
 
 ## Minimal operational summary
 If you only remember three things, remember these:
-1. `run_analysis2.py` is the current canonical mainline entry
+1. `run_mainline_bundle.py` is the current canonical mainline entry
 2. `main` is centered on full-sample + after-QC result tracks
 3. inferential claims should be read primarily from the `Experience` LMM mainline, not from `overall` descriptive outputs alone

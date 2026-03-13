@@ -100,9 +100,10 @@
 ```bash
 cd /root/.openclaw/workspace/eyetrack
 source .venv/bin/activate
-python scripts/run_analysis2.py \
+python scripts/run_mainline_bundle.py \
   --group_manifest /path/to/group_manifest.csv \
-  --scenes_root /path/to/scenes_root
+  --scenes_root /path/to/scenes_root \
+  --build_main_support_docs
 ```
 
 ### Colab
@@ -121,7 +122,8 @@ drive.mount('/content/drive')
 !pip -q install -r requirements.txt
 !python scripts/run_colab_one_command.py \
   --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --build_main_support_docs
 ```
 
 如果仓库代码已经在 `/content/eyetrack`，也可以直接只跑主命令：
@@ -130,10 +132,11 @@ drive.mount('/content/drive')
 cd /content/eyetrack
 python scripts/run_colab_one_command.py \
   --scenes_root_orig /content/drive/MyDrive/映射 \
-  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv
+  --group_manifest /content/drive/MyDrive/映射/group_manifest.csv \
+  --build_main_support_docs
 ```
 
-正常使用下，命令**不需要新增必填参数**。QC 后重跑已经内置到主线 orchestrator 中。
+正常使用下，命令**不需要新增必填参数**。QC 后重跑已经内置到 clean-main orchestrator 中。
 如果你确实要换一份 QC 排除名单，可以额外传：
 
 ```bash
@@ -160,6 +163,30 @@ python3 scripts/check_main_entrypoints.py
 
 ```bash
 python3 scripts/run_smoke_checks.py
+```
+
+### clean-main 主入口帮助
+
+```bash
+python3 scripts/run_mainline_bundle.py --help
+```
+
+### 全量运行后自动生成写作辅助包
+
+如果你希望结果目录里自动附带以下内容：
+- `main_branch_results_manifest.json`
+- `MAIN_BRANCH_FIGURE_CAPTIONS.md`
+- `MAIN_BRANCH_PACKET_SUMMARY.md`
+- `MAIN_BRANCH_WRITING_GUIDE.md`
+- `figure_pack_main_branch/`
+
+就在主入口后追加：
+
+```bash
+python3 scripts/run_mainline_bundle.py \
+  --group_manifest /path/to/group_manifest.csv \
+  --scenes_root /path/to/scenes_root \
+  --build_main_support_docs
 ```
 
 ### 生成正文写作提纲
@@ -356,7 +383,7 @@ python3 scripts/build_main_branch_figure_pack.py \
 
 ### 重跑后去哪里看这些指标
 
-执行 `python scripts/run_analysis2.py ...` 后，最容易在下面这些位置看到新增指标：
+执行 `python scripts/run_mainline_bundle.py ...` 后，最容易在下面这些位置看到新增指标：
 
 **底表 / 原始 AOI 输出**
 - `研究输出_时间戳/*/98_附录_Appendix/raw_batch_outputs/batch_aoi_metrics_by_class.csv`
@@ -400,7 +427,8 @@ pip install -r requirements.txt
 
 ## 现在优先看的入口脚本
 
-- `scripts/run_analysis2.py`：当前主线总入口（现在会同时产出“全样本 + QC后”两套结果）
+- `scripts/run_mainline_bundle.py`：当前 clean-main 总入口（现在会同时产出“全样本 + QC后”两套结果）
+- `scripts/run_analysis2.py`：指向 clean-main 总入口的兼容别名
 - `scripts/run_colab_one_command.py`：当前 Colab 主入口
 - `scripts/run_aoi_metrics.py`：单次 AOI 指标计算
 - `scripts/run_minimal_aoi_bundle.py`：最小四输入入口
