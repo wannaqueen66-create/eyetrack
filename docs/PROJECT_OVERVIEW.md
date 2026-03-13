@@ -60,6 +60,7 @@ Primary script:
 
 Compatibility alias:
 - `scripts/run_analysis2.py`
+- `scripts/run_research_bundle.py`
 
 This is the canonical mainline orchestrator for the current `main` branch.
 It creates two explicit tracks:

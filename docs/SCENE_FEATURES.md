@@ -7,9 +7,9 @@ Minimum required columns:
 - `participant_id`
 - `scene_id`
 
-Everything else is optional and will just be carried through into `analysis2_analysis_table.csv`.
+Everything else is optional and will just be carried through into the merged analysis table.
 
-### `scripts/mixed_effects_indoor_pingpong.py`
+### `scripts/model_scene_feature_mixed.py`
 Requires from merged table:
 - `participant_id`
 - outcome columns (`TFD`, `TTFF`, `FC`) from AOI table

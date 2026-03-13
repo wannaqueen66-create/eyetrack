@@ -431,7 +431,8 @@ pip install -r requirements.txt
 - `scripts/run_analysis2.py`：指向 clean-main 总入口的兼容别名
 - `scripts/run_colab_one_command.py`：当前 Colab 主入口
 - `scripts/run_aoi_metrics.py`：单次 AOI 指标计算
-- `scripts/run_minimal_aoi_bundle.py`：最小四输入入口
+- `scripts/run_one_scene_bundle.py`：clean 的单场景 AOI 入口
+- `scripts/run_minimal_aoi_bundle.py`：指向单场景 AOI 入口的兼容别名
 
 仓库里仍保留一些旧别名脚本，但它们不再是 `main` 分支想强调的主路径。
 
@@ -450,4 +451,5 @@ pip install -r requirements.txt
 - 保持历史连续性
 - 方便从 `raw` 分支迁移
 
+在 `main` 分支里，它们应被视为兼容/历史措辞，而不是默认主叙事。
 如果你只想抓当前主线，请直接按“全样本 + QC后”两套结果、且每套内部再看“描述性分析 + 显著性分析”这两大块理解整个仓库。

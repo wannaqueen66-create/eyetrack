@@ -8,8 +8,8 @@ Typical flow:
   1) run_pipeline.py (clean + quality + heatmap + scanpath)
   2) run_aoi_metrics.py (polygon/class AOI metrics)
   3) merge_scene_features.py (optional)
-  4) mixed_effects_indoor_pingpong.py (optional)
-  5) paper_figures_indoor_pingpong.py (optional)
+  4) model_scene_feature_mixed.py (optional)
+  5) build_manuscript_figures.py (optional)
 
 You can run only part of the flow with flags.
 """
@@ -146,7 +146,7 @@ def main():
     # 4) mixed effects model (optional)
     if not args.skip_model:
         cmd = [
-            sys.executable, str(SCRIPTS / 'mixed_effects_indoor_pingpong.py'),
+            sys.executable, str(SCRIPTS / 'model_scene_feature_mixed.py'),
             '--analysis_csv', str(out_analysis),
             '--outdir', str(out_model),
         ]
@@ -155,7 +155,7 @@ def main():
     # 5) figures (optional)
     if not args.skip_figures:
         cmd = [
-            sys.executable, str(SCRIPTS / 'paper_figures_indoor_pingpong.py'),
+            sys.executable, str(SCRIPTS / 'build_manuscript_figures.py'),
             '--analysis_csv', str(out_analysis),
             '--outdir', str(out_fig),
         ]

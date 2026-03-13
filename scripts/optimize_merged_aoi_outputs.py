@@ -1,53 +1,13 @@
 #!/usr/bin/env python3
-from __future__ import annotations
+"""Compatibility alias for the older merged-output optimizer entry name.
 
-import argparse
-import os
-import subprocess
-import sys
+Prefer `optimize_merged_batch_outputs.py` on the clean main branch.
+"""
 
-
-def main():
-    ap = argparse.ArgumentParser(description="Optimize merged AOI outputs into organized PNG/table views")
-    ap.add_argument("--merged_outdir", required=True, help="Path like .../研究输出_AOI批处理_xxx/01_AOI原始结果/按分辨率合并结果")
-    ap.add_argument("--group_manifest", required=True)
-    ap.add_argument("--group_id_col", default="name")
-    ap.add_argument("--outdir", default=None, help="Default: <merged_outdir>/optimized_outputs")
-    ap.add_argument("--skip_if_exists", action="store_true")
-    args = ap.parse_args()
-
-    merged_outdir = os.path.abspath(args.merged_outdir)
-    class_csv = os.path.join(merged_outdir, "batch_aoi_metrics_by_class.csv")
-    poly_csv = os.path.join(merged_outdir, "batch_aoi_metrics_by_polygon.csv")
-    outdir = os.path.abspath(args.outdir or os.path.join(merged_outdir, "optimized_outputs"))
-
-    if not os.path.exists(class_csv):
-        raise SystemExit(f"Missing merged class CSV: {class_csv}")
-    if not os.path.exists(args.group_manifest):
-        raise SystemExit(f"Missing group_manifest: {args.group_manifest}")
-
-    script_dir = os.path.dirname(os.path.abspath(__file__))
-    target = os.path.join(script_dir, "optimize_aoi_outputs.py")
-    if not os.path.exists(target):
-        raise SystemExit(f"Missing script: {target}")
-
-    cmd = [
-        sys.executable,
-        target,
-        "--aoi_class_csv", class_csv,
-        "--group_manifest", args.group_manifest,
-        "--group_id_col", args.group_id_col,
-        "--outdir", outdir,
-    ]
-    if os.path.exists(poly_csv):
-        cmd += ["--aoi_polygon_csv", poly_csv]
-    if args.skip_if_exists:
-        cmd += ["--skip_if_exists"]
-
-    print("Running:", " ".join(cmd))
-    subprocess.run(cmd, check=True)
-    print("Saved optimized outputs to:", outdir)
+import runpy
+from pathlib import Path
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    target = Path(__file__).resolve().with_name('optimize_merged_batch_outputs_impl.py')
+    runpy.run_path(str(target), run_name='__main__')

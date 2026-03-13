@@ -126,8 +126,8 @@ def main():
         raise SystemExit(f"REPO_DIR not found: {args.repo_dir}")
     if not os.path.exists(os.path.join(args.repo_dir, "scripts", "batch_aoi_metrics.py")):
         raise SystemExit("Missing scripts/batch_aoi_metrics.py")
-    if not os.path.exists(os.path.join(args.repo_dir, "scripts", "optimize_merged_aoi_outputs.py")):
-        raise SystemExit("Missing scripts/optimize_merged_aoi_outputs.py")
+    if not os.path.exists(os.path.join(args.repo_dir, "scripts", "optimize_merged_batch_outputs.py")):
+        raise SystemExit("Missing scripts/optimize_merged_batch_outputs.py")
     if not os.path.exists(group_manifest):
         raise SystemExit(f"Missing group_manifest: {group_manifest}")
 
@@ -217,7 +217,7 @@ def main():
     if ok_class:
         cmd = [
             sys.executable,
-            "scripts/optimize_merged_aoi_outputs.py",
+            "scripts/optimize_merged_batch_outputs.py",
             "--merged_outdir", out_merged,
             "--group_manifest", group_manifest,
         ]

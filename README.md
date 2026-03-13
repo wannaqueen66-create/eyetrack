@@ -434,7 +434,8 @@ pip install -r requirements.txt
 - `scripts/run_analysis2.py` — compatibility alias to the clean-main orchestrator
 - `scripts/run_colab_one_command.py` — preferred Colab entry
 - `scripts/run_aoi_metrics.py` — AOI metrics for single-run use
-- `scripts/run_minimal_aoi_bundle.py` — minimal four-input AOI bundle
+- `scripts/run_one_scene_bundle.py` — clean one-scene AOI bundle entry
+- `scripts/run_minimal_aoi_bundle.py` — compatibility alias for the one-scene AOI bundle
 
 Compatibility aliases remain in the repo, but they are not the recommended top-level story on `main`.
 
@@ -448,4 +449,4 @@ Some older docs and helper scripts still contain terms such as:
 - `03_TwoPart模型`
 - `00_AOI原始批处理`
 
-Those names are retained only for compatibility or historical continuity. The `main` branch narrative should now be read through the explicit two-track structure above.
+Those names are retained only for compatibility or historical continuity. On `main`, they should be treated as alias/history wording rather than the primary reading surface.
