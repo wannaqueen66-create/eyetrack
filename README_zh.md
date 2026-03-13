@@ -179,6 +179,7 @@ python3 scripts/run_mainline_bundle.py --help
 - `MAIN_BRANCH_PACKET_SUMMARY.md`
 - `MAIN_BRANCH_WRITING_GUIDE.md`
 - `figure_pack_main_branch/`
+- `MAIN_SUPPORT_DOCS_README.md`
 
 就在主入口后追加：
 
@@ -432,6 +433,9 @@ pip install -r requirements.txt
 - `scripts/run_colab_one_command.py`：当前 Colab 主入口
 - `scripts/run_aoi_metrics.py`：单次 AOI 指标计算
 - `scripts/run_one_scene_bundle.py`：clean 的单场景 AOI 入口
+- `scripts/model_scene_feature_mixed.py`：clean 的 scene-feature 混合模型入口
+- `scripts/build_manuscript_figures.py`：clean 的正文图入口
+- `scripts/model_aoi_explanatory_pack.py`：clean 的解释型 AOI 建模入口
 - `scripts/run_minimal_aoi_bundle.py`：指向单场景 AOI 入口的兼容别名
 
 仓库里仍保留一些旧别名脚本，但它们不再是 `main` 分支想强调的主路径。

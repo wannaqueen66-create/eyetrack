@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""Compatibility alias for the older explanatory AOI modeling entry name.
-
-Prefer `model_aoi_explanatory_pack.py` on the clean main branch.
-"""
+"""Canonical explanatory AOI modeling entry for clean main."""
 
 import runpy
 from pathlib import Path

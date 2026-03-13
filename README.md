@@ -182,6 +182,7 @@ Add this flag to the canonical run if you want the output folder to also include
 - `MAIN_BRANCH_PACKET_SUMMARY.md`
 - `MAIN_BRANCH_WRITING_GUIDE.md`
 - `figure_pack_main_branch/`
+- `MAIN_SUPPORT_DOCS_README.md`
 
 ```bash
 python3 scripts/run_mainline_bundle.py \
@@ -435,6 +436,9 @@ pip install -r requirements.txt
 - `scripts/run_colab_one_command.py` — preferred Colab entry
 - `scripts/run_aoi_metrics.py` — AOI metrics for single-run use
 - `scripts/run_one_scene_bundle.py` — clean one-scene AOI bundle entry
+- `scripts/model_scene_feature_mixed.py` — clean scene-feature mixed-model entry
+- `scripts/build_manuscript_figures.py` — clean manuscript-figure entry
+- `scripts/model_aoi_explanatory_pack.py` — clean explanatory AOI modeling entry
 - `scripts/run_minimal_aoi_bundle.py` — compatibility alias for the one-scene AOI bundle
 
 Compatibility aliases remain in the repo, but they are not the recommended top-level story on `main`.

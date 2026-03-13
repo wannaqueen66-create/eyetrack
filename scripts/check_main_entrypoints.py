@@ -25,11 +25,13 @@ REQUIRED_FILES = [
     REPO / 'scripts' / 'model_scene_feature_mixed.py',
     REPO / 'scripts' / 'build_manuscript_figures.py',
     REPO / 'scripts' / 'optimize_merged_batch_outputs.py',
+    REPO / 'scripts' / 'model_aoi_explanatory_pack.py',
     REPO / 'scripts' / 'build_main_branch_figure_pack.py',
     REPO / 'scripts' / 'build_main_branch_writing_guide.py',
     REPO / 'scripts' / 'build_main_branch_captions.py',
     REPO / 'scripts' / 'build_main_branch_packet_summary.py',
     REPO / 'scripts' / 'build_main_branch_results_manifest.py',
+    REPO / 'scripts' / 'build_main_support_docs_readme.py',
     REPO / 'scripts' / 'check_doc_consistency.py',
     REPO / 'scripts' / 'run_smoke_checks.py',
 ]

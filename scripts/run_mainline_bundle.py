@@ -156,7 +156,7 @@ def write_track_readme(
         f"- {raw_batch.relative_to(track_root).as_posix()}/ -> 原始批处理导出（底层表格与 overlay）",
         "",
         "主线子目录说明:",
-        f"- {task1.name}/organized_outputs/: optimize_aoi_outputs.py 整理后的 AOI 结果",
+        f"- {task1.name}/organized_outputs/: 主线整理后的 AOI 结果",
         f"- {task1.name}/grouped_overall/: 不分组或全样本层面的描述性整理（描述性主线，不直接承担主显著性结论）",
         f"- {task1.name}/grouped_experience/: Experience 分组描述性汇总（按 tables/png/data 分层，描述性主入口）",
         f"- {task2.name}/allocation_lmm/: allocation LMM 模型输出（现按 01_main_effects / 02_two_way_interactions / 03_three_way_interaction 三套模型组织，含 stability / fixef / ranef / model_fit / contrasts / evidence PNGs）",
@@ -253,12 +253,14 @@ def build_support_docs(out_root: Path) -> None:
     packet_script = SCRIPTS / 'build_main_branch_packet_summary.py'
     guide_script = SCRIPTS / 'build_main_branch_writing_guide.py'
     figure_pack_script = SCRIPTS / 'build_main_branch_figure_pack.py'
+    support_readme_script = SCRIPTS / 'build_main_support_docs_readme.py'
 
     run([sys.executable, str(manifest_script), '--results-root', str(out_root)])
     run([sys.executable, str(captions_script), '--out-dir', str(out_root)])
     run([sys.executable, str(packet_script), '--out-dir', str(out_root)])
     run([sys.executable, str(guide_script), '--out-dir', str(out_root)])
     run([sys.executable, str(figure_pack_script), '--results-root', str(out_root), '--out-dir', str(out_root / 'figure_pack_main_branch')])
+    run([sys.executable, str(support_readme_script), '--out-dir', str(out_root)])
 
 
 def build_single_track(*, track_root: Path, track_label: str, group_manifest: Path, scenes_root: str | None, batch_class_csv: str | None, batch_polygon_csv: str | None, scene_features_csv: str | None, group_id_col: str, aoi_json_mode: str, screen_w: int | None, screen_h: int | None, min_valid_ratio: float, excluded_participants: list[str]):
