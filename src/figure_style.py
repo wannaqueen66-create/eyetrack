@@ -116,15 +116,14 @@ def choose_sparse_label_indices(values, max_labels: int = 4) -> list[int]:
         return []
     if len(vals) <= max_labels:
         return [i for i, _ in vals]
-    idx = {vals[0][0], vals[-1][0]}
+    ordered = sorted(vals, key=lambda t: t[0])
+    idx = {ordered[0][0], ordered[-1][0]}
     vmax = max(vals, key=lambda t: t[1])[0]
     vmin = min(vals, key=lambda t: t[1])[0]
     idx.update([vmax, vmin])
-    ordered = sorted(vals, key=lambda t: t[0])
-    if len(idx) < max_labels:
+    # prefer peak / trough / endpoints; only add midpoint when we still have budget
+    if len(idx) < max_labels and len(ordered) >= 5:
         idx.add(ordered[len(ordered) // 2][0])
-    if len(idx) < max_labels and len(ordered) >= 4:
-        idx.add(ordered[len(ordered) // 4][0])
     return sorted(idx)[:max_labels]
 
 

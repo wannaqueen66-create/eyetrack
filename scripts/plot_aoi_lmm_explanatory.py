@@ -371,7 +371,8 @@ def _format_metric_value(metric: str, value: float) -> str:
 
 
 def _annotate_series(ax, xs, ys, metric: str, color: str):
-    annotate_series_smart(ax, xs, ys, metric=metric, color=color, max_labels=4)
+    dense_metrics = {'TTFF', 'FFD', 'TFD', 'MFD', 'RFF', 'MPD'}
+    annotate_series_smart(ax, xs, ys, metric=metric, color=color, max_labels=(2 if metric in dense_metrics else 3))
 
 
 def _export_plot_companion(summary: pd.DataFrame, outdir: Path, stem: str):
@@ -421,9 +422,9 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
                 lo = s2["ci_low"].astype(float).tolist()
                 hi = s2["ci_high"].astype(float).tolist()
                 color = COLOR_MAP.get(g, PALETTE["gray"])
-                ax.plot(xs, ys, marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=2.0)
-                ax.fill_between(xs, lo, hi, color=color, alpha=0.12, linewidth=0)
-                _annotate_series(ax, xs, ys, metric=metric, color=color)
+                ax.plot(xs, ys, marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=1.9)
+                ax.fill_between(xs, lo, hi, color=color, alpha=0.08, linewidth=0)
+                _annotate_series(ax, xs, ys, metric=metric, color=color if metric not in {'TTFF','FFD','TFD','MFD','RFF','MPD'} else color)
             ax.set_xticks(SCENE_ORDER_DEFAULT)
             ax.set_xlabel("Window-to-wall ratio WWR (%)")
             if j == 0:
@@ -470,8 +471,8 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
             s2["x"] = s2["scene_label"].map(xpos)
             s2 = s2.sort_values("x")
             color = COLOR_MAP.get(g, PALETTE["gray"])
-            ax.plot(s2["x"], s2["mean"], marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=2.0)
-            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=color, alpha=0.10, linewidth=0)
+            ax.plot(s2["x"], s2["mean"], marker="o", color=color, label=GROUP_LABELS.get(g, g), linewidth=1.9)
+            ax.fill_between(s2["x"], s2["ci_low"], s2["ci_high"], color=color, alpha=0.06, linewidth=0)
             _annotate_series(ax, s2["x"].tolist(), s2["mean"].tolist(), metric=metric, color=color)
         ax.set_title(_aoi_label(aoi), loc="left")
         ax.set_ylabel(METRIC_LABELS.get(metric, metric))

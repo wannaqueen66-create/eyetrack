@@ -125,9 +125,10 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
                     else:
                         rr = r.iloc[0]; xs.append(w); ys.append(float(rr["mean"])); lo.append(float(rr["ci_low"])); hi.append(float(rr["ci_high"]))
                 line_color = colors.get(cx, PALETTE['gray'])
-                ax.plot(xs, ys, marker="o", linewidth=2.0, color=line_color, label=cx)
-                ax.fill_between(xs, lo, hi, color=line_color, alpha=0.12, linewidth=0)
-                annotate_series_smart(ax, xs, ys, metric=outcome, color=line_color, max_labels=3)
+                ax.plot(xs, ys, marker="o", linewidth=1.9, color=line_color, label=cx)
+                ax.fill_between(xs, lo, hi, color=line_color, alpha=0.08, linewidth=0)
+                label_budget = 2 if str(outcome).upper() in {"TTFF", "FFD", "TFD", "MFD", "RFF", "MPD"} else 3
+                annotate_series_smart(ax, xs, ys, metric=outcome, color=line_color, max_labels=label_budget)
             ax.set_title(f"{group_var}={gv} | AOI={aoi}", pad=8); ax.set_xticks(wwr_levels); ax.set_xlabel("WWR")
             if j == 0:
                 ax.set_ylabel(metric_label(outcome) if outcome in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RFF', 'MPD'] else outcome)
@@ -139,6 +140,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=320, bbox_inches="tight")
+    plt.close(fig)
     _export_plot_companion(summary, out_png, outcome)
 
 
