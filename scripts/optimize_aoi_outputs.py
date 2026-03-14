@@ -309,11 +309,11 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
     if not groups:
         groups = sorted(agg["group_value"].astype(str).unique())
 
-    width = 0.72 / max(1, len(groups))
+    width = 0.58 / max(1, len(groups))
     x = np.arange(len(plot_slots))
 
-    fig_w = max(12.6, 0.9 * len(plot_slots) + 3.2)
-    fig, ax = plt.subplots(figsize=(fig_w, 5.0))
+    fig_w = max(12.8, 0.95 * len(plot_slots) + 3.6)
+    fig, ax = plt.subplots(figsize=(fig_w, 5.2))
     palette_map = {"Low": PALETTE["blue"], "High": PALETTE["orange"]}
     fallback_palette = [PALETTE["blue"], PALETTE["orange"], PALETTE["green"], PALETTE["purple"]]
 
@@ -326,7 +326,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             y.append(float(tmp.iloc[0]) if len(tmp) else np.nan)
         offs = x + (i - (len(groups) - 1) / 2) * width
         color = palette_map.get(g, fallback_palette[i % len(fallback_palette)])
-        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.9, edgecolor='white', linewidth=0.8)
+        bars = ax.bar(offs, y, width=width, label=g, color=color, alpha=0.88, edgecolor='white', linewidth=0.9)
         vals_for_group = []
         xs_for_group = []
         for rect, val, slot in zip(bars, y, plot_slots):
@@ -344,7 +344,7 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
             ymax_all.append(val)
             xs_for_group.append(rect.get_x() + rect.get_width() / 2)
             vals_for_group.append(val)
-        annotate_series_smart(ax, xs_for_group, vals_for_group, metric=metric.replace('_mean_given_visited','').replace('_mean_all',''), color=color, max_labels=4)
+        annotate_series_smart(ax, xs_for_group, vals_for_group, metric=metric.replace('_mean_given_visited','').replace('_mean_all',''), color=color, max_labels=3)
 
     if round_boundaries is not None:
         for i in range(1, len(round_boundaries)):
@@ -352,15 +352,21 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
                 ax.axvline(i - 0.5, color=PALETTE['gray'], linestyle='--', linewidth=1.0, alpha=0.8)
 
     ax.set_xticks(x)
-    ax.set_xticklabels([slot_to_label[s] for s in plot_slots], rotation=30, ha="right")
+    ax.set_xticklabels([slot_to_label[s] for s in plot_slots], rotation=28, ha="right")
     ax.set_title(title, pad=10)
     ax.set_xlabel("Condition" if "condition" in str(out_png).lower() else "Scene")
     ax.set_ylabel(metric_label(metric.replace('_mean_given_visited','').replace('_mean_all','')) if metric else metric)
     soften_axes(ax)
     if ymax_all:
         ymax = max(ymax_all)
-        ax.set_ylim(top=float(ymax) * 1.22 if float(ymax) > 0 else 1.0)
-    ax.legend(title="Group", frameon=False)
+        ax.set_ylim(top=float(ymax) * 1.28 if float(ymax) > 0 else 1.0)
+    leg = ax.legend(title="Group", frameon=False, ncol=min(2, max(1, len(groups))))
+    if leg is not None:
+        for lh in leg.legendHandles:
+            try:
+                lh.set_alpha(0.88)
+            except Exception:
+                pass
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(out_png, dpi=300)

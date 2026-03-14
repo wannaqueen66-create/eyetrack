@@ -6,18 +6,18 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 PALETTE = {
-    "blue": "#5B7FA6",
-    "orange": "#C98A4A",
-    "green": "#7FA28A",
-    "purple": "#9A8FB5",
-    "gray": "#97A1AA",
+    "blue": "#6F97BD",
+    "orange": "#E3A86F",
+    "green": "#8FB7A1",
+    "purple": "#A99AC6",
+    "gray": "#A8B2BC",
     "ink": "#243447",
-    "grid": "#DCE4EC",
+    "grid": "#E5ECF2",
     "muted": "#6B7C8F",
-    "light_blue": "#DCE8F3",
-    "light_orange": "#F4E5D4",
-    "light_green": "#E2EEE6",
-    "light_red": "#F8E1DF",
+    "light_blue": "#E8F1F8",
+    "light_orange": "#FAEBDD",
+    "light_green": "#E9F3ED",
+    "light_red": "#FBE8E4",
 }
 
 METRIC_LABELS = {
@@ -120,9 +120,11 @@ def choose_sparse_label_indices(values, max_labels: int = 4) -> list[int]:
     vmax = max(vals, key=lambda t: t[1])[0]
     vmin = min(vals, key=lambda t: t[1])[0]
     idx.update([vmax, vmin])
+    ordered = sorted(vals, key=lambda t: t[0])
     if len(idx) < max_labels:
-        mid = vals[len(vals) // 2][0]
-        idx.add(mid)
+        idx.add(ordered[len(ordered) // 2][0])
+    if len(idx) < max_labels and len(ordered) >= 4:
+        idx.add(ordered[len(ordered) // 4][0])
     return sorted(idx)[:max_labels]
 
 
@@ -131,10 +133,18 @@ def annotate_series_smart(ax, xs, ys, metric: str, color: str, max_labels: int =
     if not pairs:
         return
     keep = set(choose_sparse_label_indices([p[2] for p in pairs], max_labels=max_labels))
+    ymin, ymax = ax.get_ylim()
+    span = max(float(ymax) - float(ymin), 1.0)
+    placed = []
     for j, (src_i, x, y) in enumerate(pairs):
         if src_i not in keep:
             continue
-        dy = 7 if j % 2 == 0 else -9
+        dy = 8 if j % 2 == 0 else -10
+        y_try = y + (0.03 * span if dy >= 0 else -0.03 * span)
+        for px, py in placed:
+            if abs(x - px) < 0.35 and abs(y_try - py) < 0.08 * span:
+                dy = dy + 10 if dy >= 0 else dy - 10
+                y_try = y + (0.05 * span if dy >= 0 else -0.05 * span)
         ax.annotate(
             metric_value_label(metric, y),
             xy=(x, y),
@@ -142,11 +152,12 @@ def annotate_series_smart(ax, xs, ys, metric: str, color: str, max_labels: int =
             textcoords="offset points",
             ha="center",
             va="bottom" if dy >= 0 else "top",
-            fontsize=7,
+            fontsize=6.8,
             color=color,
-            bbox=dict(boxstyle="round,pad=0.18", facecolor="white", edgecolor="none", alpha=0.9),
+            bbox=dict(boxstyle="round,pad=0.16", facecolor="white", edgecolor="none", alpha=0.92),
             zorder=5,
         )
+        placed.append((x, y_try))
 
 
 def annotate_right_ci_labels(ax, y_positions, ci_high, labels, color: str = "#334155", pad_frac: float = 0.03):
