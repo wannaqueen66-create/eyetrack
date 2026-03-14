@@ -362,7 +362,12 @@ def _plot_group_metric(summary_df: pd.DataFrame, metric: str, out_png: Path, tit
         ax.set_ylim(top=float(ymax) * 1.28 if float(ymax) > 0 else 1.0)
     leg = ax.legend(title="Group", frameon=False, ncol=min(2, max(1, len(groups))))
     if leg is not None:
-        for lh in leg.legendHandles:
+        handles = getattr(leg, 'legendHandles', None)
+        if handles is None:
+            handles = getattr(leg, 'legend_handles', None)
+        if handles is None:
+            handles = []
+        for lh in handles:
             try:
                 lh.set_alpha(0.88)
             except Exception:
