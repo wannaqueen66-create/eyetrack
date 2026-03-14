@@ -231,7 +231,7 @@ def main():
             out = attach_manifest_trial_metadata(out, gm, id_col=id_col, scene_col='scene_id')
             keep = ['participant_id'] + [c for c in ['SportFreq', 'Experience', 'condition', 'Order'] if c in gm.columns]
             for c in gm.columns:
-                if c.startswith('trial') and (c.endswith('_scene') or c.endswith('_Round') or c.endswith('_RoundLabel') or c.endswith('_Pos') or c.endswith('_key') or c.endswith('_label') or c.endswith('_Cond') or c.endswith('_Complexity') or c.endswith('_WWR')):
+                if c.startswith('trial') and (c.endswith('_scene') or c.endswith('_Round') or c.endswith('_RoundName') or c.endswith('_Pos') or c.endswith('_key') or c.endswith('_label') or c.endswith('_Cond') or c.endswith('_Complexity') or c.endswith('_WWR')):
                     keep.append(c)
             keep = list(dict.fromkeys(keep))
             out = out.merge(gm[keep], on='participant_id', how='left')

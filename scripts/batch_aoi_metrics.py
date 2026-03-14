@@ -37,9 +37,9 @@ def parse_scene_id_tokens(scene_id: str):
 
     s = str(scene_id) if scene_id is not None else ""
 
-    # round/block from 中文“组1/组2” or english group1/group2
+    # round from 中文“组1/组2/轮1/轮2” or english round1/round2 (legacy: group1/group2)
     rnd = None
-    m = re.search(r"(?:组|group)\s*(?P<r>[12])", s, flags=re.IGNORECASE)
+    m = re.search(r"(?:组|轮|round|group)\s*(?P<r>[12])", s, flags=re.IGNORECASE)
     if m:
         rnd = int(m.group("r"))
 
