@@ -105,6 +105,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
     elif axes.ndim == 1:
         axes = axes.reshape((1, -1))
     apply_paper_style(); colors = {"C0": PALETTE["blue"], "C1": PALETTE["orange"]}
+    complexity_legend = {"C0": "Low", "C1": "High"}
     for i, gv in enumerate(group_levels):
         for j, aoi in enumerate(aoi_levels):
             ax = axes[i, j] if (i < axes.shape[0] and j < axes.shape[1]) else None
@@ -125,7 +126,7 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
                     else:
                         rr = r.iloc[0]; xs.append(w); ys.append(float(rr["mean"])); lo.append(float(rr["ci_low"])); hi.append(float(rr["ci_high"]))
                 line_color = colors.get(cx, PALETTE['gray'])
-                ax.plot(xs, ys, marker="o", linewidth=1.9, color=line_color, label=cx)
+                ax.plot(xs, ys, marker="o", linewidth=1.9, color=line_color, label=complexity_legend.get(cx, cx))
                 ax.fill_between(xs, lo, hi, color=line_color, alpha=0.08, linewidth=0)
                 label_budget = 2 if str(outcome).upper() in {"TTFF", "FFD", "TFD", "MFD", "RFF", "MPD"} else 3
                 annotate_series_smart(ax, xs, ys, metric=outcome, color=line_color, max_labels=label_budget)
