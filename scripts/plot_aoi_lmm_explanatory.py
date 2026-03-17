@@ -426,6 +426,8 @@ def plot_condition_interaction(summary: pd.DataFrame, out_png: Path, group_var: 
                 ax.fill_between(xs, lo, hi, color=color, alpha=0.08, linewidth=0)
                 _annotate_series(ax, xs, ys, metric=metric, color=color if metric not in {'TTFF','FFD','TFD','MFD','RFF','MPD'} else color)
             ax.set_xticks(SCENE_ORDER_DEFAULT)
+            ax.set_xticklabels([str(x) for x in SCENE_ORDER_DEFAULT])
+            ax.tick_params(axis="x", labelbottom=True)
             ax.set_xlabel("Window-to-wall ratio WWR (%)")
             if j == 0:
                 ax.set_ylabel(METRIC_LABELS.get(metric, metric))
@@ -476,10 +478,12 @@ def plot_scene_profile(summary: pd.DataFrame, out_png: Path, group_var: str, met
             _annotate_series(ax, s2["x"].tolist(), s2["mean"].tolist(), metric=metric, color=color)
         ax.set_title(_aoi_label(aoi), loc="left")
         ax.set_ylabel(METRIC_LABELS.get(metric, metric))
+        ax.tick_params(axis="x", labelbottom=True)
         soften_axes(ax)
 
-    axes[-1].set_xticks(list(xpos.values()))
-    axes[-1].set_xticklabels(scene_labels, rotation=35, ha="right")
+    for ax in axes:
+        ax.set_xticks(list(xpos.values()))
+        ax.set_xticklabels(scene_labels, rotation=35, ha="right")
     axes[-1].set_xlabel("Scene order (round × WWR × Complexity)")
     handles, labels = axes[0].get_legend_handles_labels()
     if handles:
