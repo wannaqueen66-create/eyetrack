@@ -142,9 +142,27 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
             if j == 0:
                 ax.set_ylabel(metric_label(outcome) if outcome in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RFF', 'MPD'] else outcome)
             soften_axes(ax)
-    handles, labels = axes[0, 0].get_legend_handles_labels()
-    if handles:
-        fig.legend(handles, labels, loc="upper right", frameon=False, title="Complexity")
+    # Collect legend entries from all subplots instead of only the first one,
+    # because the top-left panel may contain only one complexity level and would
+    # otherwise drop the other legend item.
+    handle_map = {}
+    for ax in axes.ravel():
+        if ax is None:
+            continue
+        hs, ls = ax.get_legend_handles_labels()
+        for h, l in zip(hs, ls):
+            if l not in handle_map:
+                handle_map[l] = h
+    ordered_labels = [l for l in ["Low", "High"] if l in handle_map]
+    if ordered_labels:
+        fig.legend(
+            [handle_map[l] for l in ordered_labels],
+            ordered_labels,
+            loc="upper right",
+            frameon=False,
+            title="Complexity",
+            ncol=1,
+        )
     fig.suptitle(title, y=1.01, fontsize=12)
     fig.tight_layout()
     out_png.parent.mkdir(parents=True, exist_ok=True)
