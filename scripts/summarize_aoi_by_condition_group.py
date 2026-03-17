@@ -129,7 +129,15 @@ def plot_grid(summary: pd.DataFrame, out_png: Path, outcome: str, group_var: str
                 ax.fill_between(xs, lo, hi, color=line_color, alpha=0.08, linewidth=0)
                 label_budget = 2 if str(outcome).upper() in {"TTFF", "FFD", "TFD", "MFD", "RFF", "MPD"} else 3
                 annotate_series_smart(ax, xs, ys, metric=outcome, color=line_color, max_labels=label_budget)
-            ax.set_title(f"{group_var}={gv} | AOI={aoi}", pad=8); ax.set_xticks(wwr_levels); ax.set_xlabel("WWR")
+            ax.set_title(f"{group_var}={gv} | AOI={aoi}", pad=8)
+            ax.set_xticks(wwr_levels)
+            ax.set_xlabel("WWR")
+            # sharex=True hides upper-row x tick labels by default in matplotlib.
+            # Force every subplot to show its horizontal axis so the top row does
+            # not lose WWR labels in the exported descriptive PNG grids.
+            ax.tick_params(axis='x', labelbottom=True)
+            for lbl in ax.get_xticklabels():
+                lbl.set_visible(True)
             if j == 0:
                 ax.set_ylabel(metric_label(outcome) if outcome in ['FC', 'TTFF', 'FFD', 'TFD', 'MFD', 'RFF', 'MPD'] else outcome)
             soften_axes(ax)
