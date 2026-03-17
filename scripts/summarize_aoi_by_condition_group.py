@@ -268,7 +268,12 @@ def main():
                 rows.append(row)
             summ = pd.DataFrame(rows); summ["group_value"] = summ["group_value"].apply(_norm_hilo)
             summ.to_csv(outdir / "tables" / f"summary_{gv}_{ycol}.csv", index=False, encoding="utf-8-sig")
-            plot_grid(summ, outdir / 'png' / f"plot_{gv}_{ycol}.png", outcome=yname, group_var=gv, title=f"AOI outcome by WWR×Complexity×{gv} ({yname})")
+            pretty_group = {
+                'Experience': 'Experience group',
+                'SportFreq': 'Sport frequency group',
+            }.get(gv, gv)
+            title = f"Descriptive AOI pattern of {yname} by WWR, complexity, and {pretty_group}"
+            plot_grid(summ, outdir / 'png' / f"plot_{gv}_{ycol}.png", outcome=yname, group_var=gv, title=title)
     (outdir / "RUNINFO.txt").write_text("AOI summary by condition/group\n" + f"aoi_class_csv: {args.aoi_class_csv}\n" + f"group_manifest: {args.group_manifest}\n", encoding="utf-8")
     print("Saved:", str(outdir))
 
