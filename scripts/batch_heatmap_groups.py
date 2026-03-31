@@ -48,7 +48,7 @@ except Exception as e:
     )
 
 
-PLOT_DPI = 300
+PLOT_DPI = 600
 DEFAULT_FIGSIZE = (6.7, 7.9)
 COMPARE_PANEL_SIZE = (4.2, 5.25)
 TITLE_PAD = 7
