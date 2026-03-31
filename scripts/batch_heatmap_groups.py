@@ -48,7 +48,7 @@ except Exception as e:
     )
 
 
-PLOT_DPI = 600
+PLOT_DPI = 300
 DEFAULT_FIGSIZE = (6.7, 7.9)
 COMPARE_PANEL_SIZE = (4.2, 5.25)
 TITLE_PAD = 7
@@ -438,6 +438,7 @@ def main():
     ap.add_argument("--resume", action="store_true", default=True, help="Resume using cached per-participant points.npy if present")
     ap.add_argument("--no_resume", action="store_false", dest="resume", help="Disable resume cache")
     ap.add_argument("--fail_fast", action="store_true", help="Stop on first error")
+    ap.add_argument("--skip_individual", action="store_true", help="Skip per-participant figure output; only produce group aggregates and comparison (much faster)")
 
     args = ap.parse_args()
 
@@ -467,7 +468,8 @@ def main():
         point_source_label += " (duration-weighted)"
 
     outdir = Path(args.outdir)
-    (outdir / "individual").mkdir(parents=True, exist_ok=True)
+    if not getattr(args, "skip_individual", False):
+        (outdir / "individual").mkdir(parents=True, exist_ok=True)
     (outdir / "groups").mkdir(parents=True, exist_ok=True)
     (outdir / "compare").mkdir(parents=True, exist_ok=True)
 
@@ -523,12 +525,17 @@ def main():
     rows = []
     errors = []
 
+    skip_ind = getattr(args, 'skip_individual', False)
+
     for _, r in m.iterrows():
         pid = str(r[id_col]).strip()
         ex = norm_level(r["Experience"])
 
-        one_out = outdir / "individual" / pid
-        one_out.mkdir(parents=True, exist_ok=True)
+        # Individual output directory (only created when needed)
+        one_out = None
+        if not skip_ind:
+            one_out = outdir / "individual" / pid
+            one_out.mkdir(parents=True, exist_ok=True)
 
         cache_tag = f"{args.point_source}"
         if args.point_source == "fixation":
@@ -536,18 +543,22 @@ def main():
         if args.weight != "none":
             cache_tag += f"_w-{args.weight}"
 
-        points_path = one_out / f"points_{cache_tag}.npy"
-        weights_path = one_out / f"weights_{cache_tag}.npy"
-        meta_path = one_out / f"meta_{cache_tag}.json"
-
         pid_title = fmt_title(pid)
 
         try:
-            if args.resume and points_path.exists():
-                xy = np.load(points_path)
-                w = np.load(weights_path) if weights_path.exists() else None
-                source_csv = None
-            else:
+            # Try loading from cache (only when individual dirs exist)
+            source_csv = None
+            loaded_from_cache = False
+            if not skip_ind:
+                points_path = one_out / f"points_{cache_tag}.npy"
+                weights_path = one_out / f"weights_{cache_tag}.npy"
+                meta_path = one_out / f"meta_{cache_tag}.json"
+                if args.resume and points_path.exists():
+                    xy = np.load(points_path)
+                    w = np.load(weights_path) if weights_path.exists() else None
+                    loaded_from_cache = True
+
+            if not loaded_from_cache:
                 w = None
                 csv_path = resolve_csv_path(pid, r["csv_path"] if has_csv_path else None)
                 df, clean = load_and_clean(
@@ -579,64 +590,57 @@ def main():
                     mask_xy = sub[["Fixation Point X[px]", "Fixation Point Y[px]"]].notna().all(axis=1).to_numpy()
                     w = w[mask_xy]
                     w = np.where(np.isfinite(w) & (w > 0), w, 0.0)
-                    np.save(weights_path, w.astype(np.float32))
                 else:
                     w = None
 
-                np.save(points_path, xy)
-                meta_path.write_text(
-                    json.dumps(
-                        {
-                            "id": pid,
-                            "csv_path": csv_path,
-                            "Experience": ex,
-                            "point_source": args.point_source,
-                            "weight": args.weight,
-                            "fixation_dedup": args.fixation_dedup if args.point_source == "fixation" else None,
-                            "n_points_after_clean": int(xy.shape[0]),
-                            "weight_sum": float(np.nansum(w)) if w is not None else None,
-                        },
-                        ensure_ascii=False,
-                        indent=2,
-                    ),
-                    encoding="utf-8",
-                )
                 source_csv = csv_path
 
-            H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
-            point_count = int(xy.shape[0])
-            meta_right = f"n = {point_count:,}"
-            save_density_png(H, one_out / "heatmap_density.png", fmt_title(f"Participant density: {pid_title}"), cmap, meta_left=point_source_label, meta_right=meta_right)
+                # Save cache only when not skipping individual
+                if not skip_ind:
+                    if w is not None:
+                        np.save(weights_path, w.astype(np.float32))
+                    np.save(points_path, xy)
+                    meta_path.write_text(
+                        json.dumps(
+                            {
+                                "id": pid,
+                                "csv_path": csv_path,
+                                "Experience": ex,
+                                "point_source": args.point_source,
+                                "weight": args.weight,
+                                "fixation_dedup": args.fixation_dedup if args.point_source == "fixation" else None,
+                                "n_points_after_clean": int(xy.shape[0]),
+                                "weight_sum": float(np.nansum(w)) if w is not None else None,
+                            },
+                            ensure_ascii=False,
+                            indent=2,
+                        ),
+                        encoding="utf-8",
+                    )
 
-            if args.background_img:
-                save_density_overlay(
-                    H,
-                    one_out / "heatmap.png",
-                    fmt_title(f"Participant: {pid_title}"),
-                    args.background_img,
-                    args.screen_w,
-                    args.screen_h,
-                    cmap=cmap,
-                    alpha=args.alpha,
-                    thresh_rel=args.thresh,
-                    meta_left=point_source_label,
-                    meta_right=meta_right,
-                )
-                save_density_overlay(
-                    H,
-                    one_out / "heatmap_overlay.png",
-                    fmt_title(f"Participant overlay: {pid_title}"),
-                    args.background_img,
-                    args.screen_w,
-                    args.screen_h,
-                    cmap=cmap,
-                    alpha=args.alpha,
-                    thresh_rel=args.thresh,
-                    meta_left=point_source_label,
-                    meta_right=meta_right,
-                )
-            else:
-                save_density_png(H, one_out / "heatmap.png", fmt_title(f"Participant density: {pid_title}"), cmap, meta_left=point_source_label, meta_right=meta_right)
+            point_count = int(xy.shape[0])
+
+            # Individual figure output (skipped when --skip_individual)
+            if not skip_ind:
+                H = density_from_points(xy, args.screen_w, args.screen_h, bins=args.bins, sigma=args.sigma, weights=w)
+                meta_right = f"n = {point_count:,}"
+                save_density_png(H, one_out / "heatmap_density.png", fmt_title(f"Participant density: {pid_title}"), cmap, meta_left=point_source_label, meta_right=meta_right)
+
+                if args.background_img:
+                    save_density_overlay(
+                        H, one_out / "heatmap.png", fmt_title(f"Participant: {pid_title}"),
+                        args.background_img, args.screen_w, args.screen_h,
+                        cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh,
+                        meta_left=point_source_label, meta_right=meta_right,
+                    )
+                    save_density_overlay(
+                        H, one_out / "heatmap_overlay.png", fmt_title(f"Participant overlay: {pid_title}"),
+                        args.background_img, args.screen_w, args.screen_h,
+                        cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh,
+                        meta_left=point_source_label, meta_right=meta_right,
+                    )
+                else:
+                    save_density_png(H, one_out / "heatmap.png", fmt_title(f"Participant density: {pid_title}"), cmap, meta_left=point_source_label, meta_right=meta_right)
 
             rows.append(
                 {
