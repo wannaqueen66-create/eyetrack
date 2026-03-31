@@ -3,30 +3,21 @@
 
 Purpose
 -------
-Generate eye-tracking heatmaps that are cleaner, more structured, and visually
-stronger for manuscript use (e.g., Building and Environment submissions).
-
-Current output scope:
+Generate eye-tracking heatmaps with output logic narrowed to the manuscript mainline:
 - Individual heatmap per participant
 - One aggregated heatmap for all participants (`Overall`)
 - Two aggregated heatmaps by Experience (`Experience-High`, `Experience-Low`)
-- One manuscript-style Experience comparison panel
+- One Experience comparison panel
 
-Removed from the main output line:
-- SportFreq aggregation
-- 4-way Experience × SportFreq aggregation
-- SportFreq comparison figures
-
-Design principles
------------------
-- English-only figure language by default
-- Cleaner manuscript-style visual hierarchy
-- Quiet background treatment so the heatmap remains primary
-- Minimal but intentional framing, panel labels, and metadata strips
-- Consistent density scaling within comparison panels
-- Optional background overlay for scene-based interpretation
-- Supports gaze-point or fixation-point heatmaps
-- Optional fixation-duration weighting
+Visual goal
+-----------
+The rendering is tuned to resemble the visual character commonly seen in Tobii /
+Tobii Pro Lab heatmaps rather than a stylized academic redesign:
+- strong hotspot emphasis
+- blue/green/yellow/red attention ramp
+- direct scene overlay
+- soft tails and bright centers
+- minimal decorative framing
 """
 
 import argparse
@@ -41,7 +32,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import font_manager, patches
+from matplotlib import colors as mcolors
+from matplotlib import font_manager
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -57,16 +49,12 @@ except Exception as e:
 
 
 PLOT_DPI = 600
-DEFAULT_FIGSIZE = (6.8, 8.0)
-COMPARE_PANEL_SIZE = (4.35, 5.55)
-TITLE_PAD = 8
-FRAME_COLOR = "#D9DDE3"
-TEXT_PRIMARY = "#1F2937"
-TEXT_SECONDARY = "#5B6573"
-ACCENT_COLOR = "#1B4D6B"
-BG_TINT_ALPHA = 0.22
-BG_DESATURATE = 0.72
-BG_BRIGHTEN = 0.10
+DEFAULT_FIGSIZE = (6.7, 7.9)
+COMPARE_PANEL_SIZE = (4.2, 5.25)
+TITLE_PAD = 7
+TEXT_PRIMARY = "#202124"
+TEXT_SECONDARY = "#667085"
+OVERLAY_BG_ALPHA = 0.10
 
 
 def norm_level(x: str) -> str:
@@ -118,9 +106,6 @@ def setup_publication_style(font_family: str = "DejaVu Sans"):
             "font.size": 10,
             "axes.titlesize": 11,
             "axes.titleweight": "regular",
-            "axes.labelsize": 10,
-            "xtick.labelsize": 9,
-            "ytick.labelsize": 9,
             "figure.facecolor": "white",
             "axes.facecolor": "white",
             "savefig.facecolor": "white",
@@ -130,13 +115,24 @@ def setup_publication_style(font_family: str = "DejaVu Sans"):
     )
 
 
+def _make_tobii_cmap():
+    # Approximate Tobii-style ramp: cool tails → green/yellow → hot red/white core
+    stops = [
+        (0.00, (0.00, 0.00, 0.00, 0.00)),
+        (0.08, (0.05, 0.20, 0.95, 0.20)),
+        (0.22, (0.00, 0.72, 1.00, 0.42)),
+        (0.42, (0.00, 0.95, 0.38, 0.62)),
+        (0.62, (1.00, 0.92, 0.00, 0.82)),
+        (0.82, (1.00, 0.35, 0.00, 0.95)),
+        (1.00, (1.00, 0.00, 0.00, 1.00)),
+    ]
+    return mcolors.LinearSegmentedColormap.from_list("tobii_like", stops, N=256)
+
+
 def get_cmap(name: str):
     n = (name or "tobii").strip().lower()
-    if n in {"tobii", "tobii-pro", "prolab", "tobii_pro"}:
-        try:
-            return plt.get_cmap("turbo")
-        except Exception:
-            return plt.get_cmap("jet")
+    if n in {"tobii", "tobii-pro", "prolab", "tobii_pro", "tobii_like"}:
+        return _make_tobii_cmap()
     return plt.get_cmap(name)
 
 
@@ -145,7 +141,7 @@ def density_from_points(
     screen_w: int,
     screen_h: int,
     bins: int = 220,
-    sigma: float = 2.2,
+    sigma: float = 2.6,
     weights: np.ndarray | None = None,
 ):
     if xy.size == 0:
@@ -181,13 +177,14 @@ def _alpha_map_from_density(H: np.ndarray, alpha: float, thresh_rel: float):
     if mx <= 0:
         return np.zeros_like(H, dtype=float)
     Hn = np.clip(H / mx, 0, 1)
-    A = (Hn ** 0.60) * float(alpha)
+    # More Tobii-like: softer tails + quickly intensified hotspots
+    A = np.clip((Hn ** 0.42) * float(alpha), 0, 1)
     if thresh_rel is not None and thresh_rel > 0:
         A = np.where(Hn >= float(thresh_rel), A, 0.0)
     return A
 
 
-def _soften_background(bg: np.ndarray) -> np.ndarray:
+def _normalize_background(bg: np.ndarray) -> np.ndarray:
     arr = bg.astype(np.float32)
     if arr.max() > 1.0:
         arr = arr / 255.0
@@ -197,41 +194,24 @@ def _soften_background(bg: np.ndarray) -> np.ndarray:
         rgb = arr[..., :3]
         alpha = arr[..., 3:4]
         arr = rgb * alpha + (1 - alpha)
-    gray = arr[..., :3].mean(axis=-1, keepdims=True)
-    arr = BG_DESATURATE * gray + (1 - BG_DESATURATE) * arr[..., :3]
-    arr = np.clip(arr + BG_BRIGHTEN, 0, 1)
-    return arr
+    return np.clip(arr[..., :3], 0, 1)
 
 
-def _style_axis_frame(ax):
-    for spine in ax.spines.values():
-        spine.set_visible(True)
-        spine.set_linewidth(0.8)
-        spine.set_edgecolor(FRAME_COLOR)
-    ax.set_facecolor("white")
+def _style_axis(ax):
     ax.set_xticks([])
     ax.set_yticks([])
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
 
-def _add_meta_strip(ax, left_text: str = "", right_text: str = ""):
+def _meta_line(ax, left_text: str = "", right_text: str = ""):
     if not left_text and not right_text:
         return
-    ax.add_patch(
-        patches.FancyBboxPatch(
-            (0.02, 0.015),
-            0.96,
-            0.075,
-            boxstyle="round,pad=0.006,rounding_size=0.015",
-            transform=ax.transAxes,
-            linewidth=0,
-            facecolor=(1, 1, 1, 0.78),
-            zorder=10,
-        )
-    )
+    y = -0.035
     if left_text:
-        ax.text(0.04, 0.052, left_text, transform=ax.transAxes, ha="left", va="center", fontsize=8.6, color=TEXT_SECONDARY, zorder=11)
+        ax.text(0.00, y, left_text, transform=ax.transAxes, ha="left", va="top", fontsize=8.6, color=TEXT_SECONDARY)
     if right_text:
-        ax.text(0.96, 0.052, right_text, transform=ax.transAxes, ha="right", va="center", fontsize=8.6, color=TEXT_SECONDARY, zorder=11)
+        ax.text(1.00, y, right_text, transform=ax.transAxes, ha="right", va="top", fontsize=8.6, color=TEXT_SECONDARY)
 
 
 def _draw_density(
@@ -242,19 +222,23 @@ def _draw_density(
     background_img=None,
     screen_w=None,
     screen_h=None,
-    alpha=0.64,
-    thresh_rel=0.02,
+    alpha=0.88,
+    thresh_rel=0.006,
     vmin=None,
     vmax=None,
     meta_left: str = "",
     meta_right: str = "",
 ):
     if background_img is not None:
-        bg = _soften_background(plt.imread(background_img))
+        bg = _normalize_background(plt.imread(background_img))
         ax.imshow(bg, extent=[0, screen_w, screen_h, 0], aspect="auto")
-        ax.add_patch(
-            patches.Rectangle((0, 0), screen_w, screen_h, linewidth=0, facecolor=(1, 1, 1, BG_TINT_ALPHA), zorder=1)
-        )
+        if OVERLAY_BG_ALPHA > 0:
+            ax.imshow(
+                np.ones((10, 10, 3), dtype=float),
+                extent=[0, screen_w, screen_h, 0],
+                aspect="auto",
+                alpha=OVERLAY_BG_ALPHA,
+            )
         A = _alpha_map_from_density(H, alpha=alpha, thresh_rel=thresh_rel)
         ax.imshow(
             H.T,
@@ -265,30 +249,28 @@ def _draw_density(
             vmax=vmax,
             alpha=A.T if A is not None else alpha,
             aspect="auto",
-            zorder=3,
         )
     else:
         ax.imshow(H.T, origin="upper", cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
 
-    _style_axis_frame(ax)
+    _style_axis(ax)
     if title:
         ax.set_title(title, pad=TITLE_PAD, color=TEXT_PRIMARY)
-    _add_meta_strip(ax, meta_left=meta_left, right_text=meta_right)
+    _meta_line(ax, left_text=meta_left, right_text=meta_right)
 
 
 def _add_panel_letter(ax, text: str):
     ax.text(
-        0.02,
-        0.98,
+        0.015,
+        0.985,
         text,
         transform=ax.transAxes,
         ha="left",
         va="top",
         fontsize=10.2,
         fontweight="bold",
-        color=TEXT_PRIMARY,
-        bbox=dict(boxstyle="round,pad=0.22", facecolor=(1, 1, 1, 0.88), edgecolor=FRAME_COLOR, linewidth=0.8),
-        zorder=12,
+        color="white",
+        bbox=dict(boxstyle="round,pad=0.20", facecolor=(0, 0, 0, 0.42), edgecolor=(1, 1, 1, 0.35), linewidth=0.6),
     )
 
 
@@ -318,8 +300,8 @@ def save_density_overlay(
     screen_w: int,
     screen_h: int,
     cmap,
-    alpha: float = 0.64,
-    thresh_rel: float = 0.02,
+    alpha: float = 0.88,
+    thresh_rel: float = 0.006,
     figsize=DEFAULT_FIGSIZE,
     vmin=None,
     vmax=None,
@@ -358,8 +340,8 @@ def save_experience_compare(
     background_img: str | None = None,
     screen_w: int | None = None,
     screen_h: int | None = None,
-    alpha: float = 0.64,
-    thresh_rel: float = 0.02,
+    alpha: float = 0.88,
+    thresh_rel: float = 0.006,
     point_source_label: str = "",
     sample_meta: str = "",
 ):
@@ -370,64 +352,38 @@ def save_experience_compare(
     ovmax = max(float(overlap.max()), 1e-12)
 
     fig, axes = plt.subplots(1, 3, figsize=(COMPARE_PANEL_SIZE[0] * 3, COMPARE_PANEL_SIZE[1]))
-    fig.subplots_adjust(top=0.84, bottom=0.06, wspace=0.08)
+    fig.subplots_adjust(top=0.83, bottom=0.10, wspace=0.04)
 
     _draw_density(
-        axes[0],
-        high,
-        cmap=cmap,
-        title=label_high,
-        background_img=background_img,
-        screen_w=screen_w,
-        screen_h=screen_h,
-        alpha=alpha,
-        thresh_rel=thresh_rel,
-        vmin=0,
-        vmax=vmax,
-        meta_left="Relative density",
-        meta_right="Shared scale",
+        axes[0], high, cmap=cmap, title=label_high,
+        background_img=background_img, screen_w=screen_w, screen_h=screen_h,
+        alpha=alpha, thresh_rel=thresh_rel, vmin=0, vmax=vmax,
+        meta_left="Relative density", meta_right="Shared scale"
     )
     _add_panel_letter(axes[0], "A")
 
     _draw_density(
-        axes[1],
-        low,
-        cmap=cmap,
-        title=label_low,
-        background_img=background_img,
-        screen_w=screen_w,
-        screen_h=screen_h,
-        alpha=alpha,
-        thresh_rel=thresh_rel,
-        vmin=0,
-        vmax=vmax,
-        meta_left="Relative density",
-        meta_right="Shared scale",
+        axes[1], low, cmap=cmap, title=label_low,
+        background_img=background_img, screen_w=screen_w, screen_h=screen_h,
+        alpha=alpha, thresh_rel=thresh_rel, vmin=0, vmax=vmax,
+        meta_left="Relative density", meta_right="Shared scale"
     )
     _add_panel_letter(axes[1], "B")
 
     _draw_density(
-        axes[2],
-        overlap,
-        cmap=plt.get_cmap("Greens"),
-        title="Shared attention pattern",
-        background_img=background_img,
-        screen_w=screen_w,
-        screen_h=screen_h,
-        alpha=alpha,
-        thresh_rel=thresh_rel,
-        vmin=0,
-        vmax=ovmax,
-        meta_left="Overlap density",
-        meta_right="Within-scene",
+        axes[2], overlap, cmap=plt.get_cmap("Greens"), title="Shared attention pattern",
+        background_img=background_img, screen_w=screen_w, screen_h=screen_h,
+        alpha=0.82, thresh_rel=thresh_rel, vmin=0, vmax=ovmax,
+        meta_left="Overlap density", meta_right="Within-scene"
     )
     _add_panel_letter(axes[2], "C")
 
-    fig.text(0.02, 0.965, title, ha="left", va="top", fontsize=13, color=TEXT_PRIMARY, fontweight="bold")
-    fig.text(0.02, 0.928, "Heatmaps are normalized within panel; warmer colors indicate stronger visual attention concentration.", ha="left", va="top", fontsize=9.2, color=TEXT_SECONDARY)
-    if point_source_label or sample_meta:
-        meta = "  |  ".join([x for x in [point_source_label, sample_meta] if x])
-        fig.text(0.02, 0.895, meta, ha="left", va="top", fontsize=8.8, color=ACCENT_COLOR)
+    fig.text(0.01, 0.965, title, ha="left", va="top", fontsize=12.4, color=TEXT_PRIMARY, fontweight="bold")
+    sub = "Tobii-like heatmap rendering; warmer colors indicate stronger attention concentration."
+    fig.text(0.01, 0.928, sub, ha="left", va="top", fontsize=9.0, color=TEXT_SECONDARY)
+    extra = "  |  ".join([x for x in [point_source_label, sample_meta] if x])
+    if extra:
+        fig.text(0.01, 0.896, extra, ha="left", va="top", fontsize=8.7, color=TEXT_SECONDARY)
 
     fig.savefig(out_png)
     plt.close(fig)
@@ -456,7 +412,7 @@ def main():
     ap.add_argument("--screen_h", type=int, default=1440)
 
     ap.add_argument("--bins", type=int, default=220, help="Grid bins for density (default 220x220)")
-    ap.add_argument("--sigma", type=float, default=2.2, help="Gaussian smoothing sigma (default 2.2)")
+    ap.add_argument("--sigma", type=float, default=2.6, help="Gaussian smoothing sigma (default 2.6, closer to Tobii-like diffusion)")
 
     ap.add_argument("--point_source", default="gaze", choices=["gaze", "fixation"], help="Use gaze points or fixation points")
     ap.add_argument("--weight", default="none", choices=["none", "fixation_duration"], help="Optional weighting")
@@ -466,9 +422,9 @@ def main():
     ap.add_argument("--columns_map", default=None, help="Path to JSON mapping of required columns to candidate names")
 
     ap.add_argument("--background_img", default=None, help="Optional background image (png/jpg) to overlay all heatmaps")
-    ap.add_argument("--alpha", type=float, default=0.64, help="Overlay alpha (default 0.64)")
-    ap.add_argument("--thresh", type=float, default=0.02, help="Relative threshold in [0,1] to hide low-density tails")
-    ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii -> turbo/jet)")
+    ap.add_argument("--alpha", type=float, default=0.88, help="Overlay alpha (default 0.88, closer to Tobii-like heat visibility)")
+    ap.add_argument("--thresh", type=float, default=0.006, help="Relative threshold in [0,1] to hide very low-density tails")
+    ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii-like)")
 
     ap.add_argument(
         "--title_mode",
