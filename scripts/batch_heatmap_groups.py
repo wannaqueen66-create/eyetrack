@@ -178,7 +178,7 @@ def _alpha_map_from_density(H: np.ndarray, alpha: float, thresh_rel: float):
         return np.zeros_like(H, dtype=float)
     Hn = np.clip(H / mx, 0, 1)
     # More Tobii-like: softer tails + quickly intensified hotspots
-    A = np.clip((Hn ** 0.42) * float(alpha), 0, 1)
+    A = np.clip((Hn ** 0.32) * float(alpha), 0, 1)
     if thresh_rel is not None and thresh_rel > 0:
         A = np.where(Hn >= float(thresh_rel), A, 0.0)
     return A
@@ -197,7 +197,7 @@ def _normalize_background(bg: np.ndarray) -> np.ndarray:
     return np.clip(arr[..., :3], 0, 1)
 
 
-def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.06):
+def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.12):
     """Detect the bounding box of non-black content in a background image.
 
     Returns (row_min, row_max, col_min, col_max) in pixel coordinates,
@@ -221,8 +221,8 @@ def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.06):
     cmin, cmax = int(np.where(cols)[0][0]), int(np.where(cols)[0][-1])
 
     h, w = bg.shape[:2]
-    # Only crop if the black border is significant (>2% on any side)
-    margin = 0.02
+    # Only skip cropping if borders are truly negligible (<1% on all sides)
+    margin = 0.01
     if rmin < h * margin and rmax > h * (1 - margin) and cmin < w * margin and cmax > w * (1 - margin):
         return None  # negligible border
 
@@ -472,7 +472,7 @@ def main():
 
     ap.add_argument("--background_img", default=None, help="Optional background image (png/jpg) to overlay all heatmaps")
     ap.add_argument("--alpha", type=float, default=0.88, help="Overlay alpha (default 0.88, closer to Tobii-like heat visibility)")
-    ap.add_argument("--thresh", type=float, default=0.006, help="Relative threshold in [0,1] to hide very low-density tails")
+    ap.add_argument("--thresh", type=float, default=0.003, help="Relative threshold in [0,1] to hide very low-density tails")
     ap.add_argument("--cmap", default="tobii", help="Heatmap colormap (default: tobii-like)")
 
     ap.add_argument(

@@ -56,7 +56,7 @@ LABEL_COLOR = "#202124"
 LABEL_SIZE = 11
 
 
-def _auto_crop(img_arr: np.ndarray, bg_thresh: int = 18) -> np.ndarray:
+def _auto_crop(img_arr: np.ndarray, bg_thresh: int = 30) -> np.ndarray:
     """Remove near-black borders from an image array (H, W, C)."""
     if img_arr.ndim == 2:
         gray = img_arr
@@ -135,8 +135,8 @@ def main():
     ap.add_argument("--crop", action="store_true", default=True, help="Auto-crop black borders (default: on)")
     ap.add_argument("--no_crop", action="store_false", dest="crop", help="Disable auto-crop")
     ap.add_argument("--dpi", type=int, default=PLOT_DPI)
-    ap.add_argument("--panel_w", type=float, default=4.8, help="Width per panel in inches")
-    ap.add_argument("--panel_h", type=float, default=5.6, help="Height per panel in inches")
+    ap.add_argument("--panel_w", type=float, default=5.0, help="Width per panel in inches")
+    ap.add_argument("--panel_h", type=float, default=5.9, help="Height per panel in inches")
     ap.add_argument("--wspace", type=float, default=0.04, help="Horizontal gap between panels (fraction)")
     ap.add_argument("--hspace", type=float, default=0.12, help="Vertical gap between rows (fraction)")
 
@@ -188,7 +188,7 @@ def main():
             if args.crop:
                 img = _auto_crop(img)
 
-            ax.imshow(img, aspect="auto")
+            ax.imshow(img, aspect="equal")
             ax.set_facecolor(FIG_BG)
 
             # Panel label below the image
