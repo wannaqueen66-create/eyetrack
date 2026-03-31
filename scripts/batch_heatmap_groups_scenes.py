@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Batch heatmap groups across multiple scene folders.
+"""Batch publication-oriented heatmaps across multiple scene folders.
 
 Use case:
 - You have N scene folders (e.g., 12 scenes). Each scene folder contains:
@@ -8,15 +8,11 @@ Use case:
 - You want to run `batch_heatmap_groups.py` once per scene, producing
   independent outputs under outdir/<scene_folder_name>/...
 
-This script is a thin wrapper that iterates scene directories and calls
-`batch_heatmap_groups.py` for each scene.
-
-Typical Colab usage:
-  python scripts/batch_heatmap_groups_scenes.py \
-    --manifest /content/group_manifest.csv \
-    --scenes_root /content/scenes \
-    --screen_w 1748 --screen_h 2064 \
-    --outdir /content/outputs_by_scene
+The wrapped script exports a narrow, manuscript-oriented output set per scene:
+- individual heatmaps
+- one Overall aggregated heatmap
+- Experience-High and Experience-Low aggregated heatmaps
+- one Experience comparison figure
 
 Notes:
 - CSV matching still follows `batch_heatmap_groups.py` logic (by name in filename
@@ -25,9 +21,8 @@ Notes:
 """
 
 import argparse
-import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
 
 
@@ -44,14 +39,13 @@ def find_background(scene_dir: Path, prefer: str | None = None) -> Path | None:
     if not imgs:
         return None
 
-    # If multiple, pick the largest file as a heuristic (often the real background)
     imgs.sort(key=lambda p: (p.stat().st_size, p.name))
     return imgs[-1]
 
 
 def main():
     ap = argparse.ArgumentParser(description="Run batch_heatmap_groups.py across scene folders")
-    ap.add_argument("--manifest", required=True, help="group_manifest.csv (name,SportFreq,Experience)")
+    ap.add_argument("--manifest", required=True, help="group_manifest.csv (name/participant_id, Experience, optional csv_path)")
     ap.add_argument("--scenes_root", required=True, help="Directory containing scene folders")
     ap.add_argument("--outdir", required=True, help="Output root; each scene uses a subfolder")
     ap.add_argument("--screen_w", type=int, required=True)
@@ -60,7 +54,6 @@ def main():
     ap.add_argument("--scene_glob", default="*", help="Glob for scene folders under scenes_root (default: *)")
     ap.add_argument("--background_filename", default=None, help="If provided, use this filename inside each scene folder")
 
-    # forward common plotting params
     ap.add_argument("--bins", type=int, default=None)
     ap.add_argument("--sigma", type=float, default=None)
     ap.add_argument("--alpha", type=float, default=None)
@@ -70,7 +63,6 @@ def main():
     ap.add_argument("--quiet_glyph_warning", action="store_true")
     ap.add_argument("--font", default=None)
 
-    # fixation-based heatmaps (forwarded)
     ap.add_argument("--point_source", default=None, choices=["gaze", "fixation"], help="Use gaze points or fixation points")
     ap.add_argument("--weight", default=None, choices=["none", "fixation_duration"], help="Optional weighting")
     ap.add_argument("--fixation_dedup", default=None, choices=["index", "none"], help="How to deduplicate fixation points")
@@ -119,7 +111,6 @@ def main():
             "--outdir", str(out_scene),
         ]
 
-        # forward params if provided
         def f(flag, v):
             if v is not None:
                 cmd.extend([flag, str(v)])
@@ -154,7 +145,6 @@ def main():
             failed.append((sd.name, msg))
 
     if failed:
-        # write a small summary for convenience
         fail_path = outroot / "failed_scenes.csv"
         with open(fail_path, "w", encoding="utf-8") as f:
             f.write("scene,reason\n")
