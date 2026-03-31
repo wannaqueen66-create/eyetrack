@@ -75,7 +75,7 @@ python scripts/run_colab_one_command.py \
 
 适用场景：你有很多个 CSV，想批量导出每个文件的 `heatmap.png`。
 
-如果你还要做**分组对比**（比如 SportFreq 二分、Experience 二分、以及两者交叉得到 4 类人群），看本文档后面的「批处理：按人群分组汇总 + 差异图」。
+如果你还要做**分组对比**（按 Experience 分组），看本文档后面的「批处理：按 Experience 分组汇总 + 对比图」。
 
 ### Step 1. 准备并上传 zip
 
@@ -138,12 +138,15 @@ files.download('outputs_batch_heatmap.zip')
 
 ---
 
-## 批处理：按人群分组汇总 + 差异图（SportFreq 二分 / Experience 二分 / 4 类交叉）
+## 批处理：按 Experience 分组汇总 + 对比图
 
 适用场景：
 - 你要每个人的单独热图
-- 同时要按人群汇总热图（例如 SportFreq-High vs SportFreq-Low）
-- 还要一张能直接看出组间差异的图（推荐使用**log-ratio 差异图**）
+- 要全体汇总热图（Overall）
+- 要按 Experience 分组汇总（High vs Low）
+- 要一张能直接看出组间差异的对比图
+
+> 注意：当前版本默认使用 **fixation 点 + fixation duration 加权**（与 Tobii Pro Lab 默认一致）。如果你想改回 gaze 点，可加 `--point_source gaze --weight none`。
 
 ### Step 1. 准备 manifest（分组表）
 
@@ -152,24 +155,15 @@ files.download('outputs_batch_heatmap.zip')
 
 必须列：
 - `name`（或 `participant_id`）：被试姓名/ID
-- `SportFreq`：High / Low
 - `Experience`：High / Low
 
 可选列：
 - `csv_path`：该被试 CSV 路径
+- `SportFreq`：存在也可以，但热力图脚本不再使用
 
 如果你不想在 manifest 里写 `csv_path`（比如所有 CSV 都在同一个文件夹），可以在运行脚本时传 `--csv_dir batch_csvs`，脚本会用 `participant_id` 去匹配对应 CSV 文件名。
+
 ### Step 2. 运行分组批处理脚本
-
-```bash
-!python scripts/batch_heatmap_groups.py \
-  --manifest group_manifest.csv \
-  --csv_dir batch_csvs \
-  --screen_w 1920 --screen_h 1080 \
-  --outdir outputs_batch_groups
-```
-
-如果你想把**各组汇总热图**也叠加到底图上，加 `--background_img`：
 
 ```bash
 !python scripts/batch_heatmap_groups.py \
@@ -180,18 +174,55 @@ files.download('outputs_batch_heatmap.zip')
   --outdir outputs_batch_groups
 ```
 
-输出会额外多一批：`heatmap_overlay.png`
-
-输出结构（重点）：
-- `outputs_batch_groups/individual/<name>/heatmap.png`（如果传了 `--background_img`，这是叠底图）
+输出结构：
+- `outputs_batch_groups/individual/<name>/heatmap.png`（叠底图）
 - `outputs_batch_groups/individual/<name>/heatmap_density.png`
-- `outputs_batch_groups/groups/SportFreq-High/heatmap_density.png`
-- `outputs_batch_groups/groups/SportFreq-High/heatmap.png`（传 `--background_img` 时为叠底图）
-- `outputs_batch_groups/compare/SportFreq_diff.png`（High vs Low 差异图；传 `--background_img` 时也会叠底）
-- `outputs_batch_groups/compare/Experience_diff.png`
-- `outputs_batch_groups/compare/4way_grid.png`（四类共享色标的 2x2 汇总图；传 `--background_img` 时也会叠底）
+- `outputs_batch_groups/groups/Overall/heatmap.png`
+- `outputs_batch_groups/groups/Experience-High/heatmap.png`
+- `outputs_batch_groups/groups/Experience-Low/heatmap.png`
+- `outputs_batch_groups/compare/Experience_comparison.png`（三联对比图）
+- `outputs_batch_groups/participants_summary.csv`
 
-### Step 3. 打包下载
+### Step 3. 多场景批处理（按场景分文件夹）
+
+如果你有多个场景（例如 6 个或 12 个），每个场景文件夹里包含该场景的底图 + 所有人在该场景下的 CSV：
+
+```bash
+!python scripts/batch_heatmap_groups_scenes.py \
+  --manifest group_manifest.csv \
+  --scenes_root scenes \
+  --screen_w 1748 --screen_h 2064 \
+  --outdir outputs_by_scene
+```
+
+输出结构：
+- `outputs_by_scene/<scene_name>/individual/...`
+- `outputs_by_scene/<scene_name>/groups/Overall/...`
+- `outputs_by_scene/<scene_name>/groups/Experience-High/...`
+- `outputs_by_scene/<scene_name>/groups/Experience-Low/...`
+- `outputs_by_scene/<scene_name>/compare/Experience_comparison.png`
+
+### Step 4. 拼 6 场景投稿图
+
+跑完多场景后，可以用 `compose_scene_panel.py` 把 6 个场景的 Overall 热力图拼成一张 3×2 投稿图：
+
+```bash
+!python scripts/compose_scene_panel.py \
+  --scene_dirs outputs_by_scene \
+  --outfile figures/Fig_heatmap_6scenes.png \
+  --title "Fig. X. Fixation heatmaps across six visual conditions" \
+  --note "Note: Heatmaps represent fixation-duration-weighted density across all participants. Warmer colors indicate higher visual attention concentration."
+```
+
+排列顺序：
+```
+(a) C0–WWR15   (b) C0–WWR45   (c) C0–WWR75
+(d) C1–WWR15   (e) C1–WWR45   (f) C1–WWR75
+```
+
+脚本会自动根据文件夹名匹配场景位置，并去除黑边。
+
+### Step 5. 打包下载
 
 ```bash
 !zip -qr outputs_batch_groups.zip outputs_batch_groups
@@ -226,4 +257,3 @@ files.download('outputs_batch_groups.zip')
 
 3. **运行超时或中断**
    - Colab 会话断开后需重新运行前置格
-
