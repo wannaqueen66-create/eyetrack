@@ -198,34 +198,23 @@ def _normalize_background(bg: np.ndarray) -> np.ndarray:
     return np.clip(arr[..., :3], 0, 1)
 
 
-def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.22):
-    """Detect the bounding box of non-black content in a background image.
+def _detect_content_bounds(bg: np.ndarray, crop_pct: float = 0.08):
+    """Crop a fixed percentage from all edges to remove VR panoramic dark corners.
+
+    Args:
+        bg: Background image array (H, W, C) or (H, W).
+        crop_pct: Fraction of each edge to crop (default 8%).
 
     Returns (row_min, row_max, col_min, col_max) in pixel coordinates,
-    or None if the image has no significant black borders.
+    or None if crop_pct is 0.
     """
-    if bg.ndim == 3:
-        brightness = bg[..., :3].mean(axis=-1)
-    else:
-        brightness = bg
-    if brightness.max() > 1.5:
-        brightness = brightness / 255.0
-
-    mask = brightness > dark_thresh
-    rows = np.any(mask, axis=1)
-    cols = np.any(mask, axis=0)
-
-    if not rows.any() or not cols.any():
+    if crop_pct <= 0:
         return None
-
-    rmin, rmax = int(np.where(rows)[0][0]), int(np.where(rows)[0][-1])
-    cmin, cmax = int(np.where(cols)[0][0]), int(np.where(cols)[0][-1])
-
     h, w = bg.shape[:2]
-    # Crop if any side has >3% dark border
-    if (rmin / h < 0.03) and ((h - rmax) / h < 0.03) and (cmin / w < 0.03) and ((w - cmax) / w < 0.03):
-        return None  # negligible border
-
+    rmin = int(h * crop_pct)
+    rmax = int(h * (1 - crop_pct))
+    cmin = int(w * crop_pct)
+    cmax = int(w * (1 - crop_pct))
     return (rmin, rmax, cmin, cmax)
 
 
@@ -742,12 +731,12 @@ def main():
     overall_dir = outdir / "groups" / "Overall"
     overall_dir.mkdir(parents=True, exist_ok=True)
     overall_meta_right = f"participants = {n_total}"
-    save_density_png(overall_H, overall_dir / "heatmap_density.png", fmt_title("Overall participant density"), cmap, meta_left=point_source_label, meta_right=overall_meta_right)
+    save_density_png(overall_H, overall_dir / "heatmap_density.png", fmt_title("Overall participant density"), cmap)
     if args.background_img:
-        save_density_overlay(overall_H, overall_dir / "heatmap.png", fmt_title("Overall participants"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh, meta_left=point_source_label, meta_right=overall_meta_right)
-        save_density_overlay(overall_H, overall_dir / "heatmap_overlay.png", fmt_title("Overall participants overlay"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh, meta_left=point_source_label, meta_right=overall_meta_right)
+        save_density_overlay(overall_H, overall_dir / "heatmap.png", fmt_title("Overall participants"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+        save_density_overlay(overall_H, overall_dir / "heatmap_overlay.png", fmt_title("Overall participants overlay"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
     else:
-        save_density_png(overall_H, overall_dir / "heatmap.png", fmt_title("Overall participant density"), cmap, meta_left=point_source_label, meta_right=overall_meta_right)
+        save_density_png(overall_H, overall_dir / "heatmap.png", fmt_title("Overall participant density"), cmap)
 
     dens_ex = {}
     for level in ["High", "Low"]:
@@ -758,12 +747,12 @@ def main():
         base.mkdir(parents=True, exist_ok=True)
         n_group = n_high if level == "High" else n_low
         group_meta_right = f"participants = {n_group}"
-        save_density_png(H, base / "heatmap_density.png", fmt_title(f"Experience {level}: density"), cmap, meta_left=point_source_label, meta_right=group_meta_right)
+        save_density_png(H, base / "heatmap_density.png", fmt_title(f"Experience {level}: density"), cmap)
         if args.background_img:
-            save_density_overlay(H, base / "heatmap.png", fmt_title(f"Experience {level}"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh, meta_left=point_source_label, meta_right=group_meta_right)
-            save_density_overlay(H, base / "heatmap_overlay.png", fmt_title(f"Experience {level}: overlay"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh, meta_left=point_source_label, meta_right=group_meta_right)
+            save_density_overlay(H, base / "heatmap.png", fmt_title(f"Experience {level}"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
+            save_density_overlay(H, base / "heatmap_overlay.png", fmt_title(f"Experience {level}: overlay"), args.background_img, args.screen_w, args.screen_h, cmap=cmap, alpha=args.alpha, thresh_rel=args.thresh)
         else:
-            save_density_png(H, base / "heatmap.png", fmt_title(f"Experience {level}: density"), cmap, meta_left=point_source_label, meta_right=group_meta_right)
+            save_density_png(H, base / "heatmap.png", fmt_title(f"Experience {level}: density"), cmap)
 
     save_experience_compare(
         dens_ex["High"],
