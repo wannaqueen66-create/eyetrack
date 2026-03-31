@@ -197,6 +197,38 @@ def _normalize_background(bg: np.ndarray) -> np.ndarray:
     return np.clip(arr[..., :3], 0, 1)
 
 
+def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.06):
+    """Detect the bounding box of non-black content in a background image.
+
+    Returns (row_min, row_max, col_min, col_max) in pixel coordinates,
+    or None if the image has no significant black borders.
+    """
+    if bg.ndim == 3:
+        brightness = bg[..., :3].mean(axis=-1)
+    else:
+        brightness = bg
+    if brightness.max() > 1.5:
+        brightness = brightness / 255.0
+
+    mask = brightness > dark_thresh
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+
+    if not rows.any() or not cols.any():
+        return None
+
+    rmin, rmax = int(np.where(rows)[0][0]), int(np.where(rows)[0][-1])
+    cmin, cmax = int(np.where(cols)[0][0]), int(np.where(cols)[0][-1])
+
+    h, w = bg.shape[:2]
+    # Only crop if the black border is significant (>2% on any side)
+    margin = 0.02
+    if rmin < h * margin and rmax > h * (1 - margin) and cmin < w * margin and cmax > w * (1 - margin):
+        return None  # negligible border
+
+    return (rmin, rmax, cmin, cmax)
+
+
 def _style_axis(ax):
     ax.set_xticks([])
     ax.set_yticks([])
@@ -231,11 +263,27 @@ def _draw_density(
 ):
     if background_img is not None:
         bg = _normalize_background(plt.imread(background_img))
-        ax.imshow(bg, extent=[0, screen_w, screen_h, 0], aspect="auto")
+        # Detect and crop black borders from VR/panoramic renders
+        bounds = _detect_content_bounds(bg)
+        if bounds is not None:
+            rmin, rmax, cmin, cmax = bounds
+            bg = bg[rmin:rmax+1, cmin:cmax+1]
+            # Map pixel bounds to screen coordinates for extent
+            h_orig, w_orig = plt.imread(background_img).shape[:2]
+            x0 = cmin / w_orig * screen_w
+            x1 = (cmax + 1) / w_orig * screen_w
+            y0 = rmin / h_orig * screen_h
+            y1 = (rmax + 1) / h_orig * screen_h
+            extent = [x0, x1, y1, y0]
+            ax.set_xlim(x0, x1)
+            ax.set_ylim(y1, y0)
+        else:
+            extent = [0, screen_w, screen_h, 0]
+        ax.imshow(bg, extent=extent, aspect="auto")
         if OVERLAY_BG_ALPHA > 0:
             ax.imshow(
                 np.ones((10, 10, 3), dtype=float),
-                extent=[0, screen_w, screen_h, 0],
+                extent=extent,
                 aspect="auto",
                 alpha=OVERLAY_BG_ALPHA,
             )
@@ -250,6 +298,7 @@ def _draw_density(
             alpha=A.T if A is not None else alpha,
             aspect="auto",
         )
+        ax.set_facecolor("white")
     else:
         ax.imshow(H.T, origin="upper", cmap=cmap, vmin=vmin, vmax=vmax, aspect="auto")
 
