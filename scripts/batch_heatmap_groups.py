@@ -566,7 +566,9 @@ def main():
         if not matches:
             raise FileNotFoundError(f"No CSV matched id={pid!r} under {csv_dir}")
         if len(matches) > 1:
-            raise FileExistsError(f"Multiple CSVs matched id={pid!r} under {csv_dir}: {[str(p) for p in matches[:10]]}")
+            # Multiple CSVs for same participant (e.g. merged from multiple order groups).
+            # Return all paths so the caller can concatenate data.
+            return [str(p) for p in matches]
         return str(matches[0])
 
     points_all = []
@@ -610,13 +612,23 @@ def main():
             if not loaded_from_cache:
                 w = None
                 csv_path = resolve_csv_path(pid, r["csv_path"] if has_csv_path else None)
-                df, clean = load_and_clean(
-                    csv_path,
-                    screen_w=args.screen_w,
-                    screen_h=args.screen_h,
-                    require_validity=args.require_validity,
-                    columns_map_path=args.columns_map,
-                )
+                # Handle single path or list of paths (multiple CSVs per participant)
+                csv_paths = csv_path if isinstance(csv_path, list) else [csv_path]
+                dfs = []
+                cleans = []
+                for cp in csv_paths:
+                    _df, _clean = load_and_clean(
+                        cp,
+                        screen_w=args.screen_w,
+                        screen_h=args.screen_h,
+                        require_validity=args.require_validity,
+                        columns_map_path=args.columns_map,
+                    )
+                    dfs.append(_df)
+                    cleans.append(_clean)
+                df = pd.concat(dfs, ignore_index=True)
+                clean = pd.concat(cleans, ignore_index=True)
+                csv_path = csv_paths[0]  # record first path for metadata
 
                 if args.point_source == "fixation":
                     if ("Fixation Point X[px]" not in clean.columns) or ("Fixation Point Y[px]" not in clean.columns):
