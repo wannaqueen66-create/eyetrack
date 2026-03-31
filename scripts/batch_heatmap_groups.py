@@ -118,12 +118,13 @@ def setup_publication_style(font_family: str = "DejaVu Sans"):
 def _make_tobii_cmap():
     # Approximate Tobii-style ramp: cool tails → green/yellow → hot red/white core
     stops = [
-        (0.00, (0.00, 0.00, 0.00, 0.00)),
-        (0.08, (0.05, 0.20, 0.95, 0.20)),
-        (0.22, (0.00, 0.72, 1.00, 0.42)),
-        (0.42, (0.00, 0.95, 0.38, 0.62)),
-        (0.62, (1.00, 0.92, 0.00, 0.82)),
-        (0.82, (1.00, 0.35, 0.00, 0.95)),
+        (0.00, (0.00, 0.10, 0.80, 0.00)),
+        (0.05, (0.00, 0.20, 0.95, 0.30)),
+        (0.15, (0.00, 0.60, 1.00, 0.50)),
+        (0.30, (0.00, 0.90, 0.50, 0.65)),
+        (0.50, (0.80, 0.95, 0.00, 0.78)),
+        (0.70, (1.00, 0.60, 0.00, 0.90)),
+        (0.85, (1.00, 0.25, 0.00, 0.96)),
         (1.00, (1.00, 0.00, 0.00, 1.00)),
     ]
     return mcolors.LinearSegmentedColormap.from_list("tobii_like", stops, N=256)
@@ -178,7 +179,7 @@ def _alpha_map_from_density(H: np.ndarray, alpha: float, thresh_rel: float):
         return np.zeros_like(H, dtype=float)
     Hn = np.clip(H / mx, 0, 1)
     # More Tobii-like: softer tails + quickly intensified hotspots
-    A = np.clip((Hn ** 0.32) * float(alpha), 0, 1)
+    A = np.clip((Hn ** 0.25) * float(alpha), 0, 1)
     if thresh_rel is not None and thresh_rel > 0:
         A = np.where(Hn >= float(thresh_rel), A, 0.0)
     return A
@@ -197,7 +198,7 @@ def _normalize_background(bg: np.ndarray) -> np.ndarray:
     return np.clip(arr[..., :3], 0, 1)
 
 
-def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.12):
+def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.22):
     """Detect the bounding box of non-black content in a background image.
 
     Returns (row_min, row_max, col_min, col_max) in pixel coordinates,
@@ -221,9 +222,8 @@ def _detect_content_bounds(bg: np.ndarray, dark_thresh: float = 0.12):
     cmin, cmax = int(np.where(cols)[0][0]), int(np.where(cols)[0][-1])
 
     h, w = bg.shape[:2]
-    # Only skip cropping if borders are truly negligible (<1% on all sides)
-    margin = 0.01
-    if rmin < h * margin and rmax > h * (1 - margin) and cmin < w * margin and cmax > w * (1 - margin):
+    # Crop if any side has >3% dark border
+    if (rmin / h < 0.03) and ((h - rmax) / h < 0.03) and (cmin / w < 0.03) and ((w - cmax) / w < 0.03):
         return None  # negligible border
 
     return (rmin, rmax, cmin, cmax)
@@ -461,7 +461,7 @@ def main():
     ap.add_argument("--screen_h", type=int, default=1440)
 
     ap.add_argument("--bins", type=int, default=220, help="Grid bins for density (default 220x220)")
-    ap.add_argument("--sigma", type=float, default=2.6, help="Gaussian smoothing sigma (default 2.6, closer to Tobii-like diffusion)")
+    ap.add_argument("--sigma", type=float, default=3.0, help="Gaussian smoothing sigma (default 2.6, closer to Tobii-like diffusion)")
 
     ap.add_argument("--point_source", default="fixation", choices=["gaze", "fixation"], help="Point source (default: fixation, matching Tobii Pro Lab)")
     ap.add_argument("--weight", default="fixation_duration", choices=["none", "fixation_duration"], help="Weighting (default: fixation_duration, matching Tobii Pro Lab)")
