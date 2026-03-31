@@ -198,7 +198,7 @@ def _normalize_background(bg: np.ndarray) -> np.ndarray:
     return np.clip(arr[..., :3], 0, 1)
 
 
-def _detect_content_bounds(bg: np.ndarray, crop_pct: float = 0.08):
+def _detect_content_bounds(bg: np.ndarray, crop_pct: float = 0.12):
     """Crop a fixed percentage from all edges to remove VR panoramic dark corners.
 
     Args:

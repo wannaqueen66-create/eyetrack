@@ -56,7 +56,7 @@ LABEL_COLOR = "#202124"
 LABEL_SIZE = 11
 
 
-def _auto_crop(img_arr: np.ndarray, bg_thresh: int = 55) -> np.ndarray:
+def _auto_crop(img_arr: np.ndarray, bg_thresh: int = 70) -> np.ndarray:
     """Remove near-black borders from an image array (H, W, C)."""
     if img_arr.ndim == 2:
         gray = img_arr
