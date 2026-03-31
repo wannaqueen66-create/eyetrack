@@ -414,8 +414,8 @@ def main():
     ap.add_argument("--bins", type=int, default=220, help="Grid bins for density (default 220x220)")
     ap.add_argument("--sigma", type=float, default=2.6, help="Gaussian smoothing sigma (default 2.6, closer to Tobii-like diffusion)")
 
-    ap.add_argument("--point_source", default="gaze", choices=["gaze", "fixation"], help="Use gaze points or fixation points")
-    ap.add_argument("--weight", default="none", choices=["none", "fixation_duration"], help="Optional weighting")
+    ap.add_argument("--point_source", default="fixation", choices=["gaze", "fixation"], help="Point source (default: fixation, matching Tobii Pro Lab)")
+    ap.add_argument("--weight", default="fixation_duration", choices=["none", "fixation_duration"], help="Weighting (default: fixation_duration, matching Tobii Pro Lab)")
     ap.add_argument("--fixation_dedup", default="index", choices=["index", "none"], help="How to deduplicate fixation points")
 
     ap.add_argument("--require_validity", action="store_true", help="Require Validity Left/Right == 1 when columns exist")
